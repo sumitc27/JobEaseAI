@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobEaseAI - AI-Powered Resume Tailor & 1-Page Guardrail Editor</title>
+  <meta name="description" content="Evaluate your resume against target job descriptions with AI suggestions, strict 1-page formatting guardrails, and instant PDF export.">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366F1'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z'/></svg>">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8zm0 4h8v2H8zm0-8h5v2H8z"/></svg>
+      </div>
+      <div>
+        <h1 class="brand-title">JobEaseAI <span class="brand-badge">V1 MVP</span></h1>
+      </div>
+    </div>
+
+    <!-- Center: 1-Page Guardrail Status Meter -->
+    <div class="nav-center">
+      <div class="guardrail-meter" id="guardrail-meter" title="1-Page Formatting Guardrail">
+        <span>Page Budget:</span>
+        <div class="meter-bar">
+          <div class="meter-fill" id="meter-fill" style="width: 85%;"></div>
+        </div>
+        <span id="meter-text">85% (1 Page)</span>
+      </div>
+    </div>
+
+    <!-- Top Navigation Actions -->
+    <div class="nav-actions">
+      <button class="btn btn-secondary" id="btn-load-sample" title="Load sample candidate profile">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+        Sample Profile
+      </button>
+
+      <button class="btn btn-secondary" id="btn-open-upload">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+        Upload PDF
+      </button>
+
+      <button class="btn btn-secondary" id="btn-export-json" title="Download raw JSON data">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+        Export JSON
+      </button>
+
+      <button class="btn btn-primary" id="btn-export-pdf" title="Export perfectly formatted 1-page PDF">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+        Download 1-Page PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- 3-Column Interactive Studio Workspace -->
+  <main class="studio-layout">
+
+    <!-- LEFT PANEL: Job Description & AI Suggestions -->
+    <aside class="panel" id="left-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="18" height="18" fill="var(--primary)" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/></svg>
+          JD & AI Match Engine
+        </div>
+        <button class="btn btn-outline btn-icon" id="btn-sample-jd" title="Insert Sample Job Description">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+        </button>
+      </div>
+
+      <div class="panel-body">
+        <!-- Target Job Description Input -->
+        <div class="card-section">
+          <div class="card-title">
+            <span>Target Job Description</span>
+            <span style="font-size: 0.7rem; font-weight: normal; text-transform: none; color: var(--text-dim);" id="jd-word-count">0 words</span>
+          </div>
+          <textarea class="jd-textarea" id="jd-input" placeholder="Paste the target job description here..."></textarea>
+          <button class="btn btn-primary" id="btn-analyze" style="width: 100%;">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+            Evaluate Match & Generate Suggestions
+          </button>
+        </div>
+
+        <!-- ATS Score Gauge -->
+        <div class="ats-score-card" id="ats-score-box">
+          <div class="score-circle" id="score-circle" style="--score: 75;">
+            <span class="score-value" id="score-text">75%</span>
+          </div>
+          <div class="score-info">
+            <div class="score-headline" id="score-status">Strong Alignment</div>
+            <div class="score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</div>
+          </div>
+        </div>
+
+        <!-- Skill Analysis Cloud -->
+        <div class="card-section">
+          <div class="card-title">Missing Hard Skills (Click to Add)</div>
+          <div class="tags-wrap" id="missing-skills-tags">
+            <span style="color: var(--text-dim); font-size: 0.8rem;">Evaluate a job description to detect missing skills.</span>
+          </div>
+        </div>
+
+        <!-- Keyword Gaps -->
+        <div class="card-section">
+          <div class="card-title">Domain Keywords Found</div>
+          <div class="tags-wrap" id="found-skills-tags">
+            <span style="color: var(--text-dim); font-size: 0.8rem;">Matched keywords will appear here.</span>
+          </div>
+        </div>
+
+        <!-- Targeted AI Suggestions List -->
+        <div class="card-section">
+          <div class="card-title">Actionable AI Suggestions</div>
+          <div class="suggestion-list" id="suggestions-container">
+            <div style="color: var(--text-dim); font-size: 0.82rem; text-align: center; padding: 20px 0;">
+              No suggestions yet. Paste a JD and evaluate to get targeted bullet point and skill refinements.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- CENTER PANEL: Structured Manual Editor -->
+    <section class="panel" id="center-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="18" height="18" fill="var(--secondary)" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>
+          Structured Resume Editor
+        </div>
+        <div class="tabs-header">
+          <button class="tab-btn active" id="tab-form">Form</button>
+          <button class="tab-btn" id="tab-json">Raw JSON</button>
+        </div>
+      </div>
+
+      <div class="panel-body" id="editor-form-view">
+        <!-- Personal Information -->
+        <div class="card-section">
+          <div class="card-title">Personal Information</div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-input" id="pi-name" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Professional Title</label>
+              <input type="text" class="form-input" id="pi-title" placeholder="Senior Software Engineer">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" id="pi-email" placeholder="john@example.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-input" id="pi-phone" placeholder="+1 (555) 000-0000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-input" id="pi-location" placeholder="City, State">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">LinkedIn</label>
+              <input type="text" class="form-input" id="pi-linkedin" placeholder="https://linkedin.com/in/...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">GitHub</label>
+              <input type="text" class="form-input" id="pi-github" placeholder="https://github.com/...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Portfolio</label>
+              <input type="text" class="form-input" id="pi-portfolio" placeholder="https://johndoe.dev">
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="card-section">
+          <div class="card-title">Professional Summary</div>
+          <textarea class="form-textarea" id="resume-summary-input" rows="3" placeholder="A brief 2-3 sentence overview highlighting your core strengths and domain impact..."></textarea>
+        </div>
+
+        <!-- Skills Section -->
+        <div class="card-section">
+          <div class="card-title">
+            <span>Skills & Technologies</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Technical Skills (Comma separated)</label>
+            <input type="text" class="form-input" id="skills-tech-input" placeholder="JavaScript, React, Node.js, Docker, AWS">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Frameworks & Libraries</label>
+            <input type="text" class="form-input" id="skills-frameworks-input" placeholder="Next.js, Express, Tailwind CSS">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tools & Cloud</label>
+            <input type="text" class="form-input" id="skills-tools-input" placeholder="Git, Docker, PostgreSQL, Jest">
+          </div>
+        </div>
+
+        <!-- Experience Section -->
+        <div class="card-section">
+          <div class="card-title">
+            <span>Work Experience</span>
+            <button class="btn btn-secondary btn-icon" id="btn-add-exp" title="Add Experience">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            </button>
+          </div>
+          <div id="experience-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+
+        <!-- Projects Section -->
+        <div class="card-section">
+          <div class="card-title">
+            <span>Key Projects</span>
+            <button class="btn btn-secondary btn-icon" id="btn-add-proj" title="Add Project">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            </button>
+          </div>
+          <div id="projects-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+
+        <!-- Education Section -->
+        <div class="card-section">
+          <div class="card-title">
+            <span>Education</span>
+            <button class="btn btn-secondary btn-icon" id="btn-add-edu" title="Add Education">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            </button>
+          </div>
+          <div id="education-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+      </div>
+
+      <!-- Raw JSON View (Hidden by default) -->
+      <div class="panel-body" id="editor-json-view" style="display: none; padding: 0;">
+        <textarea class="json-editor-area" id="raw-json-textarea" spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Live Document Preview & Guardrail -->
+    <section class="panel preview-panel" id="right-panel">
+      <div class="preview-toolbar">
+        <div class="preview-toolbar-left">
+          <div class="panel-title">
+            <svg width="16" height="16" fill="var(--accent-emerald)" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+            Live 1-Page Paper Preview
+          </div>
+        </div>
+
+        <div class="preview-toolbar-right">
+          <!-- Template Selector Controls -->
+          <div class="template-toggle" title="Switch Resume Theme Template">
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Template:</span>
+            <div class="pill-group" id="template-pill-group">
+              <button class="pill-btn active" data-template="modern" title="Modern Tech Sans">Modern Tech</button>
+              <button class="pill-btn" data-template="classic" title="Classic Ivy / Harvard Traditional Serif">Classic Ivy</button>
+              <button class="pill-btn" data-template="minimalist" title="Minimalist Ultra-Clean Scandinavian">Minimalist</button>
+            </div>
+          </div>
+
+          <!-- Spacing / Density Guardrail Controls -->
+          <div class="density-toggle" title="Adjust layout spacing to fit 1 page">
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Density:</span>
+            <div class="pill-group">
+              <button class="density-btn" data-density="compact">Compact</button>
+              <button class="density-btn active" data-density="standard">Standard</button>
+              <button class="density-btn" data-density="relaxed">Relaxed</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-scroll-container">
+        <!-- Overflow Warning Banner -->
+        <div class="overflow-alert-banner" id="overflow-banner">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
+          <div>
+            <strong>1-Page Limit Exceeded!</strong> Content extends past the 1-page visual threshold. Shorten bullet points, switch template, or use <em>Compact</em> density.
+          </div>
+        </div>
+
+        <!-- The Paper Document Container -->
+        <div class="paper-wrapper">
+          <div class="resume-paper theme-modern" id="resume-paper">
+            <!-- Dynamic Paper Header -->
+            <header class="rp-header">
+              <h2 class="rp-name" id="rp-name">Alex Rivera</h2>
+              <div class="rp-title" id="rp-title">Senior Full Stack Software Engineer</div>
+              <div class="rp-contacts" id="rp-contacts">
+                <span id="rp-email">alex.rivera@example.com</span>
+                <span>•</span>
+                <span id="rp-phone">+1 (555) 234-5678</span>
+                <span>•</span>
+                <span id="rp-location">San Francisco, CA</span>
+                <span>•</span>
+                <a href="#" id="rp-linkedin">LinkedIn</a>
+                <span>•</span>
+                <a href="#" id="rp-github">GitHub</a>
+              </div>
+            </header>
+
+            <!-- Dynamic Paper Summary -->
+            <section class="rp-section" id="rp-section-summary">
+              <h3 class="rp-section-title">Professional Summary</h3>
+              <p class="rp-summary" id="rp-summary-text"></p>
+            </section>
+
+            <!-- Dynamic Paper Skills -->
+            <section class="rp-section" id="rp-section-skills">
+              <h3 class="rp-section-title">Technical Skills</h3>
+              <div class="rp-skills-group">
+                <div class="rp-skills-line" id="rp-skills-tech"></div>
+                <div class="rp-skills-line" id="rp-skills-frameworks"></div>
+                <div class="rp-skills-line" id="rp-skills-tools"></div>
+              </div>
+            </section>
+
+            <!-- Dynamic Paper Experience -->
+            <section class="rp-section" id="rp-section-experience">
+              <h3 class="rp-section-title">Work Experience</h3>
+              <div id="rp-experience-container"></div>
+            </section>
+
+            <!-- Dynamic Paper Projects -->
+            <section class="rp-section" id="rp-section-projects">
+              <h3 class="rp-section-title">Technical Projects</h3>
+              <div id="rp-projects-container"></div>
+            </section>
+
+            <!-- Dynamic Paper Education -->
+            <section class="rp-section" id="rp-section-education">
+              <h3 class="rp-section-title">Education</h3>
+              <div id="rp-education-container"></div>
+            </section>
+
+            <!-- Visual 1-Page Threshold Marker Line -->
+            <div class="page-limit-line" id="page-limit-line">
+              <span class="page-limit-badge">1-Page Boundary</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Upload Resume Modal -->
+  <div class="modal-overlay" id="upload-modal">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 1.15rem; font-weight: 700;">Upload Current Resume</h2>
+        <button class="btn btn-outline btn-icon" id="btn-close-modal">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted);">
+        Select or drag a PDF resume. Our parser will extract the text, skills, and work history into structured JSON.
+      </p>
+
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon">
+          <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        </div>
+        <div style="font-weight: 600; font-size: 0.9rem;">Drag & drop your PDF resume here</div>
+        <div style="font-size: 0.78rem; color: var(--text-dim);">or click to browse local files</div>
+        <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn btn-secondary" id="btn-cancel-upload">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Message Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Client Application Logic -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

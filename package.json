@@ -1,0 +1,23 @@
+{
+  "name": "jobease-ai",
+  "version": "1.0.0",
+  "description": "AI-Powered Resume Tailoring Tool with strict 1-page formatting guardrails and targeted JD suggestions",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "resume-tailor",
+    "ai-resume",
+    "ats-optimizer",
+    "gemini-ai",
+    "job-description-matcher",
+    "pdf-parser",
+    "1-page-rule"
+  ],
+  "author": "JobEaseAI Team",
+  "license": "MIT"
+}
