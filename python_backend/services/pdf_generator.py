@@ -66,9 +66,20 @@ async def compile_resume(resume_data: dict):
             f.write(rendered_tex)
 
         # Execute Tectonic compiler
+        tectonic_candidates = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "tectonic.exe"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "tectonic.exe"),
+            "tectonic"
+        ]
+        tectonic_bin = "tectonic"
+        for c in tectonic_candidates:
+            if os.path.exists(c):
+                tectonic_bin = c
+                break
+
         try:
             result = subprocess.run(
-                ["tectonic", "resume.tex"],
+                [tectonic_bin, "resume.tex"],
                 cwd=tmpdir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -77,7 +88,7 @@ async def compile_resume(resume_data: dict):
         except FileNotFoundError:
             raise HTTPException(
                 status_code=500,
-                detail="Tectonic compiler executable not found. Install via 'winget install tectonic' or brew/apt."
+                detail="Tectonic compiler executable not found. Place tectonic.exe in the project folder or install in PATH."
             )
 
         if result.returncode != 0:

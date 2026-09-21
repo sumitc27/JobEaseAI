@@ -212,6 +212,23 @@ ${educationSection}
  * @param {string} renderedTex - LaTeX source code
  * @returns {Promise<{success: boolean, pdfBuffer?: Buffer, error?: string, texSource: string}>}
  */
+/**
+ * Finds the tectonic binary, checking project root first before system PATH.
+ */
+export function resolveTectonicExecutable() {
+  const candidates = [
+    path.join(process.cwd(), 'tectonic.exe'),
+    path.join(process.cwd(), 'bin', 'tectonic.exe'),
+    path.join(process.cwd(), 'tectonic')
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return 'tectonic';
+}
+
 export async function compileLatexToPdf(renderedTex) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobease-latex-'));
   const texPath = path.join(tmpDir, 'resume.tex');
@@ -220,19 +237,18 @@ export async function compileLatexToPdf(renderedTex) {
   fs.writeFileSync(texPath, renderedTex, 'utf-8');
 
   return new Promise((resolve) => {
-    // Try tectonic compiler
-    const child = spawn('tectonic', ['resume.tex'], { cwd: tmpDir, shell: true });
+    const tectonicBin = resolveTectonicExecutable();
+    const child = spawn(tectonicBin, ['resume.tex'], { cwd: tmpDir, shell: true });
     let stderr = '';
 
     child.stderr.on('data', data => { stderr += data.toString(); });
     child.stdout.on('data', () => {});
 
     child.on('error', (err) => {
-      // Tectonic not found, cleanup and return helpful error
       cleanupDir(tmpDir);
       resolve({
         success: false,
-        error: `Tectonic compiler is not installed on this system: ${err.message}. You can download the .tex file directly!`,
+        error: `Tectonic compiler is not found: ${err.message}.`,
         texSource: renderedTex
       });
     });
@@ -248,9 +264,12 @@ export async function compileLatexToPdf(renderedTex) {
         });
       } else {
         cleanupDir(tmpDir);
+        const errMsg = stderr || `Compilation failed with exit code ${code}`;
         resolve({
           success: false,
-          error: stderr || `Compilation failed with exit code ${code}`,
+          error: errMsg.includes('not recognized') 
+            ? 'Tectonic executable is not installed on this system. Run the 1-liner in PowerShell or use Overleaf.' 
+            : errMsg,
           texSource: renderedTex
         });
       }

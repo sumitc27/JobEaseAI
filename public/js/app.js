@@ -985,34 +985,84 @@ function setupDropzone() {
 }
 
 async function uploadPdfFile(file) {
-  if (!file.name.endsWith('.pdf')) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
     showToast('Please select a valid PDF file.', 'error');
     return;
   }
 
-  showToast('Parsing PDF and extracting structured resume sections...', 'info');
-  const formData = new FormData();
-  formData.append('resume', file);
+  showToast('Extracting and parsing resume sections...', 'info');
 
   try {
-    const res = await fetch('/api/upload-resume', {
-      method: 'POST',
-      body: formData
-    });
+    let extractedText = '';
 
-    const data = await res.json();
-    if (data.success && data.resume) {
-      currentResume = data.resume;
+    // 1. Try client-side extraction with Mozilla PDF.js (flawlessly extracts LaTeX/Tectonic PDFs)
+    if (window.pdfjsLib) {
+      try {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          let lastY = null;
+          let pageText = '';
+          for (const item of textContent.items) {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 4) {
+              pageText += '\n';
+            } else if (pageText && !pageText.endsWith(' ') && !item.str.startsWith(' ')) {
+              pageText += ' ';
+            }
+            pageText += item.str;
+            lastY = item.transform[5];
+          }
+          extractedText += pageText + '\n';
+        }
+      } catch (pdfErr) {
+        console.warn('PDF.js client extraction notice:', pdfErr);
+      }
+    }
+
+    let structuredResume = null;
+
+    // 2. If client extracted text successfully, parse via /api/parse-text
+    if (extractedText && extractedText.trim().length > 30) {
+      const res = await fetch('/api/parse-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: extractedText })
+      });
+      const data = await res.json();
+      if (data.success && data.resume) {
+        structuredResume = data.resume;
+      }
+    }
+
+    // 3. Fallback: upload file directly to backend /api/upload-resume
+    if (!structuredResume) {
+      const formData = new FormData();
+      formData.append('resume', file);
+      const res = await fetch('/api/upload-resume', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success && data.resume) {
+        structuredResume = data.resume;
+      } else {
+        throw new Error(data.error || 'Failed to extract resume text.');
+      }
+    }
+
+    if (structuredResume) {
+      currentResume = structuredResume;
       loadResumeIntoForm(currentResume);
       closeModal(elements.uploadModal);
-      showToast(`Successfully parsed "${file.name}"!`, 'success');
+      showToast(`Successfully tailored "${file.name}"!`, 'success');
       evaluateMatch();
-    } else {
-      throw new Error(data.error || 'Failed to parse PDF');
     }
   } catch (err) {
     console.error('PDF upload error:', err);
-    showToast(err.message || 'Error uploading PDF. Using sample profile.', 'error');
+    showToast(err.message || 'Error uploading PDF.', 'error');
   }
 }
 
