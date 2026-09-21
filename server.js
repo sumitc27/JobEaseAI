@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parsePdfResume, parseResumeText, createEmptyResume } from './services/pdfParser.js';
 import { analyzeMatch } from './services/aiEngine.js';
+import { generateLatexResume, compileLatexToPdf } from './services/latexGenerator.js';
 
 // Load .env manually if exists, without requiring dotenv package
 const __filename = fileURLToPath(import.meta.url);
@@ -103,6 +104,41 @@ const server = http.createServer(async (req, res) => {
       const structuredResume = await parsePdfResume(pdfBuffer);
       sendJson(res, 200, { success: true, resume: structuredResume });
       return;
+    }
+
+    // 5. LaTeX Source Export Endpoint
+    if (req.method === 'POST' && pathname === '/api/export-latex') {
+      const body = await readJsonBody(req);
+      const resume = body.resume || body;
+      const texSource = generateLatexResume(resume);
+      sendJson(res, 200, { success: true, texSource });
+      return;
+    }
+
+    // 6. LaTeX Compilation to PDF Endpoint (Tectonic)
+    if (req.method === 'POST' && pathname === '/api/compile') {
+      const body = await readJsonBody(req);
+      const resume = body.resume || body;
+      const texSource = generateLatexResume(resume);
+      const result = await compileLatexToPdf(texSource);
+
+      if (result.success && result.pdfBuffer) {
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'inline; filename="resume.pdf"',
+          'Content-Length': result.pdfBuffer.length
+        });
+        res.end(result.pdfBuffer);
+        return;
+      } else {
+        sendJson(res, 200, {
+          success: false,
+          compiled: false,
+          error: result.error,
+          texSource
+        });
+        return;
+      }
     }
 
     // -------------------------------------------------------------

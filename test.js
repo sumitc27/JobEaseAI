@@ -4,6 +4,7 @@
  */
 import { parseResumeText, createEmptyResume } from './services/pdfParser.js';
 import { analyzeWithHeuristic } from './services/aiEngine.js';
+import { escapeLatex, generateLatexResume } from './services/latexGenerator.js';
 
 console.log('🧪 Starting JobEaseAI Automated Verification Suite...\n');
 
@@ -74,6 +75,21 @@ assert(typeof matchResult.matchScore === 'number' && matchResult.matchScore >= 4
 assert(Array.isArray(matchResult.hardSkillsFound), 'Hard skills found is an array');
 assert(Array.isArray(matchResult.missingHardSkills), 'Missing hard skills is an array');
 assert(matchResult.suggestions.length > 0, `Actionable suggestions generated: ${matchResult.suggestions.length} items`);
+
+// 4. Test LaTeX Generator & Character Sanitization
+console.log('\nTest 4: LaTeX Generator & Character Sanitization');
+
+const rawProblematicString = 'C & C++ & 100% $50k #1 _test_ {curly} ~tilde ^caret \\slash';
+const sanitized = escapeLatex(rawProblematicString);
+assert(!sanitized.includes(' & '), `Ampersands escaped: ${sanitized}`);
+assert(!sanitized.includes(' 100% '), `Percent escaped: ${sanitized}`);
+assert(!sanitized.includes(' $50k '), `Dollar sign escaped: ${sanitized}`);
+
+const renderedLatex = generateLatexResume(parsed);
+assert(renderedLatex.includes('\\documentclass[letterpaper'), 'LaTeX template has documentclass');
+assert(renderedLatex.includes('\\begin{document}'), 'LaTeX template has begin document');
+assert(renderedLatex.includes('\\end{document}'), 'LaTeX template has end document');
+assert(renderedLatex.includes('Jane Doe'), 'LaTeX template contains candidate name');
 
 console.log(`\n==============================================`);
 console.log(`Verification Summary: ${passCount} Passed, ${failCount} Failed`);

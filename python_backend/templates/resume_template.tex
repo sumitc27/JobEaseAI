@@ -1,0 +1,94 @@
+\documentclass[letterpaper,10pt]{article}
+\usepackage[margin=0.45in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+% Formatting overrides
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{*1.2}{*0.8}
+
+\begin{document}
+\pagestyle{empty} % Remove page numbers
+
+% Header
+\begin{center}
+    \textbf{\Huge \VAR{ personalInfo.name | escape_latex }} \\
+    \vspace{3pt}
+    \small \VAR{ personalInfo.email | escape_latex } $|$ \VAR{ personalInfo.phone | escape_latex } $|$ \VAR{ personalInfo.location | escape_latex }
+    \BLOCK{ if personalInfo.linkedin } $|$ \VAR{ personalInfo.linkedin | escape_latex } \BLOCK{ endif }
+    \BLOCK{ if personalInfo.github } $|$ \VAR{ personalInfo.github | escape_latex } \BLOCK{ endif }
+\end{center}
+\vspace{-4pt}
+
+% Professional Summary
+\BLOCK{ if summary }
+\section*{Summary}
+\noindent
+\VAR{ summary | escape_latex }
+\vspace{4pt}
+\BLOCK{ endif }
+
+% Experience Section
+\BLOCK{ if experience }
+\section*{Experience}
+\BLOCK{ for job in experience }
+\noindent
+\textbf{\VAR{ job.company | escape_latex }} \hfill \VAR{ job.location | escape_latex } \\
+\textit{\VAR{ job.role | escape_latex }} \hfill \VAR{ job.startDate | escape_latex } -- \VAR{ job.endDate | escape_latex } \\
+\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
+    \BLOCK{ for bullet in job.bullets }
+    \item \VAR{ bullet | escape_latex }
+    \BLOCK{ endfor }
+\end{itemize}
+\vspace{4pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+% Skills Section
+\BLOCK{ if skills }
+\section*{Skills \& Technologies}
+\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
+    \BLOCK{ if skills.technical }
+    \item \textbf{Technical Skills}: \VAR{ skills.technical | join(', ') | escape_latex }
+    \BLOCK{ endif }
+    \BLOCK{ if skills.frameworks }
+    \item \textbf{Frameworks \& Libraries}: \VAR{ skills.frameworks | join(', ') | escape_latex }
+    \BLOCK{ endif }
+    \BLOCK{ if skills.tools }
+    \item \textbf{Tools \& Platforms}: \VAR{ skills.tools | join(', ') | escape_latex }
+    \BLOCK{ endif }
+    \BLOCK{ if skills.softSkills }
+    \item \textbf{Core Competencies}: \VAR{ skills.softSkills | join(', ') | escape_latex }
+    \BLOCK{ endif }
+\end{itemize}
+\vspace{4pt}
+\BLOCK{ endif }
+
+% Projects Section
+\BLOCK{ if projects }
+\section*{Key Projects}
+\BLOCK{ for proj in projects }
+\noindent
+\textbf{\VAR{ proj.name | escape_latex }} \BLOCK{ if proj.roleOrTech }\textit{[\VAR{ proj.roleOrTech | escape_latex }]}\BLOCK{ endif } \hfill \VAR{ proj.link | escape_latex } \\
+\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
+    \BLOCK{ for bullet in proj.bullets }
+    \item \VAR{ bullet | escape_latex }
+    \BLOCK{ endfor }
+\end{itemize}
+\vspace{4pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+% Education Section
+\BLOCK{ if education }
+\section*{Education}
+\BLOCK{ for edu in education }
+\noindent
+\textbf{\VAR{ edu.institution | escape_latex }} \hfill \VAR{ edu.year | escape_latex } \\
+\textit{\VAR{ edu.degree | escape_latex }} \\
+\vspace{2pt}
+\BLOCK{ endfor }
+\BLOCK{ endif }
+
+\end{document}

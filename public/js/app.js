@@ -92,7 +92,26 @@ const elements = {
   btnCancelUpload: document.getElementById('btn-cancel-upload'),
   dropzone: document.getElementById('dropzone'),
   pdfFileInput: document.getElementById('pdf-file-input'),
-  toastContainer: document.getElementById('toast-container')
+  toastContainer: document.getElementById('toast-container'),
+
+  // LaTeX Integration Elements
+  btnExportLatex: document.getElementById('btn-export-latex'),
+  latexModal: document.getElementById('latex-modal'),
+  btnCloseLatexModal: document.getElementById('btn-close-latex-modal'),
+  latexCodeView: document.getElementById('latex-code-view'),
+  btnCopyLatex: document.getElementById('btn-copy-latex'),
+  btnDownloadTex: document.getElementById('btn-download-tex'),
+  btnCompilePdf: document.getElementById('btn-compile-pdf'),
+  btnOpenOverleaf: document.getElementById('btn-open-overleaf'),
+  latexStatusText: document.getElementById('latex-status-text'),
+
+  // LaTeX Tab Elements
+  tabLatex: document.getElementById('tab-latex'),
+  editorLatexView: document.getElementById('editor-latex-view'),
+  tabLatexTextarea: document.getElementById('tab-latex-textarea'),
+  btnTabCopyLatex: document.getElementById('btn-tab-copy-latex'),
+  btnTabDownloadLatex: document.getElementById('btn-tab-download-latex'),
+  btnTabOverleaf: document.getElementById('btn-tab-overleaf')
 };
 
 /**
@@ -124,6 +143,43 @@ function bindEvents() {
   elements.btnCancelUpload.addEventListener('click', () => closeModal(elements.uploadModal));
   elements.btnExportJson.addEventListener('click', exportResumeJson);
   elements.btnExportPdf.addEventListener('click', exportPdf);
+
+  // LaTeX Modal Actions
+  if (elements.btnExportLatex) {
+    elements.btnExportLatex.addEventListener('click', openLatexModal);
+  }
+  if (elements.btnCloseLatexModal) {
+    elements.btnCloseLatexModal.addEventListener('click', () => closeModal(elements.latexModal));
+  }
+  if (elements.btnCopyLatex) {
+    elements.btnCopyLatex.addEventListener('click', copyLatexCode);
+  }
+  if (elements.btnDownloadTex) {
+    elements.btnDownloadTex.addEventListener('click', downloadTexFile);
+  }
+  if (elements.btnCompilePdf) {
+    elements.btnCompilePdf.addEventListener('click', compileLatexPdf);
+  }
+  if (elements.btnOpenOverleaf) {
+    elements.btnOpenOverleaf.addEventListener('click', () => openOverleaf(elements.latexCodeView.value));
+  }
+
+  // LaTeX Tab Actions
+  if (elements.tabLatex) {
+    elements.tabLatex.addEventListener('click', () => switchTab('latex'));
+  }
+  if (elements.btnTabCopyLatex) {
+    elements.btnTabCopyLatex.addEventListener('click', () => {
+      navigator.clipboard.writeText(elements.tabLatexTextarea.value);
+      showToast('Copied LaTeX source code to clipboard!', 'success');
+    });
+  }
+  if (elements.btnTabDownloadLatex) {
+    elements.btnTabDownloadLatex.addEventListener('click', () => downloadTexFile(elements.tabLatexTextarea.value));
+  }
+  if (elements.btnTabOverleaf) {
+    elements.btnTabOverleaf.addEventListener('click', () => openOverleaf(elements.tabLatexTextarea.value));
+  }
 
   // Density Controls
   document.querySelectorAll('.density-btn').forEach(btn => {
@@ -248,18 +304,22 @@ function check1PageGuardrail() {
  */
 function switchTab(tab) {
   activeTab = tab;
+  elements.tabForm.classList.toggle('active', tab === 'form');
+  elements.tabJson.classList.toggle('active', tab === 'json');
+  if (elements.tabLatex) elements.tabLatex.classList.toggle('active', tab === 'latex');
+
+  elements.editorFormView.style.display = tab === 'form' ? 'flex' : 'none';
+  elements.editorJsonView.style.display = tab === 'json' ? 'block' : 'none';
+  if (elements.editorLatexView) {
+    elements.editorLatexView.style.display = tab === 'latex' ? 'flex' : 'none';
+  }
+
   if (tab === 'form') {
-    elements.tabForm.classList.add('active');
-    elements.tabJson.classList.remove('active');
-    elements.editorFormView.style.display = 'flex';
-    elements.editorJsonView.style.display = 'none';
     loadResumeIntoForm(currentResume);
-  } else {
-    elements.tabForm.classList.remove('active');
-    elements.tabJson.classList.add('active');
-    elements.editorFormView.style.display = 'none';
-    elements.editorJsonView.style.display = 'block';
+  } else if (tab === 'json') {
     elements.rawJsonTextarea.value = JSON.stringify(currentResume, null, 2);
+  } else if (tab === 'latex') {
+    updateTabLatexView();
   }
 }
 
@@ -1029,6 +1089,253 @@ function openModal(modal) {
 
 function closeModal(modal) {
   modal.classList.remove('active');
+}
+
+/**
+ * LaTeX Pipeline Functions
+ */
+async function openLatexModal() {
+  elements.latexStatusText.textContent = 'Generating LaTeX source...';
+  openModal(elements.latexModal);
+
+  try {
+    const res = await fetch('/api/export-latex', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resume: currentResume })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      elements.latexCodeView.value = data.texSource || '';
+      elements.latexStatusText.textContent = 'LaTeX source generated successfully.';
+    } else {
+      elements.latexCodeView.value = generateClientLatex(currentResume);
+      elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
+    }
+  } catch {
+    elements.latexCodeView.value = generateClientLatex(currentResume);
+    elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
+  }
+}
+
+function copyLatexCode() {
+  const code = elements.latexCodeView.value;
+  if (!code) return;
+  navigator.clipboard.writeText(code);
+  showToast('Copied LaTeX source code to clipboard!', 'success');
+}
+
+function downloadTexFile(customCode) {
+  const code = (typeof customCode === 'string' && customCode.trim())
+    ? customCode
+    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume));
+  const dataStr = "data:text/x-tex;charset=utf-8," + encodeURIComponent(code);
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  const name = (currentResume.personalInfo?.name || 'resume').toLowerCase().replace(/\s+/g, '_');
+  downloadAnchor.setAttribute("download", `${name}_resume.tex`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+  showToast('Downloaded .tex file! Ready for Tectonic, MikTeX, or Overleaf.', 'success');
+}
+
+async function updateTabLatexView() {
+  if (!elements.tabLatexTextarea) return;
+  elements.tabLatexTextarea.value = '% Generating LaTeX source...';
+  try {
+    const res = await fetch('/api/export-latex', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resume: currentResume })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume);
+    } else {
+      elements.tabLatexTextarea.value = generateClientLatex(currentResume);
+    }
+  } catch {
+    elements.tabLatexTextarea.value = generateClientLatex(currentResume);
+  }
+}
+
+function openOverleaf(texCode) {
+  const code = (typeof texCode === 'string' && texCode.trim())
+    ? texCode
+    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume));
+
+  const form = document.getElementById('overleaf-form');
+  const input = document.getElementById('overleaf-snip');
+  if (form && input) {
+    input.value = code;
+    form.submit();
+    showToast('Opening resume in Overleaf Cloud...', 'info');
+  } else {
+    window.open('https://www.overleaf.com', '_blank');
+  }
+}
+
+async function compileLatexPdf() {
+  elements.btnCompilePdf.disabled = true;
+  elements.latexStatusText.textContent = 'Compiling via Tectonic engine...';
+  elements.btnCompilePdf.innerHTML = 'Compiling...';
+
+  try {
+    const res = await fetch('/api/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resume: currentResume })
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+
+    if (res.ok && contentType.includes('application/pdf')) {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = url;
+      const name = (currentResume.personalInfo?.name || 'resume').toLowerCase().replace(/\s+/g, '_');
+      downloadAnchor.download = `${name}_tectonic.pdf`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+      elements.latexStatusText.textContent = 'PDF compiled successfully via Tectonic!';
+      showToast('LaTeX PDF compiled and downloaded successfully!', 'success');
+    } else {
+      const data = await res.json();
+      elements.latexStatusText.textContent = 'Local compiler not detected.';
+      const useOverleaf = confirm(`LaTeX Notice: Local compiler is not detected:\n${data.error || 'Tectonic compiler is not installed.'}\n\nWould you like to open and compile your resume for free in Overleaf Cloud now?`);
+      if (useOverleaf) {
+        openOverleaf(elements.latexCodeView.value);
+      }
+    }
+  } catch (err) {
+    elements.latexStatusText.textContent = 'Compilation request error.';
+    const useOverleaf = confirm('LaTeX Notice: Tectonic engine was not found on your system.\n\nWould you like to open and compile your resume in Overleaf Cloud now?');
+    if (useOverleaf) {
+      openOverleaf(elements.latexCodeView.value);
+    }
+  } finally {
+    elements.btnCompilePdf.disabled = false;
+    elements.btnCompilePdf.innerHTML = `
+      <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+      Compile PDF (Tectonic)
+    `;
+  }
+}
+
+function escapeClientLatex(text) {
+  if (!text || typeof text !== 'string') return '';
+  const conversions = {
+    '\\': '\\textbackslash{}',
+    '&': '\\&',
+    '%': '\\%',
+    '$': '\\$',
+    '#': '\\#',
+    '_': '\\_',
+    '{': '\\{',
+    '}': '\\}',
+    '~': '\\textasciitilde{}',
+    '^': '\\textasciicircum{}'
+  };
+  return text.replace(/[\\&%$#_{}~^]/g, match => conversions[match] || match);
+}
+
+function generateClientLatex(resume) {
+  const pi = resume.personalInfo || {};
+  const name = escapeClientLatex(pi.name || 'Candidate Name');
+  const email = escapeClientLatex(pi.email || '');
+  const phone = escapeClientLatex(pi.phone || '');
+  const location = escapeClientLatex(pi.location || '');
+  const linkedin = escapeClientLatex(pi.linkedin || '');
+  const github = escapeClientLatex(pi.github || '');
+
+  const contactParts = [email, phone, location, linkedin, github].filter(Boolean);
+  const contactLine = contactParts.join(' $|$ ');
+
+  let summarySection = '';
+  if (resume.summary && resume.summary.trim()) {
+    summarySection = `\\section*{Summary}\n\\noindent\n${escapeClientLatex(resume.summary)}\n\\vspace{4pt}\n`;
+  }
+
+  let expTex = '';
+  if (Array.isArray(resume.experience) && resume.experience.length > 0) {
+    const jobs = resume.experience.map(j => {
+      const bullets = (j.bullets || []).map(b => `    \\item ${escapeClientLatex(b)}`).join('\n');
+      return `\\noindent\n\\textbf{${escapeClientLatex(j.company || 'Company')}} \\hfill ${escapeClientLatex(j.location || '')} \\\\\n\\textit{${escapeClientLatex(j.role || 'Role')}} \\hfill ${escapeClientLatex([j.startDate, j.endDate].filter(Boolean).join(' -- '))} \\\\\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${bullets}\n\\end{itemize}\n\\vspace{4pt}`;
+    }).join('\n\n');
+    expTex = `\\section*{Experience}\n${jobs}\n`;
+  }
+
+  let projTex = '';
+  if (Array.isArray(resume.projects) && resume.projects.length > 0) {
+    const projs = resume.projects.map(p => {
+      const bullets = (p.bullets || []).map(b => `    \\item ${escapeClientLatex(b)}`).join('\n');
+      const roleOrTech = p.roleOrTech ? `\\textit{[${escapeClientLatex(p.roleOrTech)}]}` : '';
+      return `\\noindent\n\\textbf{${escapeClientLatex(p.name || 'Project')}} ${roleOrTech} \\hfill ${escapeClientLatex(p.link || '')} \\\\\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${bullets}\n\\end{itemize}\n\\vspace{4pt}`;
+    }).join('\n\n');
+    projTex = `\\section*{Key Projects}\n${projs}\n`;
+  }
+
+  let skillsTex = '';
+  const skillsObj = resume.skills || {};
+  const skillGroups = [];
+  if (skillsObj.technical && skillsObj.technical.length > 0) {
+    skillGroups.push(`\\item \\textbf{Technical Skills}: ${skillsObj.technical.map(escapeClientLatex).join(', ')}`);
+  }
+  if (skillsObj.frameworks && skillsObj.frameworks.length > 0) {
+    skillGroups.push(`\\item \\textbf{Frameworks \\& Libraries}: ${skillsObj.frameworks.map(escapeClientLatex).join(', ')}`);
+  }
+  if (skillsObj.tools && skillsObj.tools.length > 0) {
+    skillGroups.push(`\\item \\textbf{Tools \\& Platforms}: ${skillsObj.tools.map(escapeClientLatex).join(', ')}`);
+  }
+  if (skillGroups.length > 0) {
+    skillsTex = `\\section*{Skills \\& Technologies}\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${skillGroups.map(s => `    ${s}`).join('\n')}\n\\end{itemize}\n\\vspace{4pt}\n`;
+  }
+
+  let eduTex = '';
+  if (Array.isArray(resume.education) && resume.education.length > 0) {
+    const edus = resume.education.map(e => {
+      return `\\noindent\n\\textbf{${escapeClientLatex(e.institution || 'University')}} \\hfill ${escapeClientLatex(e.year || '')} \\\\\n\\textit{${escapeClientLatex(e.degree || 'Degree')}} \\\\`;
+    }).join('\n\\vspace{2pt}\n');
+    eduTex = `\\section*{Education}\n${edus}\n`;
+  }
+
+  return `\\documentclass[letterpaper,10pt]{article}
+\\usepackage[margin=0.45in]{geometry}
+\\usepackage{titlesec}
+\\usepackage{enumitem}
+\\usepackage{hyperref}
+
+\\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=black
+}
+
+\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]
+\\titlespacing*{\\section}{0pt}{*1.2}{*0.8}
+
+\\begin{document}
+\\pagestyle{empty}
+
+\\begin{center}
+    {\\textbf{\\Huge ${name}}} \\\\[4pt]
+    ${contactLine ? `{\\small ${contactLine}}` : ''}
+\\end{center}
+\\vspace{-4pt}
+
+${summarySection}
+${skillsTex}
+${expTex}
+${projTex}
+${eduTex}
+
+\\end{document}
+`;
 }
 
 function capitalize(str) {

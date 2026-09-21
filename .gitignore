@@ -29,3 +29,6 @@ desktop.ini
 dist/
 build/
 coverage/
+
+
+.agents/
