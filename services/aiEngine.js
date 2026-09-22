@@ -1,16 +1,29 @@
 /**
- * AI Match Engine & Suggestion Generator
+ * AI Match Engine & Suggestion Generator (Hybrid Architecture)
  * Compares structured Resume JSON against target Job Description.
- * Supports Gemini API, OpenAI API, and an offline Heuristic NLP Engine fallback.
+ * Supports Groq (Llama 3.3 70B), Google Gemini (2.0 Flash / 1.5 Flash Free Tier),
+ * OpenAI, and an offline Heuristic NLP Engine fallback.
  */
 
 const COMMON_TECH_SKILLS = [
-  'javascript', 'typescript', 'react', 'next.js', 'vue', 'angular', 'node.js', 'express',
-  'python', 'django', 'fastapi', 'flask', 'java', 'spring boot', 'golang', 'rust', 'c#', '.net',
-  'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'ci/cd', 'terraform', 'graphql', 'rest api',
-  'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'kafka', 'microservices',
-  'html5', 'css3', 'tailwind css', 'sass', 'redux', 'zustand', 'webpack', 'vite',
-  'git', 'linux', 'unit testing', 'jest', 'cypress', 'playwright', 'sql', 'nosql', 'agile'
+  // Languages & Core
+  'javascript', 'typescript', 'python', 'java', 'golang', 'rust', 'c++', 'c#', '.net',
+  'php', 'ruby', 'swift', 'kotlin', 'sql', 'nosql', 'html5', 'css3', 'bash', 'shell',
+  // Frameworks & Web
+  'react', 'next.js', 'vue', 'angular', 'node.js', 'express', 'fastapi', 'flask',
+  'django', 'spring boot', 'graphql', 'rest api', 'tailwind css', 'sass', 'redux', 'zustand',
+  // AI, LLM & Agentic
+  'langchain', 'llamaindex', 'rag', 'crewai', 'autogen', 'prompt engineering',
+  'vector db', 'pinecone', 'chroma', 'chromadb', 'milvus', 'qdrant', 'faiss',
+  'fine-tuning', 'llm', 'llms', 'openai', 'gemini', 'anthropic', 'claude', 'huggingface',
+  // ML / DL & Computer Vision
+  'pytorch', 'tensorflow', 'keras', 'scikit-learn', 'sklearn', 'opencv', 'yolo',
+  'deep learning', 'machine learning', 'transformers', 'nlp', 'pandas', 'numpy',
+  // Cloud, DevOps & Databases
+  'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'ci/cd', 'terraform', 'linux',
+  'git', 'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch', 'kafka',
+  'microservices', 'airflow', 'mlflow', 'prometheus', 'grafana', 'datadog',
+  'unit testing', 'jest', 'cypress', 'playwright', 'agile'
 ];
 
 const COMMON_SOFT_SKILLS = [
@@ -105,92 +118,183 @@ export function classifySkill(skillName) {
 }
 
 /**
- * Evaluates resume against Job Description.
- * Automatically tries Gemini -> OpenAI -> Heuristic Fallback.
- * @param {Object} resumeJson 
- * @param {string} jobDescription 
- * @returns {Promise<Object>} Analysis results
+ * Robust skill matcher supporting boundary checking for short terms
  */
-export async function analyzeMatch(resumeJson, jobDescription) {
-  if (!jobDescription || jobDescription.trim().length === 0) {
-    throw new Error('Target Job Description is required for analysis.');
+function textContainsSkill(haystack, skill) {
+  if (!haystack || !skill) return false;
+  const s = skill.toLowerCase();
+  // If short word (<= 3 chars e.g. 'c', 'go', 'r', 'git', 'aws', 'sql'), require word boundary
+  if (s.length <= 3) {
+    const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    return regex.test(haystack);
   }
-
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
-
-  if (geminiKey) {
-    try {
-      return await analyzeWithGemini(resumeJson, jobDescription, geminiKey);
-    } catch (err) {
-      console.warn('Gemini API call failed, falling back to heuristic engine:', err.message);
-    }
-  }
-
-  if (openaiKey) {
-    try {
-      return await analyzeWithOpenAI(resumeJson, jobDescription, openaiKey);
-    } catch (err) {
-      console.warn('OpenAI API call failed, falling back to heuristic engine:', err.message);
-    }
-  }
-
-  // Fallback to intelligent built-in heuristic analysis
-  return analyzeWithHeuristic(resumeJson, jobDescription);
+  return haystack.includes(s);
 }
 
 /**
- * LLM Prompt Construction for Resume Evaluation
+ * Deterministic Pre-Audit: Fast Ground-Truth Extraction
+ * Computes exact hard skills, soft skills, and keyword gaps before calling LLM.
  */
-function buildPrompt(resumeJson, jobDescription) {
-  return `You are an expert ATS (Applicant Tracking System) and executive Technical Recruiter.
-Analyze the following candidate Resume against the target Job Description.
+export function preAuditDeterministic(resumeJson, jobDescription) {
+  const jdLower = (jobDescription || '').toLowerCase();
+  const resumeText = JSON.stringify(resumeJson || {}).toLowerCase();
+
+  // 1. Hard Skills
+  const jdHardSkills = COMMON_TECH_SKILLS.filter(skill => textContainsSkill(jdLower, skill));
+  const resumeHardSkills = COMMON_TECH_SKILLS.filter(skill => textContainsSkill(resumeText, skill));
+
+  const hardSkillsFound = jdHardSkills.filter(s => resumeHardSkills.includes(s));
+  const missingHardSkills = jdHardSkills.filter(s => !resumeHardSkills.includes(s));
+
+  // 2. Soft Skills
+  const jdSoftSkills = COMMON_SOFT_SKILLS.filter(skill => textContainsSkill(jdLower, skill));
+  const resumeSoftSkills = COMMON_SOFT_SKILLS.filter(skill => textContainsSkill(resumeText, skill));
+
+  const softSkillsFound = jdSoftSkills.filter(s => resumeSoftSkills.includes(s));
+  const missingSoftSkills = jdSoftSkills.filter(s => !resumeSoftSkills.includes(s));
+
+  // 3. Keyword Extraction from JD
+  const words = jdLower.match(/[a-z]{5,}/g) || [];
+  const freq = {};
+  const stopWords = [
+    'experience', 'required', 'responsibilities', 'qualifications', 'ability', 'working',
+    'candidate', 'company', 'position', 'opportunity', 'including', 'knowledge', 'preferred'
+  ];
+  words.forEach(w => {
+    if (!stopWords.includes(w)) {
+      freq[w] = (freq[w] || 0) + 1;
+    }
+  });
+
+  const topKeywords = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(e => e[0]);
+
+  const keywordGaps = topKeywords.filter(k => !resumeText.includes(k));
+
+  const totalChecked = (jdHardSkills.length * 2) + jdSoftSkills.length + topKeywords.length;
+  const totalFound = (hardSkillsFound.length * 2) + softSkillsFound.length + (topKeywords.length - keywordGaps.length);
+  const rawScore = totalChecked > 0 ? Math.round((totalFound / totalChecked) * 100) : 70;
+
+  return {
+    jdHardSkills,
+    resumeHardSkills,
+    hardSkillsFound,
+    missingHardSkills,
+    softSkillsFound,
+    missingSoftSkills,
+    topKeywords,
+    keywordGaps,
+    rawScore
+  };
+}
+
+/**
+ * Constructs LLM prompt grounded in both Candidate Data and Pre-Audit Findings.
+ */
+function buildPrompt(resumeJson, jobDescription, preAudit) {
+  const experiences = (resumeJson?.experience || []).map((exp, i) => 
+    `[Role #${i}] ${exp.title || 'Role'} at ${exp.company || 'Company'}: ${(exp.bullets || []).join(' | ')}`
+  ).join('\n');
+
+  const projects = (resumeJson?.projects || []).map((proj, i) => 
+    `[Project #${i}] ${proj.title || 'Project'} (${proj.tech || ''}): ${(proj.bullets || []).join(' | ')}`
+  ).join('\n');
+
+  let skillsSummary = 'No skills listed';
+  let categoryNamesList = 'Languages, AI, LLM & Agentic Systems, ML/DL & CV, Cloud, DevOps & MLOps';
+  if (Array.isArray(resumeJson?.skills) && resumeJson.skills.length > 0) {
+    skillsSummary = resumeJson.skills.map(s => `- ${s.category || 'Category'}: ${s.items || ''}`).join('\n');
+    categoryNamesList = resumeJson.skills.map(s => s.category).filter(Boolean).join(', ');
+  } else if (resumeJson?.skills && typeof resumeJson.skills === 'object') {
+    skillsSummary = JSON.stringify(resumeJson.skills);
+  }
+
+  return `You are an executive ATS optimization specialist and principal technical recruiter.
+Your objective is to evaluate this candidate's resume against the target Job Description and generate actionable, high-impact refinements.
 
 TARGET JOB DESCRIPTION:
 """
-${jobDescription.slice(0, 3500)}
+${(jobDescription || '').slice(0, 3500)}
 """
 
-CANDIDATE RESUME JSON:
-"""
-${JSON.stringify(resumeJson, null, 2).slice(0, 4000)}
-"""
+GROUND-TRUTH PRE-AUDIT DATA (Deterministic keyword audit):
+- Matching Hard Skills Identified: ${preAudit.hardSkillsFound.join(', ') || 'None'}
+- Missing Hard Skills from JD: ${preAudit.missingHardSkills.join(', ') || 'None'}
+- Missing Soft Skills: ${preAudit.missingSoftSkills.join(', ') || 'None'}
+- Domain Keyword Gaps: ${preAudit.keywordGaps.join(', ') || 'None'}
 
-Provide your assessment STRICTLY as a valid JSON object matching this schema without any markdown wrapping or extra text:
+CANDIDATE WORK EXPERIENCE:
+${experiences || 'No experience listed'}
+
+CANDIDATE TECHNICAL PROJECTS:
+${projects || 'No projects listed'}
+
+CANDIDATE CURRENT SKILLS (Editable Technical Categories):
+Summary: ${resumeJson?.summary || 'N/A'}
+${skillsSummary}
+
+TASK REQUIREMENTS:
+1. Provide an ATS match score (0-100) based on realistic role fit, qualifications, and depth of experience.
+2. Provide a 2-sentence executive summary of alignment.
+3. List hardSkillsFound and missingHardSkills cleanly.
+4. Generate actionable suggestions:
+   - "skill" suggestion: Recommend critical missing skills. Assign them to the most relevant category from the candidate's active category names (${categoryNamesList}). Set "targetCategory" to that category name.
+   - "experience_bullet" suggestion: Rewrite or add a high-impact bullet point for a specific role in work experience. Must follow Google XYZ formula ("Accomplished [X] as measured by [Y], by doing [Z]") and weave in JD requirements. Include "targetIndex" (0-based integer index of experience) and "targetTitle".
+   - "project_bullet" suggestion: Rewrite or add a technical bullet for one of the candidate's projects to highlight relevant JD technologies (e.g. Docker, Kubernetes, LangChain, PyTorch, Cloud APIs). Include "targetIndex" (0-based integer index of project) and "targetTitle".
+   - "summary" suggestion: Provide an aligned, compelling professional summary.
+
+OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
 {
   "matchScore": <number between 0 and 100>,
-  "summary": "<2-sentence executive summary of alignment>",
-  "hardSkillsFound": ["<matching hard skills>"],
-  "missingHardSkills": ["<critical hard skills in JD not clearly on resume>"],
-  "softSkillsFound": ["<matching soft skills>"],
-  "missingSoftSkills": ["<soft skills emphasized in JD missing on resume>"],
-  "keywordGaps": ["<important domain keywords missing>"],
+  "summary": "<2-sentence executive assessment>",
+  "hardSkillsFound": ["<found skill>"],
+  "missingHardSkills": ["<missing skill>"],
+  "softSkillsFound": ["<found soft skill>"],
+  "missingSoftSkills": ["<missing soft skill>"],
+  "keywordGaps": ["<important domain keyword gaps>"],
   "suggestions": [
     {
-      "id": "sug-1",
+      "id": "sug-skill-1",
       "type": "skill",
       "category": "hard_skill",
-      "title": "<Concise suggestion title>",
-      "detail": "<Actionable guidance>",
+      "targetCategory": "cloudDevOps",
+      "title": "Add Kubernetes & Docker to Cloud/DevOps",
+      "detail": "Target role places heavy emphasis on container orchestration.",
       "action": {
-        "target": "skills.technical",
-        "value": ["<skill to add>"]
+        "target": "skills.cloudDevOps",
+        "category": "cloudDevOps",
+        "value": ["Kubernetes", "Docker"]
       }
     },
     {
-      "id": "sug-2",
+      "id": "sug-exp-1",
       "type": "experience_bullet",
+      "targetIndex": 0,
+      "targetTitle": "<Company or Title of Experience>",
       "category": "quantify_impact",
-      "title": "<Title e.g. Quantify Impact in Experience>",
-      "detail": "<Explanation>",
-      "recommendedBullet": "<High-impact rewritten bullet incorporating JD keywords and metrics>"
+      "title": "<Concise suggestion title>",
+      "detail": "<Specific explanation of what to improve>",
+      "recommendedBullet": "<High-impact XYZ bullet with metrics and keywords>"
     },
     {
-      "id": "sug-3",
+      "id": "sug-proj-1",
+      "type": "project_bullet",
+      "targetIndex": 0,
+      "targetTitle": "<Project Title>",
+      "category": "technical_depth",
+      "title": "<Concise suggestion title>",
+      "detail": "<Explanation connecting project to JD>",
+      "recommendedBullet": "<High-impact project bullet featuring target tech stack>"
+    },
+    {
+      "id": "sug-summary-1",
       "type": "summary",
       "category": "keyword_alignment",
-      "title": "<Title e.g. Align Summary with Role>",
-      "detail": "<Explanation>",
+      "title": "Align Summary with Target Role",
+      "detail": "Tailor opening profile with primary domain keywords.",
       "recommendedSummary": "<Tailored professional summary>"
     }
   ]
@@ -198,41 +302,107 @@ Provide your assessment STRICTLY as a valid JSON object matching this schema wit
 }
 
 /**
- * Gemini API Integration
+ * 1. Groq Cloud API Integration (Llama 3.3 70B / Llama 3.1 8B)
+ * Ultra-fast inference with free tier access at console.groq.com
  */
-async function analyzeWithGemini(resumeJson, jobDescription, apiKey) {
-  const prompt = buildPrompt(resumeJson, jobDescription);
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+async function analyzeWithGroq(resumeJson, jobDescription, apiKey, preAudit) {
+  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const prompt = buildPrompt(resumeJson, jobDescription, preAudit);
 
-  const response = await fetch(url, {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: 'application/json'
-      }
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an ATS parser and resume optimizer that outputs strict, valid JSON matching the requested schema.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2
     })
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini API returned ${response.status}: ${errorText}`);
+    throw new Error(`Groq API returned ${response.status}: ${errorText}`);
   }
 
   const result = await response.json();
-  const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Empty response from Gemini');
+  const content = result?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Empty response from Groq');
 
-  return cleanAndParseJson(text);
+  const parsed = cleanAndParseJson(content);
+  parsed.providerUsed = `Groq (${model})`;
+  return parsed;
 }
 
 /**
- * OpenAI API Integration
+ * 2. Google Gemini API Integration (Free Tier via Google AI Studio)
+ * Supports gemini-2.0-flash and gemini-1.5-flash
  */
-async function analyzeWithOpenAI(resumeJson, jobDescription, apiKey) {
-  const prompt = buildPrompt(resumeJson, jobDescription);
+async function analyzeWithGemini(resumeJson, jobDescription, apiKey, preAudit) {
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const prompt = buildPrompt(resumeJson, jobDescription, preAudit);
+  
+  const callGeminiModel = async (modelName) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Gemini (${modelName}) returned ${res.status}: ${errorText}`);
+    }
+
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error(`Empty content from Gemini (${modelName})`);
+    return text;
+  };
+
+  let text;
+  let usedModel = model;
+  try {
+    text = await callGeminiModel(model);
+  } catch (err) {
+    if (model !== 'gemini-1.5-flash') {
+      console.warn(`Primary Gemini model ${model} failed, attempting gemini-1.5-flash fallback:`, err.message);
+      text = await callGeminiModel('gemini-1.5-flash');
+      usedModel = 'gemini-1.5-flash';
+    } else {
+      throw err;
+    }
+  }
+
+  const parsed = cleanAndParseJson(text);
+  parsed.providerUsed = `Google Gemini (${usedModel})`;
+  return parsed;
+}
+
+/**
+ * 3. OpenAI API Integration
+ */
+async function analyzeWithOpenAI(resumeJson, jobDescription, apiKey, preAudit) {
+  const prompt = buildPrompt(resumeJson, jobDescription, preAudit);
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -257,57 +427,23 @@ async function analyzeWithOpenAI(resumeJson, jobDescription, apiKey) {
 
   const result = await response.json();
   const content = result?.choices?.[0]?.message?.content;
-  return cleanAndParseJson(content);
+  const parsed = cleanAndParseJson(content);
+  parsed.providerUsed = 'OpenAI (gpt-4o-mini)';
+  return parsed;
 }
 
 /**
- * Intelligent Heuristic Matcher (Runs instantly with zero external dependencies/keys)
+ * 4. Built-in Offline Heuristic Matcher
  */
 export function analyzeWithHeuristic(resumeJson, jobDescription) {
-  const jdLower = jobDescription.toLowerCase();
-  const resumeText = JSON.stringify(resumeJson).toLowerCase();
+  const preAudit = preAuditDeterministic(resumeJson, jobDescription);
+  const { hardSkillsFound, missingHardSkills, softSkillsFound, missingSoftSkills, keywordGaps, rawScore } = preAudit;
 
-  // Extract Hard Skills
-  const jdHardSkills = COMMON_TECH_SKILLS.filter(skill => jdLower.includes(skill));
-  const resumeHardSkills = COMMON_TECH_SKILLS.filter(skill => resumeText.includes(skill));
-
-  const hardSkillsFound = jdHardSkills.filter(s => resumeHardSkills.includes(s));
-  const missingHardSkills = jdHardSkills.filter(s => !resumeHardSkills.includes(s));
-
-  // Extract Soft Skills
-  const jdSoftSkills = COMMON_SOFT_SKILLS.filter(skill => jdLower.includes(skill));
-  const resumeSoftSkills = COMMON_SOFT_SKILLS.filter(skill => resumeText.includes(skill));
-
-  const softSkillsFound = jdSoftSkills.filter(s => resumeSoftSkills.includes(s));
-  const missingSoftSkills = jdSoftSkills.filter(s => !resumeSoftSkills.includes(s));
-
-  // Keyword extraction from JD (words > 5 letters appearing frequently)
-  const words = jdLower.match(/[a-z]{5,}/g) || [];
-  const freq = {};
-  words.forEach(w => {
-    if (!['experience', 'required', 'responsibilities', 'qualifications', 'ability', 'working'].includes(w)) {
-      freq[w] = (freq[w] || 0) + 1;
-    }
-  });
-
-  const topKeywords = Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(e => e[0]);
-
-  const keywordGaps = topKeywords.filter(k => !resumeText.includes(k));
-
-  // Calculate Match Score
-  const totalChecked = (jdHardSkills.length * 2) + jdSoftSkills.length + topKeywords.length;
-  const totalFound = (hardSkillsFound.length * 2) + softSkillsFound.length + (topKeywords.length - keywordGaps.length);
-  const rawScore = totalChecked > 0 ? Math.round((totalFound / totalChecked) * 100) : 70;
   const matchScore = Math.min(Math.max(rawScore, 42), 95);
-
-  // Generate Actionable Suggestions
   const suggestions = [];
 
+  // 1. Skill Suggestions
   if (missingHardSkills.length > 0) {
-    // Group missing skills by classified subsection
     const grouped = {};
     missingHardSkills.slice(0, 6).forEach(sk => {
       const cat = classifySkill(sk);
@@ -323,7 +459,7 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
         category: 'hard_skill',
         targetCategory: catKey,
         title: `Add ${skills.join(', ')} to ${catMeta.label}`,
-        detail: `The job description strongly emphasizes ${skills.join(', ')}. Adding them to ${catMeta.label} improves automated ATS subsection ranking.`,
+        detail: `The job description emphasizes ${skills.join(', ')}. Adding them to ${catMeta.label} improves automated ATS subsection ranking.`,
         action: {
           target: `skills.${catKey}`,
           category: catKey,
@@ -333,24 +469,41 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
     });
   }
 
-  // Suggest bullet point refinement
-  if (missingHardSkills.length > 0 || keywordGaps.length > 0) {
-    const keyTech = missingHardSkills[0] ? capitalize(missingHardSkills[0]) : 'Modern Architecture';
-    const keyTerm = keywordGaps[0] ? capitalize(keywordGaps[0]) : 'Scalability';
-    suggestions.push({
-      id: 'sug-bullet-1',
-      type: 'experience_bullet',
-      category: 'quantify_impact',
-      title: `Inject "${keyTech}" and Metric into Experience`,
-      detail: `Strengthen your primary work experience bullet point by connecting ${keyTech} with measurable business or performance metrics.`,
-      recommendedBullet: `Architected and deployed scalable services using ${keyTech}, improving system ${keyTerm.toLowerCase()} and decreasing response latency by 32% for 150k+ active users.`
-    });
-  }
+  // 2. Experience Bullet Refinement
+  const keyTech = missingHardSkills[0] ? capitalize(missingHardSkills[0]) : 'Modern Cloud Architecture';
+  const keyTerm = keywordGaps[0] ? capitalize(keywordGaps[0]) : 'Scalability';
+  const primaryRole = resumeJson?.experience?.[0]?.title || 'Software Engineer';
+  const primaryCompany = resumeJson?.experience?.[0]?.company || 'Current Role';
 
-  // Summary recommendation
+  suggestions.push({
+    id: 'sug-exp-1',
+    type: 'experience_bullet',
+    targetIndex: 0,
+    targetTitle: `${primaryRole} (${primaryCompany})`,
+    category: 'quantify_impact',
+    title: `Inject "${keyTech}" and Performance Metric into Experience`,
+    detail: `Strengthen your primary work experience bullet point by connecting ${keyTech} with measurable business or performance metrics.`,
+    recommendedBullet: `Architected and deployed scalable services using ${keyTech}, improving system ${keyTerm.toLowerCase()} and decreasing response latency by 32% for 150k+ active users.`
+  });
+
+  // 3. Project Bullet Refinement
+  const projectTitle = resumeJson?.projects?.[0]?.title || 'Featured Technical Project';
+  const secondaryTech = missingHardSkills[1] ? capitalize(missingHardSkills[1]) : (keyTech || 'Docker');
+  suggestions.push({
+    id: 'sug-proj-1',
+    type: 'project_bullet',
+    targetIndex: 0,
+    targetTitle: projectTitle,
+    category: 'technical_depth',
+    title: `Highlight "${secondaryTech}" in ${projectTitle}`,
+    detail: `Demonstrate hands-on engineering depth by integrating ${secondaryTech} into your project description.`,
+    recommendedBullet: `Engineered full-stack system utilizing ${secondaryTech} and modern microservices, achieving 99.9% uptime with automated CI/CD deployment pipelines.`
+  });
+
+  // 4. Summary Refinement
   const primaryTitle = resumeJson?.personalInfo?.title || 'Software Engineer';
   suggestions.push({
-    id: 'sug-summary',
+    id: 'sug-summary-1',
     type: 'summary',
     category: 'keyword_alignment',
     title: 'Align Professional Summary with Target Role',
@@ -360,6 +513,7 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
 
   return {
     matchScore,
+    providerUsed: 'Built-in Heuristic Engine',
     summary: `Resume matches approximately ${matchScore}% of target qualifications. ${missingHardSkills.length > 0 ? `Key technical gaps identified: ${missingHardSkills.slice(0, 4).map(capitalize).join(', ')}.` : 'Strong core alignment across tech stack.'}`,
     hardSkillsFound: hardSkillsFound.map(capitalize),
     missingHardSkills: missingHardSkills.map(capitalize),
@@ -373,6 +527,75 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
     keywordGaps: keywordGaps.map(capitalize),
     suggestions
   };
+}
+
+/**
+ * Evaluates resume against Job Description.
+ * Automatically tries Groq -> Gemini -> OpenAI -> Heuristic Fallback.
+ */
+export async function analyzeMatch(resumeJson, jobDescription) {
+  if (!jobDescription || jobDescription.trim().length === 0) {
+    throw new Error('Target Job Description is required for analysis.');
+  }
+
+  // 1. Fast deterministic pre-audit for grounding
+  const preAudit = preAuditDeterministic(resumeJson, jobDescription);
+
+  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+
+  let result = null;
+
+  // 1. Try Groq (Llama 3.3 70B) - Ultra-fast
+  if (groqKey) {
+    try {
+      result = await analyzeWithGroq(resumeJson, jobDescription, groqKey, preAudit);
+    } catch (err) {
+      console.warn('Groq API call failed, falling back to next provider:', err.message);
+    }
+  }
+
+  // 2. Try Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
+  if (!result && geminiKey) {
+    try {
+      result = await analyzeWithGemini(resumeJson, jobDescription, geminiKey, preAudit);
+    } catch (err) {
+      console.warn('Gemini API call failed, falling back to next provider:', err.message);
+    }
+  }
+
+  // 3. Try OpenAI (gpt-4o-mini)
+  if (!result && openaiKey) {
+    try {
+      result = await analyzeWithOpenAI(resumeJson, jobDescription, openaiKey, preAudit);
+    } catch (err) {
+      console.warn('OpenAI API call failed, falling back to heuristic engine:', err.message);
+    }
+  }
+
+  // 4. Built-in Heuristic Fallback
+  if (!result) {
+    result = analyzeWithHeuristic(resumeJson, jobDescription);
+  }
+
+  // Format & ensure missingHardSkillsDetails is present for category selector in UI
+  const missingHard = result.missingHardSkills || [];
+  result.missingHardSkillsDetails = missingHard.map(sk => ({
+    name: capitalize(sk),
+    category: classifySkill(sk),
+    categoryLabel: SKILL_CATEGORIES[classifySkill(sk)]?.label || 'Languages'
+  }));
+
+  // Ensure every suggestion has an ID
+  if (Array.isArray(result.suggestions)) {
+    result.suggestions = result.suggestions.map((sug, idx) => ({
+      ...sug,
+      id: sug.id || `sug-ai-${idx}`
+    }));
+  }
+
+  return result;
 }
 
 function capitalize(str) {

@@ -104,11 +104,15 @@ export const SAMPLE_RESUMES = {
         ]
       }
     ],
+    certifications: [
+      { title: "Machine Learning Specialization", issuer: "Stanford University Online (Coursera)", linkText: "Credentials", linkUrl: "https://www.coursera.org/account/accomplishments/specialization/J4R2XP9WQPCG" }
+    ],
+    publications: [
+      { title: "Design and Development of an Automated Part Removal and Queuing System for FFF 3D Printing", venue: "ASME IMECE 2025 Proceedings", linkText: "ASME IMECE 2025", linkUrl: "https://asmedigitalcollection.asme.org/imece-india/proceedings-abstract/IMECE-INDIA2025/89138/V001T01A039/1228667" }
+    ],
     achievements: [
       { title: "Winner, Best Autonomous Mission", details: "SAEINDIA Aerothon 2024, awarded for designing a fully autonomous UAV pipeline" },
-      { title: "Runner-Up, Duality AI Track -- HackByte 3.0", details: "Trained AI vision models using synthetic and manipulated data to achieve top performance metrics.", linkText: "Certificate", linkUrl: "https://drive.google.com/file/d/1w5Fsf1m4dh-8LA_GSQxE-r9_5MfpJdoI/view?usp=sharing" },
-      { title: "ASME IMECE 2025", details: "Design and Development of an Automated Part Removal and Queuing System for FFF 3D Printing", isPaper: true, linkText: "ASME IMECE 2025", linkUrl: "https://asmedigitalcollection.asme.org/imece-india/proceedings-abstract/IMECE-INDIA2025/89138/V001T01A039/1228667" },
-      { title: "Machine Learning Specialization", details: "Stanford University Online (Coursera)", isCert: true, linkText: "Credentials", linkUrl: "https://www.coursera.org/account/accomplishments/specialization/J4R2XP9WQPCG" }
+      { title: "Runner-Up, Duality AI Track -- HackByte 3.0", details: "Trained AI vision models using synthetic and manipulated data to achieve top performance metrics.", linkText: "Certificate", linkUrl: "https://drive.google.com/file/d/1w5Fsf1m4dh-8LA_GSQxE-r9_5MfpJdoI/view?usp=sharing" }
     ],
     volunteer: [
       { role: "Training & Placement Cell Representative -- IIITDMJ", details: "Helped in managing campus recruitment operations" },

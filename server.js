@@ -56,7 +56,11 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         status: 'online',
         app: 'JobEaseAI - Resume Tailor V1',
-        aiProvider: process.env.GEMINI_API_KEY ? 'Gemini AI' : (process.env.OPENAI_API_KEY ? 'OpenAI' : 'Built-in Heuristic Engine')
+        aiProvider: process.env.GROQ_API_KEY 
+          ? `Groq (${process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'})` 
+          : (process.env.GEMINI_API_KEY 
+            ? `Google Gemini (${process.env.GEMINI_MODEL || 'gemini-2.0-flash'})` 
+            : (process.env.OPENAI_API_KEY ? 'OpenAI' : 'Built-in Heuristic Engine'))
       });
       return;
     }
@@ -112,7 +116,12 @@ const server = http.createServer(async (req, res) => {
       const resume = body.resume || body;
       const font = body.font || (body.options && body.options.font) || 'lmodern';
       const spacing = body.spacing || (body.options && body.options.spacing) || {};
-      const texSource = generateLatexResume(resume, { font, spacing });
+      const paperSize = body.paperSize || (body.options && body.options.paperSize) || 'a4';
+      const sectionOrder = body.sectionOrder || (body.options && body.options.sectionOrder) || null;
+      const enabledSections = body.enabledSections || (body.options && body.options.enabledSections) || null;
+      const sectionTitles = body.sectionTitles || (body.options && body.options.sectionTitles) || resume.sectionTitles || null;
+      const customSections = body.customSections || (body.options && body.options.customSections) || resume.customSections || null;
+      const texSource = generateLatexResume(resume, { font, spacing, paperSize, sectionOrder, enabledSections, sectionTitles, customSections });
       sendJson(res, 200, { success: true, texSource });
       return;
     }
@@ -123,7 +132,12 @@ const server = http.createServer(async (req, res) => {
       const resume = body.resume || body;
       const font = body.font || (body.options && body.options.font) || 'lmodern';
       const spacing = body.spacing || (body.options && body.options.spacing) || {};
-      const texSource = generateLatexResume(resume, { font, spacing });
+      const paperSize = body.paperSize || (body.options && body.options.paperSize) || 'a4';
+      const sectionOrder = body.sectionOrder || (body.options && body.options.sectionOrder) || null;
+      const enabledSections = body.enabledSections || (body.options && body.options.enabledSections) || null;
+      const sectionTitles = body.sectionTitles || (body.options && body.options.sectionTitles) || resume.sectionTitles || null;
+      const customSections = body.customSections || (body.options && body.options.customSections) || resume.customSections || null;
+      const texSource = body.texSource || generateLatexResume(resume, { font, spacing, paperSize, sectionOrder, enabledSections, sectionTitles, customSections });
       const result = await compileLatexToPdf(texSource);
 
       if (result.success && result.pdfBuffer) {

@@ -55,6 +55,9 @@ export function generateLatexResume(resumeData, options = {}) {
   const fontKey = (options && options.font) || 'lmodern';
   const fontPackage = fontKey === 'lmodern' ? '\\usepackage{lmodern}' : (FONT_PACKAGES[fontKey] || '\\usepackage{lmodern}');
 
+  const secTitles = (options && options.sectionTitles) || resumeData.sectionTitles || {};
+  const getSecTitle = (id, fallback) => secTitles[id] || fallback;
+
   const pi = resumeData.personalInfo || {};
   const name = escapeLatex(pi.name || 'Sumit Chouhan');
   const email = escapeLatex(pi.email || '');
@@ -69,7 +72,7 @@ export function generateLatexResume(resumeData, options = {}) {
   const row1 = [];
   if (phone) row1.push(phone);
   if (email) row1.push(`\\href{mailto: ${email}}{${email} }`);
-  if (location && !row1.length) row1.push(location);
+  if (location) row1.push(location);
   const row1Str = row1.join(' $|$ ');
 
   // Contacts line 2: LinkedIn | Github | Leetcode | Website
@@ -80,9 +83,15 @@ export function generateLatexResume(resumeData, options = {}) {
   if (portfolio) row2.push(`\\href{${escapeLatex(portfolio)}}{Website }`);
   const row2Str = row2.join(' $|$ \n  ');
 
+  const titleLine = pi.title ? escapeLatex(pi.title) : '';
+  let subtitleBlock = '';
+  if (titleLine) {
+    subtitleBlock = `\n  \\small \\textit{${titleLine}} \\\\`;
+  }
+
   let headerBlock = `% Header
 \\begin{center}
-  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
+  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{1pt}${subtitleBlock}`;
   if (row1Str) {
     headerBlock += `\n  \\small ${row1Str} \\\\`;
   }
@@ -117,7 +126,7 @@ export function generateLatexResume(resumeData, options = {}) {
     }).join('\n');
 
     educationSection = `%--------------------------- 
-\\section{Education}
+\\section{${escapeLatex(getSecTitle('education', 'Education'))}}
 \\resumeSubHeadingListStart
 ${eduItems}
 \\resumeSubHeadingListEnd`;
@@ -125,38 +134,35 @@ ${eduItems}
 
   // Skills Section
   let skillsSection = '';
-  const skillsObj = resumeData.skills || {};
+  const skillsData = resumeData.skills || [];
   const skillLines = [];
 
-  if (skillsObj.languages) {
-    skillLines.push(`   \\textbf{Languages}{: ${escapeLatex(skillsObj.languages)}}`);
-  } else if (skillsObj.technical && skillsObj.technical.length > 0) {
-    skillLines.push(`   \\textbf{Languages}{: ${skillsObj.technical.map(escapeLatex).join(', ')}}`);
-  }
-
-  if (skillsObj.aiAgentic) {
-    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${escapeLatex(skillsObj.aiAgentic)}}`);
-  }
-
-  if (skillsObj.mlCv) {
-    skillLines.push(`   \\textbf{ML/DL \\& CV}{: ${escapeLatex(skillsObj.mlCv)}}`);
-  } else if (!skillsObj.aiAgentic && skillsObj.frameworks && skillsObj.frameworks.length > 0) {
-    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${skillsObj.frameworks.map(escapeLatex).join(', ')}}`);
-  }
-
-  if (skillsObj.cloudDevOps) {
-    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${escapeLatex(skillsObj.cloudDevOps)}}`);
-  } else if (skillsObj.tools && skillsObj.tools.length > 0) {
-    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${skillsObj.tools.map(escapeLatex).join(', ')}}`);
-  }
-
-  if (skillsObj.softSkills && skillsObj.softSkills.length > 0 && !skillsObj.cloudDevOps) {
-    skillLines.push(`   \\textbf{Core Competencies}{: ${skillsObj.softSkills.map(escapeLatex).join(', ')}}`);
+  if (Array.isArray(skillsData)) {
+    skillsData.forEach(skill => {
+      const category = escapeLatex(skill.category || 'Category');
+      const items = escapeLatex(skill.items || '');
+      if (category && items) {
+        skillLines.push(`   \\textbf{${category}}{: ${items}}`);
+      }
+    });
+  } else {
+    // Fallback for legacy object structure (if migration somehow missed it)
+    const skillsObj = skillsData;
+    if (skillsObj.languages) skillLines.push(`   \\textbf{Languages}{: ${escapeLatex(skillsObj.languages)}}`);
+    else if (skillsObj.technical && skillsObj.technical.length > 0) skillLines.push(`   \\textbf{Languages}{: ${skillsObj.technical.map(escapeLatex).join(', ')}}`);
+    
+    if (skillsObj.aiAgentic) skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${escapeLatex(skillsObj.aiAgentic)}}`);
+    
+    if (skillsObj.mlCv) skillLines.push(`   \\textbf{ML/DL \\& CV}{: ${escapeLatex(skillsObj.mlCv)}}`);
+    else if (!skillsObj.aiAgentic && skillsObj.frameworks && skillsObj.frameworks.length > 0) skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${skillsObj.frameworks.map(escapeLatex).join(', ')}}`);
+    
+    if (skillsObj.cloudDevOps) skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${escapeLatex(skillsObj.cloudDevOps)}}`);
+    else if (skillsObj.tools && skillsObj.tools.length > 0) skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${skillsObj.tools.map(escapeLatex).join(', ')}}`);
   }
 
   if (skillLines.length > 0) {
     skillsSection = `% ----------- SKILLS -----------
-\\section{Skills}
+\\section{${escapeLatex(getSecTitle('skills', 'Technical Skills'))}}
 \\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
   \\item \\small{
 ${skillLines.join(' \\\\\n')}
@@ -176,7 +182,10 @@ ${skillLines.join(' \\\\\n')}
         .map(b => `  \\resumeItem{${escapeLatex(b)}}`)
         .join('\n');
 
-      const title = job.technologies ? `${company}` : (role && !company.includes(role) ? `${company} - ${role}` : company);
+      let title = company;
+      if (role && !company.includes(role)) {
+        title = company ? `${company} - ${role}` : role;
+      }
       const subrole = job.technologies ? escapeLatex(job.technologies) : role;
 
       return `  \\resumeSubheading
@@ -188,7 +197,7 @@ ${bullets}
     }).join('\n  \\vspace{2pt}\n');
 
     experienceSection = `%---------------------------
-\\section{Experience}
+\\section{${escapeLatex(getSecTitle('experience', 'Work Experience'))}}
 \\resumeSubHeadingListStart
 ${jobs}
 \\resumeSubHeadingListEnd`;
@@ -198,8 +207,8 @@ ${jobs}
   let projectsSection = '';
   if (Array.isArray(resumeData.projects) && resumeData.projects.length > 0) {
     const projs = resumeData.projects.map(proj => {
-      const projName = escapeLatex(proj.name || 'Project');
-      const roleOrTech = escapeLatex(proj.roleOrTech || '');
+      const projName = escapeLatex(proj.name || proj.title || 'Project');
+      const roleOrTech = escapeLatex(proj.roleOrTech || proj.technologies || '');
       
       const links = [];
       if (proj.githubUrl) {
@@ -236,7 +245,7 @@ ${bullets}
     }).join('\n    \\vspace{2pt}\n\n');
 
     projectsSection = `%---------------------------
-\\section{Projects}
+\\section{${escapeLatex(getSecTitle('projects', 'Technical Projects'))}}
 \\resumeSubHeadingListStart
     
 ${projs}
@@ -244,12 +253,56 @@ ${projs}
 \\resumeSubHeadingListEnd`;
   }
 
-  // Achievements & Certifications Section
+  // Certifications Section
+  let certificationsSection = '';
+  if (Array.isArray(resumeData.certifications) && resumeData.certifications.length > 0) {
+    const certItems = resumeData.certifications.map(cert => {
+      if (typeof cert === 'string') return `    \\resumeItem{${escapeLatex(cert)}}`;
+      let text = `\\textbf{${escapeLatex(cert.title || cert.name || '')}}`;
+      if (cert.issuer || cert.details) {
+        text += ` -- ${escapeLatex(cert.issuer || cert.details)}`;
+      }
+      if (cert.linkUrl) {
+        text += ` $|$ \\href{${escapeLatex(cert.linkUrl)}}{${escapeLatex(cert.linkText || 'Credential')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    certificationsSection = `%---------------------------
+\\section{${escapeLatex(getSecTitle('certifications', 'Certifications'))}}
+\\resumeItemListStart
+${certItems}
+\\resumeItemListEnd`;
+  }
+
+  // Patents & Publications Section
+  let publicationsSection = '';
+  if (Array.isArray(resumeData.publications) && resumeData.publications.length > 0) {
+    const pubItems = resumeData.publications.map(pub => {
+      if (typeof pub === 'string') return `    \\resumeItem{${escapeLatex(pub)}}`;
+      let text = `\`\`\\textit{${escapeLatex(pub.title || pub.name || '')}}\'\'`;
+      if (pub.details || pub.venue || pub.publisher) {
+        text += ` -- ${escapeLatex(pub.details || pub.venue || pub.publisher)}`;
+      }
+      if (pub.linkUrl) {
+        text += ` $|$ \\href{${escapeLatex(pub.linkUrl)}}{${escapeLatex(pub.linkText || 'Publication')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    publicationsSection = `%---------------------------
+\\section{${escapeLatex(getSecTitle('publications', 'Patents & Publications'))}}
+\\resumeItemListStart
+${pubItems}
+\\resumeItemListEnd`;
+  }
+
+  // Achievements Section
   let achievementsSection = '';
   if (Array.isArray(resumeData.achievements) && resumeData.achievements.length > 0) {
     const achItems = resumeData.achievements.map(ach => {
       if (typeof ach === 'string') {
-        return `    \\resumeItem{${ach}}`;
+        return `    \\resumeItem{${escapeLatex(ach)}}`;
       }
       let text = '';
       if (ach.isPaper) {
@@ -266,7 +319,7 @@ ${projs}
     }).join('\n');
 
     achievementsSection = `%---------------------------
-\\section{Achievements \\& Certifications}
+\\section{${escapeLatex(getSecTitle('achievements', 'Honors & Achievements'))}}
 \\resumeItemListStart
 ${achItems}
 \\resumeItemListEnd`;
@@ -283,7 +336,7 @@ ${achItems}
     }).join('\n');
 
     volunteerSection = `%---------------------------
-\\section{Volunteer Experience}
+\\section{${escapeLatex(getSecTitle('volunteer', 'Volunteer Experience'))}}
 \\resumeItemListStart
 ${volItems}
 \\resumeItemListEnd`;
@@ -293,11 +346,47 @@ ${volItems}
   let summarySection = '';
   if (resumeData.summary && resumeData.summary.trim()) {
     summarySection = `%---------------------------
-\\section{Summary}
+\\section{${escapeLatex(getSecTitle('summary', 'Professional Summary'))}}
 \\resumeItemListStart
   \\resumeItem{${escapeLatex(resumeData.summary)}}
 \\resumeItemListEnd`;
   }
+
+  // Custom Sections
+  const customSectionBlocks = {};
+  const customSections = (options && Array.isArray(options.customSections))
+    ? options.customSections
+    : (Array.isArray(resumeData.customSections) ? resumeData.customSections : []);
+
+  customSections.forEach(cs => {
+    if (!cs || !cs.id) return;
+    const secTitle = escapeLatex(getSecTitle(cs.id, cs.title || 'Additional Section'));
+    const items = Array.isArray(cs.items) ? cs.items : [];
+    if (items.length === 0) return;
+
+    const renderedItems = items.map(item => {
+      const itemTitle = escapeLatex(item.title || '');
+      const itemSubtitle = escapeLatex(item.subtitle || '');
+      const itemDate = escapeLatex(item.date || '');
+      const itemLoc = escapeLatex(item.location || '');
+      const bullets = (item.bullets || []).map(b => `        \\resumeItem{${escapeLatex(b)}}`).join('\n');
+
+      return `    \\resumeSubheading
+      {${itemTitle}}{${itemLoc}}
+      {${itemSubtitle}}{${itemDate}}
+    \\resumeItemListStart
+${bullets}
+    \\resumeItemListEnd`;
+    }).join('\n    \\vspace{2pt}\n\n');
+
+    customSectionBlocks[cs.id] = `%---------------------------
+\\section{${secTitle}}
+\\resumeSubHeadingListStart
+    
+${renderedItems}
+
+\\resumeSubHeadingListEnd`;
+  });
 
   // Spacing & Compactness Configuration
   const spacing = options.spacing || {};
@@ -325,7 +414,50 @@ ${volItems}
   const bulletGap = typeof spacing.bulletGap === 'number' ? spacing.bulletGap : 0;
   const itemSep = bulletGap <= 0 ? '0pt' : `${bulletGap}pt`;
 
-  return `\\documentclass[a4paper,${docFontSize}]{article}
+  const defaultOrder = [
+    'summary',
+    'education',
+    'skills',
+    'experience',
+    'projects',
+    'certifications',
+    'publications',
+    'achievements',
+    'volunteer',
+    ...customSections.map(cs => cs.id)
+  ];
+  const rawUserOrder = (options && options.sectionOrder) || resumeData.sectionOrder || defaultOrder;
+  const userOrder = [...rawUserOrder];
+  customSections.forEach(cs => {
+    if (!userOrder.includes(cs.id)) {
+      userOrder.push(cs.id);
+    }
+  });
+
+  const enabledSet = (options && Array.isArray(options.enabledSections))
+    ? new Set(options.enabledSections)
+    : (Array.isArray(resumeData.enabledSections) ? new Set(resumeData.enabledSections) : null);
+
+  const sectionMap = {
+    summary: summarySection,
+    education: educationSection,
+    skills: skillsSection,
+    experience: experienceSection,
+    projects: projectsSection,
+    certifications: certificationsSection,
+    publications: publicationsSection,
+    achievements: achievementsSection,
+    volunteer: volunteerSection,
+    ...customSectionBlocks
+  };
+
+  const orderedSections = userOrder
+    .filter(id => !enabledSet || enabledSet.has(id))
+    .map(id => sectionMap[id])
+    .filter(sec => sec && sec.trim().length > 0)
+    .join('\n\n');
+
+  return `\\documentclass[${paperSize},${docFontSize}]{article}
 ${fontPackage}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
@@ -390,17 +522,7 @@ ${fontPackage}
 
 ${headerBlock}
 
-${summarySection ? `${summarySection}\n\n` : ''}${educationSection}
-
-${skillsSection}
-
-${experienceSection}
-
-${projectsSection}
-
-${achievementsSection}
-
-${volunteerSection}
+${orderedSections}
 
 \\end{document}
 `;

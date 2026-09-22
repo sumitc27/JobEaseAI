@@ -3,7 +3,7 @@
  * Tests Resume text parsing, JSON structuring, and AI heuristic evaluation.
  */
 import { parseResumeText, createEmptyResume } from './services/pdfParser.js';
-import { analyzeWithHeuristic, classifySkill } from './services/aiEngine.js';
+import { analyzeWithHeuristic, classifySkill, preAuditDeterministic } from './services/aiEngine.js';
 import { escapeLatex, generateLatexResume } from './services/latexGenerator.js';
 
 console.log('🧪 Starting JobEaseAI Automated Verification Suite...\n');
@@ -120,11 +120,22 @@ Required Qualifications:
 - Leadership, communication, and agile team collaboration.
 `;
 
+// Pre-Audit Deterministic Verification
+const preAudit = preAuditDeterministic(parsed, targetJobDescription);
+assert(Array.isArray(preAudit.hardSkillsFound) && preAudit.hardSkillsFound.length > 0, `Pre-audit detected matching hard skills: ${preAudit.hardSkillsFound.join(', ')}`);
+assert(Array.isArray(preAudit.missingHardSkills) && preAudit.missingHardSkills.length > 0, `Pre-audit detected missing hard skills: ${preAudit.missingHardSkills.join(', ')}`);
+
 const matchResult = analyzeWithHeuristic(parsed, targetJobDescription);
 assert(typeof matchResult.matchScore === 'number' && matchResult.matchScore >= 40 && matchResult.matchScore <= 100, `Match score generated: ${matchResult.matchScore}%`);
+assert(matchResult.providerUsed === 'Built-in Heuristic Engine', `Provider tagged correctly: ${matchResult.providerUsed}`);
 assert(Array.isArray(matchResult.hardSkillsFound), 'Hard skills found is an array');
 assert(Array.isArray(matchResult.missingHardSkills), 'Missing hard skills is an array');
 assert(matchResult.suggestions.length > 0, `Actionable suggestions generated: ${matchResult.suggestions.length} items`);
+
+const hasProjectBullet = matchResult.suggestions.some(s => s.type === 'project_bullet');
+assert(hasProjectBullet, 'Heuristic engine generates project_bullet suggestions');
+const hasExpBullet = matchResult.suggestions.some(s => s.type === 'experience_bullet');
+assert(hasExpBullet, 'Heuristic engine generates experience_bullet suggestions');
 
 // 4. Test Skill Categorization & Classification
 console.log('\nTest 4: Skill Categorization & Taxonomy');
@@ -157,12 +168,166 @@ const renderedLatex = generateLatexResume({
   }
 });
 assert(renderedLatex.includes('\\documentclass'), 'LaTeX template has documentclass');
+assert(renderedLatex.includes('a4paper'), 'Default LaTeX template specifies a4paper');
 assert(renderedLatex.includes('\\usepackage{lmodern}'), 'LaTeX template has lmodern package');
 assert(renderedLatex.includes('\\textbf{Languages}{: Python, C++, SQL}'), 'LaTeX includes Languages');
 assert(renderedLatex.includes('\\textbf{AI, LLM \\& Agentic Systems}{: LangChain, Vector DBs}'), 'LaTeX includes AI Agentic');
 assert(renderedLatex.includes('\\textbf{ML/DL \\& CV}{: PyTorch, YOLO}'), 'LaTeX includes ML/CV');
 assert(renderedLatex.includes('\\textbf{Cloud, DevOps \\& MLOps}{: AWS, Docker}'), 'LaTeX includes Cloud/MLOps');
 assert(renderedLatex.includes('Jane Doe'), 'LaTeX template contains candidate name');
+
+const letterLatex = generateLatexResume(parsed, { paperSize: 'letter' });
+assert(letterLatex.includes('letterpaper'), 'LaTeX generator produces letterpaper when requested');
+const a4Latex = generateLatexResume(parsed, { paperSize: 'a4' });
+assert(a4Latex.includes('a4paper'), 'LaTeX generator produces a4paper when requested');
+
+// 6. Test Section Reordering in LaTeX Generator
+console.log('\nTest 6: Dynamic Section Reordering in LaTeX');
+const customOrderTex = generateLatexResume(parsed, {
+  sectionOrder: ['skills', 'experience', 'education']
+});
+const skillsIdx = customOrderTex.indexOf('\\section{Technical Skills}');
+const expIdx = customOrderTex.indexOf('\\section{Work Experience}');
+const eduIdx = customOrderTex.indexOf('\\section{Education}');
+
+assert(skillsIdx !== -1 && expIdx !== -1 && eduIdx !== -1, 'All reordered sections are present in LaTeX');
+assert(skillsIdx < expIdx, 'Technical Skills precedes Work Experience when ordered first');
+assert(expIdx < eduIdx, 'Work Experience precedes Education when ordered before it');
+
+const reverseOrderTex = generateLatexResume(parsed, {
+  sectionOrder: ['education', 'skills', 'experience']
+});
+const revEduIdx = reverseOrderTex.indexOf('\\section{Education}');
+const revSkillsIdx = reverseOrderTex.indexOf('\\section{Technical Skills}');
+assert(revEduIdx < revSkillsIdx, 'Education precedes Technical Skills when ordered first in custom sectionOrder');
+
+// 7. Test Section Inclusion & Exclusion (enabledSections)
+console.log('\nTest 7: Section Inclusion & Exclusion (enabledSections)');
+const partialLatex = generateLatexResume(parsed, {
+  enabledSections: ['education', 'projects']
+});
+assert(partialLatex.includes('\\section{Education}'), 'Education is included when specified in enabledSections');
+assert(partialLatex.includes('\\section{Technical Projects}'), 'Technical Projects is included when specified in enabledSections');
+assert(!partialLatex.includes('\\section{Work Experience}'), 'Work Experience is excluded when omitted from enabledSections');
+assert(!partialLatex.includes('\\section{Technical Skills}'), 'Technical Skills is excluded when omitted from enabledSections');
+assert(!partialLatex.includes('\\section{Professional Summary}'), 'Professional Summary is excluded when omitted from enabledSections');
+
+// 8. Test Certifications and Patents & Publications in LaTeX
+console.log('\nTest 8: Certifications and Patents & Publications in LaTeX');
+const certPubLatex = generateLatexResume({
+  ...parsed,
+  certifications: [
+    { title: 'AWS Certified Solutions Architect', issuer: 'Amazon Web Services', linkText: 'Verify', linkUrl: 'https://aws.amazon.com' }
+  ],
+  publications: [
+    { title: 'Autonomous Aerial Robotics System', venue: 'IEEE ICRA 2025', linkText: 'IEEE Xplore', linkUrl: 'https://ieee.org' }
+  ]
+}, {
+  enabledSections: ['certifications', 'publications']
+});
+assert(certPubLatex.includes('\\section{Certifications}'), 'Certifications section generated in LaTeX');
+assert(certPubLatex.includes('AWS Certified Solutions Architect'), 'Certification title present in LaTeX');
+assert(certPubLatex.includes('\\section{Patents \\& Publications}'), 'Patents & Publications section generated in LaTeX');
+assert(certPubLatex.includes('Autonomous Aerial Robotics System'), 'Publication title present in LaTeX');
+
+// 9. Test Header Location & Experience Subheading in LaTeX Output
+console.log('\nTest 9: Header Location & Experience Subheading in LaTeX Output');
+const accuracyLatex = generateLatexResume({
+  personalInfo: {
+    name: 'Sumit Chouhan',
+    email: '27th.sumit@gmail.com',
+    phone: '+91-7400603978',
+    location: 'Jabalpur, India',
+    linkedin: 'https://linkedin.com/in/sumitc27',
+    github: 'https://github.com/sumitc27'
+  },
+  experience: [
+    {
+      company: 'Insys India Solutions',
+      role: 'AI/ML Developer Intern',
+      technologies: 'React, Python, FastAPI, YOLO',
+      location: 'Hybrid',
+      startDate: 'Jun 2026',
+      endDate: 'Aug 2026',
+      bullets: ['Built computer vision pipeline']
+    }
+  ],
+  projects: [
+    {
+      name: 'ContextCraft',
+      description: 'RAG Document Intelligence Platform',
+      githubUrl: 'https://github.com/sumitc27/ContextCraft',
+      roleOrTech: 'Python, React, FastAPI',
+      bullets: ['Built RAG pipeline']
+    }
+  ]
+});
+
+assert(accuracyLatex.includes('Jabalpur, India'), 'Location is included in LaTeX header row 1 alongside phone and email');
+assert(accuracyLatex.includes('Insys India Solutions - AI/ML Developer Intern'), 'Both Company and Role are preserved in experience subheading');
+assert(accuracyLatex.includes('ContextCraft') && accuracyLatex.includes('RAG Document Intelligence Platform'), 'Project name and description are preserved in project subheading');
+
+// 10. Test Dynamic Section Renaming in LaTeX Generator
+console.log('\nTest 10: Dynamic Section Renaming in LaTeX');
+const renamedLatex = generateLatexResume(parsed, {
+  sectionTitles: {
+    skills: 'Core Competencies & Stack',
+    experience: 'Industry Experience',
+    projects: 'Featured Software Artifacts'
+  }
+});
+assert(renamedLatex.includes('\\section{Core Competencies \\& Stack}'), 'LaTeX includes renamed Technical Skills title');
+assert(renamedLatex.includes('\\section{Industry Experience}'), 'LaTeX includes renamed Work Experience title');
+assert(renamedLatex.includes('\\section{Featured Software Artifacts}'), 'LaTeX includes renamed Technical Projects title');
+assert(!renamedLatex.includes('\\section{Technical Skills}'), 'Original Technical Skills title replaced when renamed');
+
+// 11. Test Custom Sections Creation & Generation in LaTeX
+console.log('\nTest 11: Custom Sections Creation & LaTeX Compilation');
+const customSecLatex = generateLatexResume(parsed, {
+  customSections: [
+    {
+      id: 'custom-leadership',
+      title: 'Leadership & Community',
+      subtitle: 'Organizer & President',
+      location: 'Campus Chapter',
+      detail: 'Open Source Community',
+      date: '2024 - 2025',
+      items: [
+        'Organized hackathon with 500+ participants',
+        'Mentored 50+ junior developers in web & AI technologies'
+      ]
+    }
+  ],
+  sectionOrder: ['skills', 'custom-leadership', 'experience']
+});
+assert(customSecLatex.includes('\\section{Leadership \\& Community}'), 'LaTeX includes Custom Section heading');
+assert(customSecLatex.includes('Organizer \\& President'), 'LaTeX includes Custom Section subtitle');
+assert(customSecLatex.includes('Organized hackathon with 500+ participants'), 'LaTeX includes Custom Section bullet item 1');
+assert(customSecLatex.includes('Mentored 50+ junior developers'), 'LaTeX includes Custom Section bullet item 2');
+
+const customSecIdx = customSecLatex.indexOf('\\section{Leadership \\& Community}');
+const customExpIdx = customSecLatex.indexOf('\\section{Work Experience}');
+assert(customSecIdx !== -1 && customExpIdx !== -1 && customSecIdx < customExpIdx, 'Custom Section placed before Work Experience according to custom order');
+
+// 12. Test AI Suggestions Data Routing Integrity
+console.log('\nTest 12: AI Suggestions Canonical ID Binding Integrity');
+// Verify that adding a skill into resume data targets the semantic category regardless of section renaming
+const testResume = {
+  skills: {
+    languages: 'Python, TypeScript',
+    aiAgentic: 'LangChain',
+    cloudDevOps: 'Docker'
+  },
+  sectionTitles: {
+    skills: 'Mastered Technologies'
+  }
+};
+const newSkill = 'FastAPI';
+const category = classifySkill(newSkill);
+assert(category === 'cloudDevOps', 'FastAPI classified correctly as cloudDevOps category');
+testResume.skills[category] += `, ${newSkill}`;
+assert(testResume.skills.cloudDevOps.includes('FastAPI'), 'Skill inserted into canonical skills object regardless of section title');
+assert(testResume.sectionTitles.skills === 'Mastered Technologies', 'Custom title preserved independently from data storage');
 
 console.log(`\n==============================================`);
 console.log(`Verification Summary: ${passCount} Passed, ${failCount} Failed`);

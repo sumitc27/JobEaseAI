@@ -21,19 +21,18 @@
       </div>
     </div>
 
-    <!-- Center: 1-Page Guardrail Status Meter -->
-    <div class="nav-center">
-      <div class="guardrail-meter" id="guardrail-meter" title="1-Page Formatting Guardrail">
-        <span>Page Budget:</span>
-        <div class="meter-bar">
-          <div class="meter-fill" id="meter-fill" style="width: 85%;"></div>
-        </div>
-        <span id="meter-text">85% (1 Page)</span>
-      </div>
-    </div>
-
     <!-- Top Navigation Actions -->
     <div class="nav-actions">
+      <button class="btn btn-secondary" id="btn-save-profile" title="Save current details to Master Profile Vault">
+        <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.146-.354l-3-3A.5.5 0 0 0 11.5 1H2zm10.5 1.5L14 3.914V14a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5h9.5v2.5a.5.5 0 0 0 .5.5h.5z"/><path d="M4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-7zm1 .5v6h6V7H5z"/></svg>
+        Save Profile
+      </button>
+      <button class="btn btn-secondary" id="btn-profile-vault" style="color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);" title="Open Master Profile Vault to cherry-pick & import specific items to current resume">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+        Profile Vault
+      </button>
+      <span class="save-status-badge" id="save-status-badge" title="Auto-saved to browser storage">All Saved ✓</span>
+
       <button class="btn btn-secondary" id="btn-load-sample" title="Load sample candidate profile">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
         Sample Profile
@@ -42,16 +41,6 @@
       <button class="btn btn-secondary" id="btn-open-upload">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
         Upload PDF
-      </button>
-
-      <button class="btn btn-secondary" id="btn-export-json" title="Download raw JSON data">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
-        Export JSON
-      </button>
-
-      <button class="btn btn-secondary" id="btn-export-latex" title="View & Export LaTeX (.tex) source">
-        <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>
-        LaTeX (.tex)
       </button>
 
       <button class="btn btn-primary" id="btn-export-pdf" title="Export perfectly formatted 1-page PDF">
@@ -98,6 +87,7 @@
           <div class="score-info">
             <div class="score-headline" id="score-status">Strong Alignment</div>
             <div class="score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</div>
+            <div id="score-provider" style="margin-top: 6px;"></div>
           </div>
         </div>
 
@@ -137,10 +127,16 @@
           <svg width="18" height="18" fill="var(--secondary)" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>
           Structured Resume Editor
         </div>
-        <div class="tabs-header">
-          <button class="tab-btn active" id="tab-form">Form</button>
-          <button class="tab-btn" id="tab-json">Raw JSON</button>
-          <button class="tab-btn" id="tab-latex">LaTeX</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="btn btn-secondary btn-sm" id="btn-vault-quick-open" style="font-size: 0.76rem; padding: 4px 10px; color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);" title="Open Master Profile Vault to cherry-pick items">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            Profile Vault
+          </button>
+          <div class="tabs-header">
+            <button class="tab-btn active" id="tab-form">Form</button>
+            <button class="tab-btn" id="tab-json">Raw JSON</button>
+            <button class="tab-btn" id="tab-latex">LaTeX</button>
+          </div>
         </div>
       </div>
 
@@ -195,65 +191,243 @@
         </div>
 
         <!-- Summary -->
-        <div class="card-section">
-          <div class="card-title">Professional Summary</div>
-          <textarea class="form-textarea" id="resume-summary-input" rows="3" placeholder="A brief 2-3 sentence overview highlighting your core strengths and domain impact..."></textarea>
+        <div class="card-section" data-section-id="summary">
+          <div class="card-title">
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="summary" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="summary">Professional Summary</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="summary" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-summary">Included</span>
+            </div>
+            <div class="section-reorder-btns">
+              <button type="button" class="btn-section-move" data-section="summary" data-dir="up" title="Move Section Up">▲</button>
+              <button type="button" class="btn-section-move" data-section="summary" data-dir="down" title="Move Section Down">▼</button>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <textarea class="form-textarea" id="resume-summary-input" rows="3" placeholder="A brief 2-3 sentence overview highlighting your core strengths and domain impact..."></textarea>
+          </div>
         </div>
 
         <!-- Skills Section -->
-        <div class="card-section">
+        <div class="card-section" data-section-id="skills">
           <div class="card-title">
-            <span>Skills & Technologies</span>
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="skills" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="skills">Technical Skills</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="skills" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-skills">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="skills" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="skills" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-skill-cat" title="Add Skill Category">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Languages</label>
-            <input type="text" class="form-input" id="skills-languages-input" placeholder="Python, C++, SQL, JavaScript, TypeScript">
-          </div>
-          <div class="form-group">
-            <label class="form-label">AI, LLM & Agentic Systems</label>
-            <input type="text" class="form-input" id="skills-ai-input" placeholder="LangChain, RAG Pipelines, Multi-Agent Coordination, Prompt Engineering, Vector DBs">
-          </div>
-          <div class="form-group">
-            <label class="form-label">ML/DL & Computer Vision</label>
-            <input type="text" class="form-input" id="skills-ml-input" placeholder="PyTorch, TensorFlow, scikit-learn, OpenCV, YOLO, PINNs">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cloud, DevOps & MLOps</label>
-            <input type="text" class="form-input" id="skills-cloud-input" placeholder="AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability">
+          <div class="section-content-body">
+            <div id="skills-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
           </div>
         </div>
 
         <!-- Experience Section -->
-        <div class="card-section">
+        <div class="card-section" data-section-id="experience">
           <div class="card-title">
-            <span>Work Experience</span>
-            <button class="btn btn-secondary btn-icon" id="btn-add-exp" title="Add Experience">
-              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-            </button>
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="experience" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="experience">Work Experience</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="experience" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-experience">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="experience" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="experience" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-exp" title="Add Experience">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
           </div>
-          <div id="experience-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+          <div class="section-content-body">
+            <div id="experience-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+          </div>
         </div>
 
         <!-- Projects Section -->
-        <div class="card-section">
+        <div class="card-section" data-section-id="projects">
           <div class="card-title">
-            <span>Key Projects</span>
-            <button class="btn btn-secondary btn-icon" id="btn-add-proj" title="Add Project">
-              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-            </button>
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="projects" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="projects">Technical Projects</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="projects" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-projects">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="projects" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="projects" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-proj" title="Add Project">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
           </div>
-          <div id="projects-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+          <div class="section-content-body">
+            <div id="projects-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+          </div>
         </div>
 
         <!-- Education Section -->
-        <div class="card-section">
+        <div class="card-section" data-section-id="education">
           <div class="card-title">
-            <span>Education</span>
-            <button class="btn btn-secondary btn-icon" id="btn-add-edu" title="Add Education">
-              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-            </button>
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="education" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="education">Education</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="education" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-education">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="education" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="education" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-edu" title="Add Education">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
           </div>
-          <div id="education-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          <div class="section-content-body">
+            <div id="education-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </div>
+
+        <!-- Certifications Section -->
+        <div class="card-section" data-section-id="certifications">
+          <div class="card-title">
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="certifications" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="certifications">Certifications & Awards</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="certifications" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-certifications">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="certifications" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="certifications" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-cert" title="Add Certification">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="certifications-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </div>
+
+        <!-- Patents & Publications Section -->
+        <div class="card-section" data-section-id="publications">
+          <div class="card-title">
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="publications" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="publications">Patents & Publications</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="publications" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-publications">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="publications" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="publications" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-pub" title="Add Publication / Patent">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="publications-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </div>
+
+
+
+        <!-- Volunteer Section -->
+        <div class="card-section" data-section-id="volunteer">
+          <div class="card-title">
+            <div class="card-title-left">
+              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+                <input type="checkbox" class="section-toggle-checkbox" data-section="volunteer" checked>
+                <span class="custom-checkmark"></span>
+                <span class="section-heading-text" data-section-title-for="volunteer">Volunteer Experience</span>
+              </label>
+              <button type="button" class="btn-rename-section" data-section="volunteer" title="Rename Section">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <span class="section-status-tag" id="status-tag-volunteer">Included</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="section-reorder-btns">
+                <button type="button" class="btn-section-move" data-section="volunteer" data-dir="up" title="Move Section Up">▲</button>
+                <button type="button" class="btn-section-move" data-section="volunteer" data-dir="down" title="Move Section Down">▼</button>
+              </div>
+              <button class="btn btn-secondary btn-icon" id="btn-add-vol" title="Add Volunteer">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="volunteer-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          </div>
+        </div>
+
+        <!-- Custom Sections Container -->
+        <div id="custom-sections-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
+
+        <!-- Add Custom Section Toolbar -->
+        <div class="add-section-toolbar" style="margin-top: 4px; margin-bottom: 24px;">
+          <button type="button" class="btn-add-new-section" id="btn-add-new-section" title="Add a new custom section to your resume">
+            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            + Add New Section
+          </button>
         </div>
       </div>
 
@@ -281,46 +455,23 @@
     <!-- RIGHT PANEL: Live Document Preview & Guardrail -->
     <section class="panel preview-panel" id="right-panel">
       <div class="preview-toolbar">
-        <div class="preview-toolbar-left">
-          <div class="panel-title">
-            <svg width="16" height="16" fill="var(--accent-emerald)" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
-            Live 1-Page Paper Preview
-          </div>
-        </div>
-
-        <div class="preview-toolbar-right">
-          <!-- Template Selector Controls -->
-          <div class="template-toggle" title="Switch Resume Theme Template">
-            <span style="font-size: 0.72rem; color: var(--text-dim);">Template:</span>
-            <div class="pill-group" id="template-pill-group">
-              <button class="pill-btn active" data-template="latex" title="LaTeX Academic / Computer Modern (TeX Style)">LaTeX TeX (Default)</button>
-              <button class="pill-btn" data-template="modern" title="Modern Tech Sans">Modern Tech</button>
-              <button class="pill-btn" data-template="classic" title="Classic Ivy / Harvard Traditional Serif">Classic Ivy</button>
-              <button class="pill-btn" data-template="minimalist" title="Minimalist Ultra-Clean Scandinavian">Minimalist</button>
+        <!-- Row 1: Header Title, LaTeX Indicator, & Main Actions -->
+        <div class="preview-toolbar-primary">
+          <div class="preview-toolbar-left">
+            <div class="panel-title">
+              <svg width="16" height="16" fill="var(--accent-emerald)" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+              <span>Live 1-Page Paper Preview</span>
             </div>
-          </div>
 
-          <!-- Font Selector Controls -->
-          <div class="font-toggle" title="Change Resume Font Family">
-            <span style="font-size: 0.72rem; color: var(--text-dim);">Font:</span>
-            <select id="font-select" class="font-dropdown" aria-label="Select Resume Font">
-              <option value="lmodern" selected>Latin Modern (Classic TeX)</option>
-              <option value="charter">Bitstream Charter (Modern Serif)</option>
-              <option value="sourcesanspro">Source Sans Pro (Tech Sans)</option>
-              <option value="inter">Inter (Clean UI Sans)</option>
-              <option value="palatino">Palatino / Mathpazo (Executive Serif)</option>
-              <option value="times">Times New Roman (Academic)</option>
-              <option value="roboto">Roboto (Geometric Sans)</option>
-            </select>
-          </div>
-
-          <!-- Spacing / Density Guardrail Controls -->
-          <div class="density-toggle" title="Adjust layout spacing to fit 1 page">
-            <span style="font-size: 0.72rem; color: var(--text-dim);">Density:</span>
-            <div class="pill-group">
-              <button class="density-btn" data-density="compact">Compact</button>
-              <button class="density-btn active" data-density="standard">Standard</button>
-              <button class="density-btn" data-density="relaxed">Relaxed</button>
+            <!-- Template Indicator (LaTeX TeX Only) -->
+            <div class="template-toggle" title="ATS-Optimized Academic LaTeX TeX Resume Engine">
+              <span class="toolbar-label">Template:</span>
+              <div class="pill-group" id="template-pill-group">
+                <button class="pill-btn active latex-pill-btn" data-template="latex" title="Academic Computer Modern LaTeX TeX Engine">
+                  <span class="latex-icon-chip">TeX</span>
+                  <span>LaTeX TeX</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -334,6 +485,46 @@
               <span>Spacing</span>
               <span class="spacing-indicator-badge" id="spacing-active-badge">Standard</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Layout & Typography Settings Sub-bar -->
+        <div class="preview-toolbar-secondary">
+          <!-- Font Selector Controls -->
+          <div class="font-toggle" title="Change Resume Font Family">
+            <span class="toolbar-label">Font:</span>
+            <select id="font-select" class="font-dropdown" aria-label="Select Resume Font">
+              <option value="lmodern" selected>Latin Modern (Classic TeX)</option>
+              <option value="charter">Bitstream Charter (Modern Serif)</option>
+              <option value="sourcesanspro">Source Sans Pro (Tech Sans)</option>
+              <option value="inter">Inter (Clean UI Sans)</option>
+              <option value="palatino">Palatino / Mathpazo (Executive Serif)</option>
+              <option value="times">Times New Roman (Academic)</option>
+              <option value="roboto">Roboto (Geometric Sans)</option>
+            </select>
+          </div>
+
+          <div class="toolbar-divider" aria-hidden="true"></div>
+
+          <!-- Paper Format Selector (A4 / US Letter) -->
+          <div class="paper-toggle" title="Select paper size standard. When A4 is selected, LaTeX generates a4paper and preview formats in A4 (210×297mm).">
+            <span class="toolbar-label">Paper:</span>
+            <div class="pill-group" id="paper-pill-group">
+              <button class="pill-btn active" data-paper="a4" id="btn-paper-a4" title="A4 Standard (210 × 297 mm) - Matches LaTeX a4paper">A4</button>
+              <button class="pill-btn" data-paper="letter" id="btn-paper-letter" title="US Letter (8.5 × 11 in) - Matches LaTeX letterpaper">Letter</button>
+            </div>
+          </div>
+
+          <div class="toolbar-divider" aria-hidden="true"></div>
+
+          <!-- Spacing / Density Guardrail Controls -->
+          <div class="density-toggle" title="Adjust layout spacing to fit 1 page">
+            <span class="toolbar-label">Density:</span>
+            <div class="pill-group">
+              <button class="density-btn" data-density="compact">Compact</button>
+              <button class="density-btn active" data-density="standard">Standard</button>
+              <button class="density-btn" data-density="relaxed">Relaxed</button>
+            </div>
           </div>
         </div>
       </div>
@@ -431,7 +622,7 @@
 
       <div class="preview-scroll-container">
         <!-- Overflow Warning Banner -->
-        <div class="overflow-alert-banner" id="overflow-banner">
+        <div class="overflow-alert-banner no-print" id="overflow-banner">
           <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
           <div style="flex: 1;">
             <strong>1-Page Limit Exceeded!</strong> Content extends past the 1-page visual threshold.
@@ -442,75 +633,112 @@
         </div>
 
         <!-- The Paper Document Container -->
-        <div class="paper-wrapper">
-          <div class="resume-paper theme-latex" id="resume-paper">
-            <!-- Dynamic Paper Header -->
-            <header class="rp-header">
-              <h2 class="rp-name" id="rp-name">Sumit Chouhan</h2>
-              <div class="rp-title" id="rp-title">AI/ML Developer</div>
-              <div class="rp-contacts" id="rp-contacts">
-                <span id="rp-phone">+91-7400603978</span>
-                <span>•</span>
-                <span id="rp-email">27th.sumit@gmail.com</span>
-                <span>•</span>
-                <span id="rp-location">Jabalpur, India</span>
-                <span>•</span>
-                <a href="https://linkedin.com/in/sumitc27" id="rp-linkedin" target="_blank">LinkedIn</a>
-                <span>•</span>
-                <a href="https://github.com/sumitc27" id="rp-github" target="_blank">GitHub</a>
+        <div class="paper-wrapper" id="paper-wrapper">
+          <div class="paper-info-bar no-print">
+            <span class="paper-spec-pill" id="paper-spec-pill">📄 A4 Paper (210 × 297 mm)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="paper-budget-readout" id="paper-budget-readout">Budget: 0px / 1123px (0% filled)</span>
+              <div class="zoom-controls no-print" id="zoom-controls">
+                <button type="button" class="btn-zoom-pill active" id="btn-zoom-auto" title="Auto fit to panel width">Fit Width</button>
+                <button type="button" class="btn-zoom-pill" id="btn-zoom-100" title="100% true physical print scale">100%</button>
               </div>
-            </header>
+            </div>
+          </div>
 
-            <!-- Dynamic Paper Education -->
-            <section class="rp-section" id="rp-section-education">
-              <h3 class="rp-section-title">Education</h3>
-              <div id="rp-education-container"></div>
-            </section>
+          <div class="paper-viewport" id="paper-viewport">
+            <div class="paper-scaler" id="paper-scaler">
+              <!-- Page 1 Sheet -->
+              <div class="resume-paper theme-latex paper-a4" id="resume-paper" data-page="1">
+                <span class="rp-page-badge no-print" id="rp-page-badge-1">Page 1</span>
+                <!-- Dynamic Paper Header -->
+                <header class="rp-header">
+                  <h2 class="rp-name" id="rp-name">Sumit Chouhan</h2>
+                  <div class="rp-title" id="rp-title">AI/ML Developer</div>
+                  <div class="rp-contacts" id="rp-contacts">
+                    <span id="rp-phone">+91-7400603978</span>
+                    <span>•</span>
+                    <span id="rp-email">27th.sumit@gmail.com</span>
+                    <span>•</span>
+                    <span id="rp-location">Jabalpur, India</span>
+                    <span>•</span>
+                    <a href="https://linkedin.com/in/sumitc27" id="rp-linkedin" target="_blank">LinkedIn</a>
+                    <span>•</span>
+                    <a href="https://github.com/sumitc27" id="rp-github" target="_blank">GitHub</a>
+                  </div>
+                </header>
 
-            <!-- Dynamic Paper Skills -->
-            <section class="rp-section" id="rp-section-skills">
-              <h3 class="rp-section-title">Skills</h3>
-              <div class="rp-skills-group" id="rp-skills-group">
-                <div class="rp-skills-line" id="rp-skills-languages"></div>
-                <div class="rp-skills-line" id="rp-skills-ai"></div>
-                <div class="rp-skills-line" id="rp-skills-ml"></div>
-                <div class="rp-skills-line" id="rp-skills-cloud"></div>
+                <!-- Dynamic Paper Education -->
+                <section class="rp-section" id="rp-section-education">
+                  <h3 class="rp-section-title" data-rp-title-for="education">Education</h3>
+                  <div id="rp-education-container"></div>
+                </section>
+
+                <!-- Dynamic Paper Skills -->
+                <section class="rp-section" id="rp-section-skills">
+                  <h3 class="rp-section-title" data-rp-title-for="skills">Technical Skills</h3>
+                  <div class="rp-skills-group" id="rp-skills-group"></div>
+                </section>
+
+                <!-- Dynamic Paper Experience -->
+                <section class="rp-section" id="rp-section-experience">
+                  <h3 class="rp-section-title" data-rp-title-for="experience">Work Experience</h3>
+                  <div id="rp-experience-container"></div>
+                </section>
+
+                <!-- Dynamic Paper Projects -->
+                <section class="rp-section" id="rp-section-projects">
+                  <h3 class="rp-section-title" data-rp-title-for="projects">Technical Projects</h3>
+                  <div id="rp-projects-container"></div>
+                </section>
+
+                <!-- Dynamic Paper Certifications -->
+                <section class="rp-section" id="rp-section-certifications" style="display: none;">
+                  <h3 class="rp-section-title" data-rp-title-for="certifications">Certifications</h3>
+                  <ul class="rp-bullets" id="rp-certifications-container"></ul>
+                </section>
+
+                <!-- Dynamic Paper Patents & Publications -->
+                <section class="rp-section" id="rp-section-publications" style="display: none;">
+                  <h3 class="rp-section-title" data-rp-title-for="publications">Patents & Publications</h3>
+                  <ul class="rp-bullets" id="rp-publications-container"></ul>
+                </section>
+
+                <!-- Dynamic Paper Achievements -->
+                <section class="rp-section" id="rp-section-achievements" style="display: none;">
+                  <h3 class="rp-section-title" data-rp-title-for="achievements">Honors & Achievements</h3>
+                  <ul class="rp-bullets" id="rp-achievements-container"></ul>
+                </section>
+
+                <!-- Dynamic Paper Volunteer -->
+                <section class="rp-section" id="rp-section-volunteer" style="display: none;">
+                  <h3 class="rp-section-title" data-rp-title-for="volunteer">Volunteer Experience</h3>
+                  <ul class="rp-bullets" id="rp-volunteer-container"></ul>
+                </section>
+
+                <!-- Dynamic Paper Summary (Optional) -->
+                <section class="rp-section" id="rp-section-summary" style="display: none;">
+                  <h3 class="rp-section-title" data-rp-title-for="summary">Professional Summary</h3>
+                  <p class="rp-summary" id="rp-summary-text"></p>
+                </section>
+
+                <!-- Visual 1-Page Threshold Marker Line -->
+                <div class="page-limit-line no-print" id="page-limit-line" style="display: none;">
+                  <span class="page-limit-badge no-print" id="page-limit-badge">A4 1-Page Boundary (297mm)</span>
+                </div>
               </div>
-            </section>
 
-            <!-- Dynamic Paper Experience -->
-            <section class="rp-section" id="rp-section-experience">
-              <h3 class="rp-section-title">Experience</h3>
-              <div id="rp-experience-container"></div>
-            </section>
+              <!-- Page Break Divider (Visible only when overflowing past 1 page) -->
+              <div class="page-break-divider no-print" id="page-break-divider" style="display: none;">
+                <span class="page-break-line"></span>
+                <span class="page-break-badge">📄 Page Break • Page 2 Below</span>
+                <span class="page-break-line"></span>
+              </div>
 
-            <!-- Dynamic Paper Projects -->
-            <section class="rp-section" id="rp-section-projects">
-              <h3 class="rp-section-title">Projects</h3>
-              <div id="rp-projects-container"></div>
-            </section>
-
-            <!-- Dynamic Paper Achievements -->
-            <section class="rp-section" id="rp-section-achievements" style="display: none;">
-              <h3 class="rp-section-title">Achievements & Certifications</h3>
-              <ul class="rp-bullets" id="rp-achievements-container"></ul>
-            </section>
-
-            <!-- Dynamic Paper Volunteer -->
-            <section class="rp-section" id="rp-section-volunteer" style="display: none;">
-              <h3 class="rp-section-title">Volunteer Experience</h3>
-              <ul class="rp-bullets" id="rp-volunteer-container"></ul>
-            </section>
-
-            <!-- Dynamic Paper Summary (Optional) -->
-            <section class="rp-section" id="rp-section-summary" style="display: none;">
-              <h3 class="rp-section-title">Summary</h3>
-              <p class="rp-summary" id="rp-summary-text"></p>
-            </section>
-
-            <!-- Visual 1-Page Threshold Marker Line -->
-            <div class="page-limit-line" id="page-limit-line">
-              <span class="page-limit-badge">1-Page Boundary</span>
+              <!-- Page 2 Sheet (Visible only when overflowing past 1 page) -->
+              <div class="resume-paper theme-latex paper-a4" id="resume-paper-p2" data-page="2" style="display: none;">
+                <span class="rp-page-badge no-print" id="rp-page-badge-2">Page 2</span>
+                <div class="rp-page-content" id="rp-page-2-content" style="display: flex; flex-direction: column; width: 100%;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -579,6 +807,110 @@
   <form id="overleaf-form" action="https://www.overleaf.com/docs" method="POST" target="_blank" style="display: none;">
     <input type="hidden" name="snip" id="overleaf-snip">
   </form>
+
+  <!-- Profile Vault & Selective Import Modal -->
+  <div class="modal-overlay" id="profile-vault-modal">
+    <div class="modal-card vault-modal-card">
+      <!-- Modal Header -->
+      <div class="vault-modal-header">
+        <div class="vault-header-title-wrap">
+          <div class="vault-icon-circle">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+          </div>
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: #F8FAFC;">Master Profile Vault</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;">
+              Your persistent career archive. Selectively cherry-pick jobs, bullet points, skills, and projects to import into your current tailored resume.
+            </p>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-icon" id="btn-close-vault-modal" title="Close Vault">✕</button>
+      </div>
+
+      <!-- Vault Controls & Search Toolbar -->
+      <div class="vault-toolbar">
+        <div class="vault-search-box">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="vault-search-input" placeholder="Search experiences, skills, technologies, bullets..." class="vault-search-input">
+          <button id="btn-vault-clear-search" class="vault-clear-btn" style="display: none;">✕</button>
+        </div>
+
+        <div class="vault-toolbar-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-vault-select-all" title="Select all available items">Select All</button>
+          <button class="btn btn-secondary btn-sm" id="btn-vault-deselect-all" title="Deselect all items">Deselect All</button>
+          <button class="btn btn-secondary btn-sm" id="btn-vault-sync-from-active" title="Save current active resume to Master Profile Vault" style="color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            Save Current into Vault
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-vault-export" title="Export complete Master Profile Vault to JSON file">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            Export JSON
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-vault-import" title="Import Master Profile from JSON file">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+            Import JSON
+          </button>
+          <input type="file" id="vault-file-input" accept=".json" style="display: none;">
+        </div>
+      </div>
+
+      <!-- View Mode Toggles: Cherry-Pick Checklist vs Direct Vault Editor -->
+      <div class="vault-subnav-bar">
+        <!-- Quick Section Navigation Filter Tabs (Visible in Checklist Mode) -->
+        <div class="vault-section-tabs" id="vault-section-tabs">
+          <button class="vault-tab-pill active" data-tab-sec="all">All Sections</button>
+          <button class="vault-tab-pill" data-tab-sec="personalInfo">Personal Info</button>
+          <button class="vault-tab-pill" data-tab-sec="skills">Skills</button>
+          <button class="vault-tab-pill" data-tab-sec="experience">Experience</button>
+          <button class="vault-tab-pill" data-tab-sec="projects">Projects</button>
+          <button class="vault-tab-pill" data-tab-sec="education">Education</button>
+          <button class="vault-tab-pill" data-tab-sec="certifications">Certifications</button>
+          <button class="vault-tab-pill" data-tab-sec="publications">Publications</button>
+          <button class="vault-tab-pill" data-tab-sec="volunteer">Volunteer</button>
+          <button class="vault-tab-pill" data-tab-sec="customSections">Custom Sections</button>
+        </div>
+
+        <!-- Mode Switch: Checklist vs Edit Master JSON -->
+        <div class="tabs-header" style="margin-left: 12px; flex-shrink: 0;">
+          <button class="tab-btn active" id="btn-vault-mode-checklist" style="font-size: 0.74rem; padding: 4px 10px;">Checklist</button>
+          <button class="tab-btn" id="btn-vault-mode-json" style="font-size: 0.74rem; padding: 4px 10px; color: #38BDF8;">Direct JSON Editor</button>
+        </div>
+      </div>
+
+      <!-- Interactive Checklist Content Area -->
+      <div class="vault-content-scroll" id="vault-sections-container">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Direct Vault JSON Editor View (Hidden by default) -->
+      <div class="vault-content-scroll" id="vault-json-container" style="display: none; padding: 16px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 0.8rem; color: #94A3B8;">
+            Directly edit, reorder, add, or delete any experiences, bullets, and skills in your Master Archive JSON:
+          </span>
+          <button class="btn btn-secondary btn-sm" id="btn-vault-format-json" style="font-size: 0.72rem; padding: 2px 8px;">Format JSON</button>
+        </div>
+        <textarea id="vault-raw-json-textarea" class="json-editor-area" style="height: 380px; font-size: 0.8rem; font-family: ui-monospace, monospace; border-radius: 6px; border: 1px solid var(--border-subtle); width: 100%; box-sizing: border-box; background: #0B1120; color: #F8FAFC; padding: 12px;" spellcheck="false"></textarea>
+      </div>
+
+      <!-- Vault Action Footer -->
+      <div class="vault-footer">
+        <div class="vault-selection-status" id="vault-selection-status">
+          <span class="badge-count" id="vault-selected-count">0</span> items selected for import
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-secondary" id="btn-vault-cancel">Cancel</button>
+          <button class="btn btn-secondary" id="btn-vault-import-replace" title="Replace existing sections in active resume with selected items" style="color: #F59E0B; border-color: rgba(245, 158, 11, 0.4);">
+            Replace Active Sections
+          </button>
+          <button class="btn btn-primary" id="btn-vault-import-merge" title="Append / Merge selected items into active resume without removing current content">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+            Import & Merge Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Message Container -->
   <div class="toast-container" id="toast-container"></div>

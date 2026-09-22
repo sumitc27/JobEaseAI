@@ -8,15 +8,325 @@ import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 
 // Application State
 let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit || SAMPLE_RESUMES.fullstack));
+try {
+  const savedUserResume = localStorage.getItem('jobease_user_resume');
+  if (savedUserResume) {
+    const parsedResume = JSON.parse(savedUserResume);
+    if (parsedResume && typeof parsedResume === 'object' && parsedResume.personalInfo) {
+      currentResume = parsedResume;
+    }
+  }
+} catch (e) {
+  console.warn('Could not load saved resume from localStorage:', e);
+}
+
 let currentJD = SAMPLE_JOB_DESCRIPTIONS.fullstack_cloud;
 let currentDensity = 'standard';
-let currentTemplate = localStorage.getItem('jobease_template') || 'latex';
+let currentTemplate = 'latex';
+try {
+  localStorage.setItem('jobease_template', 'latex');
+} catch (e) {}
 let currentFont = localStorage.getItem('jobease_font') || 'lmodern';
 if (currentFont === 'charter' && !localStorage.getItem('jobease_font_user_explicit')) {
   currentFont = 'lmodern';
 }
 let activeTab = 'form';
-const PAGE_LIMIT_HEIGHT = 932; // Calibrated 1-page letter height in pixels
+let currentPaperSize = localStorage.getItem('jobease_paper_size') || 'a4';
+let currentAnalysis = null;
+
+// Resume Section Reordering & Selection State
+const DEFAULT_SECTION_ORDER = [
+  'summary',
+  'education',
+  'skills',
+  'experience',
+  'projects',
+  'certifications',
+  'publications',
+  'volunteer'
+];
+
+const ALL_SECTION_IDS = [
+  'summary',
+  'education',
+  'skills',
+  'experience',
+  'projects',
+  'certifications',
+  'publications',
+  'volunteer'
+];
+
+export const DEFAULT_SECTION_TITLES = {
+  summary: 'Professional Summary',
+  skills: 'Technical Skills',
+  experience: 'Work Experience',
+  projects: 'Technical Projects',
+  education: 'Education',
+  certifications: 'Certifications & Awards',
+  publications: 'Patents & Publications',
+  volunteer: 'Volunteer Experience'
+};
+
+// MIGRATION: Merge achievements into certifications
+if (currentResume.achievements && currentResume.achievements.length > 0) {
+  if (!currentResume.certifications) currentResume.certifications = [];
+  currentResume.achievements.forEach(ach => {
+    currentResume.certifications.push({
+      title: (typeof ach === 'string') ? ach : (ach.title || ''),
+      issuer: (typeof ach === 'string') ? '' : (ach.details || ''),
+      linkText: (typeof ach === 'string') ? '' : (ach.linkText || ''),
+      linkUrl: (typeof ach === 'string') ? '' : (ach.linkUrl || '')
+    });
+  });
+  delete currentResume.achievements;
+}
+
+if (!Array.isArray(currentResume.customSections)) {
+  currentResume.customSections = [];
+}
+
+let currentSectionTitles = { ...DEFAULT_SECTION_TITLES };
+try {
+  const savedTitles = localStorage.getItem('jobease_section_titles');
+  if (savedTitles) {
+    const parsed = JSON.parse(savedTitles);
+    if (parsed && typeof parsed === 'object') {
+      currentSectionTitles = { ...DEFAULT_SECTION_TITLES, ...parsed };
+    }
+  }
+} catch (e) {}
+
+if (currentResume.sectionTitles && typeof currentResume.sectionTitles === 'object') {
+  currentSectionTitles = { ...currentSectionTitles, ...currentResume.sectionTitles };
+} else {
+  currentResume.sectionTitles = { ...currentSectionTitles };
+}
+
+let currentSectionOrder = [...DEFAULT_SECTION_ORDER];
+try {
+  const savedOrder = localStorage.getItem('jobease_section_order');
+  if (savedOrder) {
+    const parsed = JSON.parse(savedOrder);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const validSet = new Set([...ALL_SECTION_IDS, ...(currentResume.customSections || []).map(s => s.id)]);
+      const filtered = parsed.filter(id => validSet.has(id));
+      ALL_SECTION_IDS.forEach(id => {
+        if (!filtered.includes(id)) filtered.push(id);
+      });
+      currentSectionOrder = filtered;
+    }
+  }
+} catch (e) {}
+
+let currentEnabledSections = [...ALL_SECTION_IDS];
+try {
+  const savedEnabled = localStorage.getItem('jobease_enabled_sections');
+  if (savedEnabled) {
+    const parsed = JSON.parse(savedEnabled);
+    if (Array.isArray(parsed)) {
+      const validSet = new Set([...ALL_SECTION_IDS, ...(currentResume.customSections || []).map(s => s.id)]);
+      currentEnabledSections = parsed.filter(id => validSet.has(id));
+    }
+  }
+} catch (e) {}
+
+// Ensure any custom sections are in order & enabled if not already
+(currentResume.customSections || []).forEach(cs => {
+  if (cs && cs.id) {
+    if (!currentSectionOrder.includes(cs.id)) currentSectionOrder.push(cs.id);
+    if (!currentEnabledSections.includes(cs.id)) currentEnabledSections.push(cs.id);
+    if (cs.title) currentSectionTitles[cs.id] = cs.title;
+  }
+});
+
+let autoSaveTimer = null;
+
+function saveProfileToStorage(notify = false) {
+  try {
+    currentResume.sectionTitles = { ...currentSectionTitles };
+    currentResume.sectionOrder = [...currentSectionOrder];
+    currentResume.enabledSections = [...currentEnabledSections];
+
+    localStorage.setItem('jobease_user_resume', JSON.stringify(currentResume));
+    localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+    localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+    localStorage.setItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
+    
+    if (elements.saveStatusBadge) {
+      const textEl = elements.saveStatusBadge.querySelector('.save-status-text');
+      elements.saveStatusBadge.classList.remove('is-saving', 'is-error');
+      if (textEl) textEl.textContent = 'All Saved ✓';
+    }
+
+    if (notify) {
+      showToast('Resume profile saved successfully! All custom details, sections, and preferences are stored.', 'success');
+    }
+  } catch (err) {
+    console.error('Failed to save profile:', err);
+    if (elements.saveStatusBadge) {
+      elements.saveStatusBadge.classList.add('is-error');
+      const textEl = elements.saveStatusBadge.querySelector('.save-status-text');
+      if (textEl) textEl.textContent = 'Save Failed';
+    }
+    if (notify) {
+      showToast('Failed to save profile to browser storage: ' + (err.message || 'Storage full'), 'error');
+    }
+  }
+}
+
+export function getSectionTitle(secId) {
+  if (currentSectionTitles[secId]) return currentSectionTitles[secId];
+  if (Array.isArray(currentResume.customSections)) {
+    const cs = currentResume.customSections.find(s => s.id === secId);
+    if (cs && cs.title) return cs.title;
+  }
+  return DEFAULT_SECTION_TITLES[secId] || capitalize(secId);
+}
+
+export function setSectionTitle(secId, newTitle) {
+  const cleanTitle = (newTitle || '').trim();
+  if (!cleanTitle) return;
+
+  currentSectionTitles[secId] = cleanTitle;
+  if (!currentResume.sectionTitles) currentResume.sectionTitles = {};
+  currentResume.sectionTitles[secId] = cleanTitle;
+
+  if (Array.isArray(currentResume.customSections)) {
+    const cs = currentResume.customSections.find(s => s.id === secId);
+    if (cs) cs.title = cleanTitle;
+  }
+
+  // Update Form Heading
+  const titleSpan = document.querySelector(`.section-heading-text[data-section-title-for="${secId}"]`);
+  if (titleSpan) titleSpan.textContent = cleanTitle;
+
+  // Update Preview Paper Heading
+  const previewTitle = document.querySelector(`.rp-section-title[data-rp-title-for="${secId}"]`) ||
+                       document.querySelector(`#rp-section-${secId} .rp-section-title`);
+  if (previewTitle) previewTitle.textContent = cleanTitle;
+
+  saveProfileToStorage();
+
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  if (activeTab === 'json') {
+    elements.rawJsonTextarea.value = JSON.stringify(currentResume, null, 2);
+  }
+
+  renderPreview();
+  check1PageGuardrail();
+  showToast(`Renamed section to "${cleanTitle}"!`, 'success');
+}
+
+function startRenamingSection(secId) {
+  const titleSpan = document.querySelector(`.section-heading-text[data-section-title-for="${secId}"]`);
+  if (!titleSpan || titleSpan.closest('.section-rename-wrapper')) return;
+
+  const currentTitle = getSectionTitle(secId);
+  const parent = titleSpan.parentElement;
+
+  const wrapper = document.createElement('span');
+  wrapper.className = 'section-rename-wrapper';
+  wrapper.innerHTML = `
+    <input type="text" class="section-rename-input" value="${escapeHtml(currentTitle)}" />
+    <button type="button" class="btn-rename-action btn-rename-save" title="Save">✓</button>
+    <button type="button" class="btn-rename-action btn-rename-cancel" title="Cancel">✕</button>
+  `;
+
+  titleSpan.style.display = 'none';
+  parent.insertBefore(wrapper, titleSpan.nextSibling);
+
+  const input = wrapper.querySelector('.section-rename-input');
+  const saveBtn = wrapper.querySelector('.btn-rename-save');
+  const cancelBtn = wrapper.querySelector('.btn-rename-cancel');
+
+  input.focus();
+  input.select();
+
+  let committed = false;
+
+  const commit = () => {
+    if (committed) return;
+    committed = true;
+    const val = input.value.trim();
+    if (val && val !== currentTitle) {
+      setSectionTitle(secId, val);
+    }
+    cleanup();
+  };
+
+  const cleanup = () => {
+    wrapper.remove();
+    titleSpan.style.display = '';
+  };
+
+  saveBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    commit();
+  });
+
+  cancelBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    cleanup();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cleanup();
+    }
+  });
+
+  input.addEventListener('blur', (e) => {
+    if (e.relatedTarget === saveBtn || e.relatedTarget === cancelBtn) return;
+    commit();
+  });
+}
+
+function triggerAutoSave() {
+  if (elements.saveStatusBadge) {
+    elements.saveStatusBadge.classList.add('is-saving');
+    elements.saveStatusBadge.classList.remove('is-error');
+    const textEl = elements.saveStatusBadge.querySelector('.save-status-text');
+    if (textEl) textEl.textContent = 'Saving...';
+  }
+
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    saveProfileToStorage(false);
+  }, 400);
+}
+
+function getTargetPageHeight() {
+  return currentPaperSize === 'letter' ? 1056 : 1123; // Exact physical height at 96 DPI (297mm / 11in)
+}
+
+function getTargetPageWidth() {
+  return currentPaperSize === 'letter' ? 816 : 794; // Exact physical width at 96 DPI (210mm / 8.5in)
+}
+
+function getResumeActualContentHeight() {
+  if (!elements.resumePaper) return 0;
+  const paper = elements.resumePaper;
+  const children = Array.from(paper.children).filter(el => 
+    el.id !== 'page-limit-line' && 
+    !el.classList.contains('page-limit-line') &&
+    !el.classList.contains('rp-page-badge') &&
+    el.offsetParent !== null && 
+    window.getComputedStyle(el).display !== 'none'
+  );
+  if (children.length === 0) return 0;
+  const lastChild = children[children.length - 1];
+  const paperStyle = window.getComputedStyle(paper);
+  const padBottom = parseFloat(paperStyle.paddingBottom) || 34;
+  return Math.ceil(lastChild.offsetTop + lastChild.offsetHeight + padBottom);
+}
 
 // Spacing & Compactness State & Presets
 const SPACING_PRESETS = {
@@ -164,6 +474,8 @@ const elements = {
   btnExportPdf: document.getElementById('btn-export-pdf'),
   btnSampleJd: document.getElementById('btn-sample-jd'),
   btnAnalyze: document.getElementById('btn-analyze'),
+  btnSaveProfile: document.getElementById('btn-save-profile'),
+  saveStatusBadge: document.getElementById('save-status-badge'),
 
   // Left Panel (JD & AI)
   jdInput: document.getElementById('jd-input'),
@@ -172,6 +484,7 @@ const elements = {
   scoreText: document.getElementById('score-text'),
   scoreStatus: document.getElementById('score-status'),
   scoreSummary: document.getElementById('score-summary'),
+  scoreProvider: document.getElementById('score-provider'),
   missingSkillsTags: document.getElementById('missing-skills-tags'),
   foundSkillsTags: document.getElementById('found-skills-tags'),
   suggestionsContainer: document.getElementById('suggestions-container'),
@@ -186,6 +499,7 @@ const elements = {
   // Form Inputs
   piName: document.getElementById('pi-name'),
   piTitle: document.getElementById('pi-title'),
+  piRole: document.getElementById('pi-role'),
   piEmail: document.getElementById('pi-email'),
   piPhone: document.getElementById('pi-phone'),
   piLocation: document.getElementById('pi-location'),
@@ -195,27 +509,60 @@ const elements = {
   piPortfolio: document.getElementById('pi-portfolio'),
   resumeSummaryInput: document.getElementById('resume-summary-input'),
   
-  // 4 First-Class Skill Subsection Inputs
-  skillsLanguagesInput: document.getElementById('skills-languages-input') || document.getElementById('skills-tech-input'),
-  skillsAiInput: document.getElementById('skills-ai-input') || document.getElementById('skills-frameworks-input'),
-  skillsMlInput: document.getElementById('skills-ml-input'),
-  skillsCloudInput: document.getElementById('skills-cloud-input') || document.getElementById('skills-tools-input'),
-  // Legacy aliases for backward compatibility
-  skillsTechInput: document.getElementById('skills-languages-input') || document.getElementById('skills-tech-input'),
-  skillsFrameworksInput: document.getElementById('skills-ai-input') || document.getElementById('skills-frameworks-input'),
-  skillsToolsInput: document.getElementById('skills-cloud-input') || document.getElementById('skills-tools-input'),
+  // Dynamic Skills Section
+  skillsListContainer: document.getElementById('skills-list-container'),
+  btnAddSkillCat: document.getElementById('btn-add-skill-cat'),
+
 
   experienceListContainer: document.getElementById('experience-list-container'),
   projectsListContainer: document.getElementById('projects-list-container'),
   educationListContainer: document.getElementById('education-list-container'),
+  achievementsListContainer: document.getElementById('achievements-list-container'),
+  volunteerListContainer: document.getElementById('volunteer-list-container'),
+  certificationsListContainer: document.getElementById('certifications-list-container'),
+  publicationsListContainer: document.getElementById('publications-list-container'),
+  customSectionsContainer: document.getElementById('custom-sections-container'),
+  btnAddNewSection: document.getElementById('btn-add-new-section'),
   btnAddExp: document.getElementById('btn-add-exp'),
   btnAddProj: document.getElementById('btn-add-proj'),
   btnAddEdu: document.getElementById('btn-add-edu'),
+  btnAddAch: document.getElementById('btn-add-ach'),
+  btnAddVol: document.getElementById('btn-add-vol'),
+  btnAddCert: document.getElementById('btn-add-cert'),
+  btnAddPub: document.getElementById('btn-add-pub'),
 
   // Right Panel (Preview)
+  paperWrapper: document.getElementById('paper-wrapper'),
+  paperViewport: document.getElementById('paper-viewport'),
+  paperScaler: document.getElementById('paper-scaler'),
   resumePaper: document.getElementById('resume-paper'),
+  resumePaperP2: document.getElementById('resume-paper-p2'),
+  pageBreakDivider: document.getElementById('page-break-divider'),
+  rpPageBadge1: document.getElementById('rp-page-badge-1'),
+  rpPageBadge2: document.getElementById('rp-page-badge-2'),
+  rpPage2Content: document.getElementById('rp-page-2-content'),
+  btnZoomAuto: document.getElementById('btn-zoom-auto'),
+  btnZoom100: document.getElementById('btn-zoom-100'),
+  rpCertificationsContainer: document.getElementById('rp-certifications-container'),
+  rpPublicationsContainer: document.getElementById('rp-publications-container'),
+  rpSectionCertifications: document.getElementById('rp-section-certifications'),
+  rpSectionPublications: document.getElementById('rp-section-publications'),
+  rpSectionAchievements: document.getElementById('rp-section-achievements'),
+  rpSectionVolunteer: document.getElementById('rp-section-volunteer'),
+  rpSectionSummary: document.getElementById('rp-section-summary'),
+  rpSectionEducation: document.getElementById('rp-section-education'),
+  rpSectionSkills: document.getElementById('rp-section-skills'),
+  rpSectionExperience: document.getElementById('rp-section-experience'),
+  rpSectionProjects: document.getElementById('rp-section-projects'),
+  paperPillGroup: document.getElementById('paper-pill-group'),
+  btnPaperA4: document.getElementById('btn-paper-a4'),
+  btnPaperLetter: document.getElementById('btn-paper-letter'),
+  paperSpecPill: document.getElementById('paper-spec-pill'),
+  paperBudgetReadout: document.getElementById('paper-budget-readout'),
+  pageLimitBadge: document.getElementById('page-limit-badge'),
   rpName: document.getElementById('rp-name'),
   rpTitle: document.getElementById('rp-title'),
+  rpRoleTarget: document.getElementById('rp-role-target'),
   rpContacts: document.getElementById('rp-contacts'),
   rpEmail: document.getElementById('rp-email'),
   rpPhone: document.getElementById('rp-phone'),
@@ -224,15 +571,7 @@ const elements = {
   rpGithub: document.getElementById('rp-github'),
   rpSummaryText: document.getElementById('rp-summary-text'),
 
-  // 4 First-Class Paper Skills Lines
-  rpSkillsLanguages: document.getElementById('rp-skills-languages') || document.getElementById('rp-skills-tech'),
-  rpSkillsAi: document.getElementById('rp-skills-ai') || document.getElementById('rp-skills-frameworks'),
-  rpSkillsMl: document.getElementById('rp-skills-ml'),
-  rpSkillsCloud: document.getElementById('rp-skills-cloud') || document.getElementById('rp-skills-tools'),
-  // Legacy aliases
-  rpSkillsTech: document.getElementById('rp-skills-languages') || document.getElementById('rp-skills-tech'),
-  rpSkillsFrameworks: document.getElementById('rp-skills-ai') || document.getElementById('rp-skills-frameworks'),
-  rpSkillsTools: document.getElementById('rp-skills-cloud') || document.getElementById('rp-skills-tools'),
+  rpSkillsGroup: document.getElementById('rp-skills-group'),
 
   rpExperienceContainer: document.getElementById('rp-experience-container'),
   rpProjectsContainer: document.getElementById('rp-projects-container'),
@@ -278,6 +617,31 @@ const elements = {
   btnPresetAutofit: document.getElementById('btn-preset-autofit'),
   spacingActiveBadge: document.getElementById('spacing-active-badge'),
 
+  // Profile Vault & Selective Import Elements
+  profileVaultModal: document.getElementById('profile-vault-modal'),
+  btnProfileVault: document.getElementById('btn-profile-vault'),
+  btnVaultQuickOpen: document.getElementById('btn-vault-quick-open'),
+  btnCloseVaultModal: document.getElementById('btn-close-vault-modal'),
+  btnVaultCancel: document.getElementById('btn-vault-cancel'),
+  vaultSearchInput: document.getElementById('vault-search-input'),
+  btnVaultClearSearch: document.getElementById('btn-vault-clear-search'),
+  btnVaultSelectAll: document.getElementById('btn-vault-select-all'),
+  btnVaultDeselectAll: document.getElementById('btn-vault-deselect-all'),
+  btnVaultSyncFromActive: document.getElementById('btn-vault-sync-from-active'),
+  btnVaultExport: document.getElementById('btn-vault-export'),
+  btnVaultImport: document.getElementById('btn-vault-import'),
+  vaultFileInput: document.getElementById('vault-file-input'),
+  vaultSectionTabs: document.getElementById('vault-section-tabs'),
+  vaultSectionsContainer: document.getElementById('vault-sections-container'),
+  vaultSelectedCount: document.getElementById('vault-selected-count'),
+  btnVaultImportMerge: document.getElementById('btn-vault-import-merge'),
+  btnVaultImportReplace: document.getElementById('btn-vault-import-replace'),
+  btnVaultModeChecklist: document.getElementById('btn-vault-mode-checklist'),
+  btnVaultModeJson: document.getElementById('btn-vault-mode-json'),
+  vaultJsonContainer: document.getElementById('vault-json-container'),
+  vaultRawJsonTextarea: document.getElementById('vault-raw-json-textarea'),
+  btnVaultFormatJson: document.getElementById('btn-vault-format-json'),
+
   // Spacing Sliders & Readout Badges
   sliderSectionGap: document.getElementById('slider-section-gap'),
   valSectionGap: document.getElementById('val-section-gap'),
@@ -297,13 +661,17 @@ const elements = {
  * Initialize Application
  */
 function init() {
+  loadMasterProfileFromStorage();
   bindEvents();
   loadResumeIntoForm(currentResume);
+  applySectionOrderToDOM();
   elements.jdInput.value = currentJD;
   updateJdWordCount();
   setTemplate(currentTemplate, false);
   setFont(currentFont, false);
   applySpacing(spacingState, false);
+  setPaperSize(currentPaperSize, false);
+  updatePreviewScale();
   renderPreview();
   check1PageGuardrail();
   
@@ -322,8 +690,223 @@ function bindEvents() {
   elements.btnOpenUpload.addEventListener('click', () => openModal(elements.uploadModal));
   elements.btnCloseModal.addEventListener('click', () => closeModal(elements.uploadModal));
   elements.btnCancelUpload.addEventListener('click', () => closeModal(elements.uploadModal));
-  elements.btnExportJson.addEventListener('click', exportResumeJson);
-  elements.btnExportPdf.addEventListener('click', exportPdf);
+  if (elements.btnExportJson) elements.btnExportJson.addEventListener('click', exportResumeJson);
+  if (elements.btnExportPdf) elements.btnExportPdf.addEventListener('click', exportPdf);
+  if (elements.btnExportLatex) elements.btnExportLatex.addEventListener('click', () => openModal(elements.latexModal));
+  if (elements.btnSaveProfile) {
+    elements.btnSaveProfile.addEventListener('click', () => {
+      saveProfileToStorage(true);
+      mergeActiveResumeIntoVault(false);
+    });
+  }
+
+  // Master Profile Vault Event Listeners
+  if (elements.btnProfileVault) {
+    elements.btnProfileVault.addEventListener('click', openProfileVaultModal);
+  }
+  if (elements.btnVaultQuickOpen) {
+    elements.btnVaultQuickOpen.addEventListener('click', openProfileVaultModal);
+  }
+  if (elements.btnCloseVaultModal) {
+    elements.btnCloseVaultModal.addEventListener('click', () => closeModal(elements.profileVaultModal));
+  }
+  if (elements.btnVaultCancel) {
+    elements.btnVaultCancel.addEventListener('click', () => closeModal(elements.profileVaultModal));
+  }
+  if (elements.btnVaultSyncFromActive) {
+    elements.btnVaultSyncFromActive.addEventListener('click', () => mergeActiveResumeIntoVault(true));
+  }
+  if (elements.btnVaultExport) {
+    elements.btnVaultExport.addEventListener('click', exportMasterProfileVaultJson);
+  }
+  if (elements.btnVaultImport) {
+    elements.btnVaultImport.addEventListener('click', () => {
+      if (elements.vaultFileInput) elements.vaultFileInput.click();
+    });
+  }
+  if (elements.vaultFileInput) {
+    elements.vaultFileInput.addEventListener('change', importMasterProfileVaultJson);
+  }
+
+  // Search filter
+  if (elements.vaultSearchInput) {
+    elements.vaultSearchInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (elements.btnVaultClearSearch) {
+        elements.btnVaultClearSearch.style.display = val ? 'block' : 'none';
+      }
+      renderVaultModalContent(val);
+    });
+  }
+  if (elements.btnVaultClearSearch) {
+    elements.btnVaultClearSearch.addEventListener('click', () => {
+      if (elements.vaultSearchInput) {
+        elements.vaultSearchInput.value = '';
+        elements.btnVaultClearSearch.style.display = 'none';
+        renderVaultModalContent('');
+      }
+    });
+  }
+
+  // Section Tab Filter Buttons
+  if (elements.vaultSectionTabs) {
+    elements.vaultSectionTabs.addEventListener('click', (e) => {
+      const tabBtn = e.target.closest('.vault-tab-pill');
+      if (tabBtn && tabBtn.dataset.tabSec) {
+        elements.vaultSectionTabs.querySelectorAll('.vault-tab-pill').forEach(b => b.classList.remove('active'));
+        tabBtn.classList.add('active');
+        currentVaultTab = tabBtn.dataset.tabSec;
+        renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+      }
+    });
+  }
+
+  // Select All / Deselect All
+  if (elements.btnVaultSelectAll) {
+    elements.btnVaultSelectAll.addEventListener('click', () => {
+      if (elements.vaultSectionsContainer) {
+        elements.vaultSectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(c => {
+          c.checked = true;
+          if (c.classList.contains('vault-skill-chip-chk')) {
+            const label = c.closest('.vault-skill-chip-label');
+            if (label) label.classList.add('is-checked');
+          }
+        });
+        updateVaultSelectedCount();
+      }
+    });
+  }
+  if (elements.btnVaultDeselectAll) {
+    elements.btnVaultDeselectAll.addEventListener('click', () => {
+      if (elements.vaultSectionsContainer) {
+        elements.vaultSectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(c => {
+          c.checked = false;
+          if (c.classList.contains('vault-skill-chip-chk')) {
+            const label = c.closest('.vault-skill-chip-label');
+            if (label) label.classList.remove('is-checked');
+          }
+        });
+        updateVaultSelectedCount();
+      }
+    });
+  }
+
+  // Mode Toggle: Checklist vs Direct JSON Editor
+  if (elements.btnVaultModeChecklist && elements.btnVaultModeJson) {
+    elements.btnVaultModeChecklist.addEventListener('click', () => {
+      elements.btnVaultModeChecklist.classList.add('active');
+      elements.btnVaultModeJson.classList.remove('active');
+      if (elements.vaultSectionsContainer) elements.vaultSectionsContainer.style.display = 'flex';
+      if (elements.vaultJsonContainer) elements.vaultJsonContainer.style.display = 'none';
+      if (elements.vaultSectionTabs) elements.vaultSectionTabs.style.visibility = 'visible';
+      renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+    });
+
+    elements.btnVaultModeJson.addEventListener('click', () => {
+      elements.btnVaultModeJson.classList.add('active');
+      elements.btnVaultModeChecklist.classList.remove('active');
+      if (elements.vaultSectionsContainer) elements.vaultSectionsContainer.style.display = 'none';
+      if (elements.vaultJsonContainer) elements.vaultJsonContainer.style.display = 'flex';
+      if (elements.vaultSectionTabs) elements.vaultSectionTabs.style.visibility = 'hidden';
+      if (elements.vaultRawJsonTextarea) {
+        elements.vaultRawJsonTextarea.value = JSON.stringify(masterProfile, null, 2);
+      }
+    });
+  }
+
+  // Direct Vault JSON Editor Input Listener
+  if (elements.vaultRawJsonTextarea) {
+    elements.vaultRawJsonTextarea.addEventListener('input', () => {
+      try {
+        const parsed = JSON.parse(elements.vaultRawJsonTextarea.value);
+        if (parsed && typeof parsed === 'object') {
+          masterProfile = parsed;
+          saveMasterProfileToStorage(false);
+        }
+      } catch (e) {
+        // Wait until JSON is valid
+      }
+    });
+  }
+
+  // Format JSON Button
+  if (elements.btnVaultFormatJson) {
+    elements.btnVaultFormatJson.addEventListener('click', () => {
+      if (elements.vaultRawJsonTextarea) {
+        try {
+          const parsed = JSON.parse(elements.vaultRawJsonTextarea.value);
+          elements.vaultRawJsonTextarea.value = JSON.stringify(parsed, null, 2);
+          masterProfile = parsed;
+          saveMasterProfileToStorage(false);
+          showToast('JSON Formatted & Saved!', 'success');
+        } catch (e) {
+          showToast('Invalid JSON syntax: ' + e.message, 'error');
+        }
+      }
+    });
+  }
+
+  // Import Actions (Merge vs Replace)
+  if (elements.btnVaultImportMerge) {
+    elements.btnVaultImportMerge.addEventListener('click', () => executeVaultImport('merge'));
+  }
+  if (elements.btnVaultImportReplace) {
+    elements.btnVaultImportReplace.addEventListener('click', () => {
+      if (confirm('Replace active sections with the selected vault items? Any unchecked items in selected sections will be removed from current resume.')) {
+        executeVaultImport('replace');
+      }
+    });
+  }
+
+  // Paper Format Selection (A4 / US Letter)
+  if (elements.btnPaperA4) {
+    elements.btnPaperA4.addEventListener('click', () => setPaperSize('a4', true, true));
+  }
+  if (elements.btnPaperLetter) {
+    elements.btnPaperLetter.addEventListener('click', () => setPaperSize('letter', true, true));
+  }
+
+  // Preview Zoom Controls (Auto-fit to panel width vs 100% Real Print Size)
+  if (elements.btnZoomAuto) {
+    elements.btnZoomAuto.addEventListener('click', () => {
+      previewZoomMode = 'auto';
+      elements.btnZoomAuto.classList.add('active');
+      if (elements.btnZoom100) elements.btnZoom100.classList.remove('active');
+      updatePreviewScale();
+    });
+  }
+  if (elements.btnZoom100) {
+    elements.btnZoom100.addEventListener('click', () => {
+      previewZoomMode = '100';
+      elements.btnZoom100.classList.add('active');
+      if (elements.btnZoomAuto) elements.btnZoomAuto.classList.remove('active');
+      updatePreviewScale();
+    });
+  }
+
+  // Auto-detect paper size from LaTeX edits in both Tab and Modal textareas
+  if (elements.tabLatexTextarea) {
+    elements.tabLatexTextarea.addEventListener('input', () => {
+      const detected = detectPaperSizeFromLatex(elements.tabLatexTextarea.value);
+      if (detected && detected !== currentPaperSize) {
+        setPaperSize(detected, false, true);
+      }
+    });
+  }
+  if (elements.latexCodeView) {
+    elements.latexCodeView.addEventListener('input', () => {
+      const detected = detectPaperSizeFromLatex(elements.latexCodeView.value);
+      if (detected && detected !== currentPaperSize) {
+        setPaperSize(detected, false, true);
+      }
+    });
+  }
+
+  // Responsive guardrail recalculation on window resize
+  window.addEventListener('resize', () => {
+    updatePreviewScale();
+    check1PageGuardrail();
+  });
 
   // LaTeX Modal Actions
   if (elements.btnExportLatex) {
@@ -460,10 +1043,9 @@ function bindEvents() {
 
   // Form Inputs live synchronization
   const formInputs = [
-    elements.piName, elements.piTitle, elements.piEmail, elements.piPhone,
+    elements.piName, elements.piTitle, elements.piRole, elements.piEmail, elements.piPhone,
     elements.piLocation, elements.piLinkedin, elements.piGithub, elements.piLeetcode, elements.piPortfolio,
-    elements.resumeSummaryInput, elements.skillsLanguagesInput, elements.skillsAiInput, elements.skillsMlInput,
-    elements.skillsCloudInput, elements.skillsTechInput, elements.skillsFrameworksInput, elements.skillsToolsInput
+    elements.resumeSummaryInput
   ].filter(Boolean);
 
   formInputs.forEach(input => {
@@ -478,9 +1060,59 @@ function bindEvents() {
   });
 
   // Dynamic Add Buttons
+  if (elements.btnAddSkillCat) elements.btnAddSkillCat.addEventListener('click', addNewSkillCat);
   elements.btnAddExp.addEventListener('click', addNewExperienceItem);
   elements.btnAddProj.addEventListener('click', addNewProjectItem);
   elements.btnAddEdu.addEventListener('click', addNewEducationItem);
+  if (elements.btnAddCert) elements.btnAddCert.addEventListener('click', addNewCertificationItem);
+  if (elements.btnAddPub) elements.btnAddPub.addEventListener('click', addNewPublicationItem);
+  if (elements.btnAddAch) elements.btnAddAch.addEventListener('click', addNewAchievementItem);
+  if (elements.btnAddVol) elements.btnAddVol.addEventListener('click', addNewVolunteerItem);
+  if (elements.btnAddNewSection) {
+    elements.btnAddNewSection.addEventListener('click', () => addCustomSection());
+  }
+
+  // Section Renaming Listeners (Pencil Click & Double-click on Heading)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-rename-section');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const secId = btn.dataset.section;
+    if (secId) startRenamingSection(secId);
+  });
+
+  document.addEventListener('dblclick', (e) => {
+    const titleSpan = e.target.closest('.section-heading-text');
+    if (!titleSpan) return;
+    const secId = titleSpan.dataset.sectionTitleFor;
+    if (secId) {
+      e.preventDefault();
+      e.stopPropagation();
+      startRenamingSection(secId);
+    }
+  });
+
+  // Section Selection / Inclusion Toggles
+  document.addEventListener('change', (e) => {
+    const cb = e.target.closest('.section-toggle-checkbox');
+    if (!cb) return;
+    const section = cb.dataset.section;
+    if (section) {
+      toggleSection(section, cb.checked);
+    }
+  });
+
+  // Section Reordering Buttons (Up / Down)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-section-move');
+    if (!btn) return;
+    const section = btn.dataset.section;
+    const dir = btn.dataset.dir;
+    if (section && dir) {
+      moveSection(section, dir);
+    }
+  });
 
   // Left Panel (JD & AI)
   elements.btnSampleJd.addEventListener('click', cycleSampleJd);
@@ -492,29 +1124,39 @@ function bindEvents() {
 }
 
 /**
- * Switch Resume Template (Modern Tech, Classic Ivy, Minimalist Clean)
+ * Switch Resume Template (LaTeX TeX Engine)
  */
-function setTemplate(template, notify = true) {
-  currentTemplate = template;
+function setTemplate(template = 'latex', notify = true) {
+  currentTemplate = 'latex';
   document.querySelectorAll('[data-template]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.template === template);
+    btn.classList.toggle('active', btn.dataset.template === 'latex');
   });
 
-  elements.resumePaper.classList.remove('theme-modern', 'theme-classic', 'theme-minimalist', 'theme-latex');
-  elements.resumePaper.classList.add(`theme-${template}`);
-  localStorage.setItem('jobease_template', template);
+  elements.resumePaper.classList.remove('theme-modern', 'theme-classic', 'theme-minimalist');
+  elements.resumePaper.classList.add('theme-latex');
+  try {
+    localStorage.setItem('jobease_template', 'latex');
+  } catch (e) {}
 
   check1PageGuardrail();
 
   if (notify) {
-    const names = {
-      modern: 'Modern Tech (Sans-Serif)',
-      classic: 'Classic Ivy / Harvard (Serif Executive)',
-      minimalist: 'Minimalist Clean (Compact Scandinavian)',
-      latex: 'LaTeX Academic (Computer Modern TeX)'
-    };
-    showToast(`Switched to ${names[template] || template} template!`, 'info');
+    showToast('LaTeX Academic (Computer Modern TeX) active & 1-page optimized!', 'info');
   }
+}
+
+function applySpacingToPaperElement(paperEl, s) {
+  if (!paperEl) return;
+  paperEl.style.setProperty('--sec-gap', `${s.sectionGap}px`);
+  paperEl.style.setProperty('--item-gap', `${s.itemGap}px`);
+  paperEl.style.setProperty('--line-height', `${s.lineHeight}`);
+  paperEl.style.setProperty('--bullet-gap', `${s.bulletGap}px`);
+  const scale = (s.pageMargin || 16) / 16;
+  const padV = Math.round(34 * scale);
+  const padH = Math.round(44 * scale);
+  paperEl.style.setProperty('--page-pad-v', `${padV}px`);
+  paperEl.style.setProperty('--page-pad-h', `${padH}px`);
+  paperEl.style.setProperty('--font-scale', `${s.fontScale / 100}`);
 }
 
 /**
@@ -525,11 +1167,19 @@ function setFont(font, notify = true) {
   if (elements.fontSelect) {
     elements.fontSelect.value = font;
   }
-  elements.resumePaper.classList.remove(
+  const fontClasses = [
     'font-charter', 'font-lmodern', 'font-sourcesanspro',
     'font-inter', 'font-palatino', 'font-times', 'font-roboto'
-  );
-  elements.resumePaper.classList.add(`font-${font}`);
+  ];
+  if (elements.resumePaper) {
+    elements.resumePaper.classList.remove(...fontClasses);
+    elements.resumePaper.classList.add(`font-${font}`);
+  }
+  if (elements.resumePaperP2) {
+    elements.resumePaperP2.classList.remove(...fontClasses);
+    elements.resumePaperP2.classList.add(`font-${font}`);
+  }
+
   localStorage.setItem('jobease_font', font);
   if (notify) {
     localStorage.setItem('jobease_font_user_explicit', 'true');
@@ -540,7 +1190,7 @@ function setFont(font, notify = true) {
     updateTabLatexView();
   }
   if (elements.latexModal && elements.latexModal.style.display === 'flex') {
-    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder);
   }
 
   check1PageGuardrail();
@@ -578,12 +1228,10 @@ function applySpacing(settings, notify = false, presetName = null) {
   Object.assign(spacingState, settings);
 
   if (elements.resumePaper) {
-    elements.resumePaper.style.setProperty('--sec-gap', `${spacingState.sectionGap}px`);
-    elements.resumePaper.style.setProperty('--item-gap', `${spacingState.itemGap}px`);
-    elements.resumePaper.style.setProperty('--line-height', `${spacingState.lineHeight}`);
-    elements.resumePaper.style.setProperty('--bullet-gap', `${spacingState.bulletGap}px`);
-    elements.resumePaper.style.setProperty('--page-pad-v', `${spacingState.pageMargin}px`);
-    elements.resumePaper.style.setProperty('--font-scale', `${spacingState.fontScale / 100}`);
+    applySpacingToPaperElement(elements.resumePaper, spacingState);
+  }
+  if (elements.resumePaperP2) {
+    applySpacingToPaperElement(elements.resumePaperP2, spacingState);
   }
 
   // Update slider positions and value badges
@@ -626,7 +1274,7 @@ function applySpacing(settings, notify = false, presetName = null) {
     updateTabLatexView();
   }
   if (elements.latexModal && elements.latexModal.style.display === 'flex') {
-    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder);
   }
 
   if (notify) {
@@ -656,23 +1304,156 @@ function detectCurrentPreset(s) {
   return 'custom';
 }
 
-function autoFit1Page() {
-  const height = elements.resumePaper ? elements.resumePaper.scrollHeight : 0;
-  const target = PAGE_LIMIT_HEIGHT;
+/**
+ * Preview Viewport Scaler: Dynamically scales paper to fit preview column without artificial text wrapping
+ */
+let previewZoomMode = 'auto'; // 'auto' | '100'
 
-  if (height <= target) {
-    const currentRatio = Math.round((height / target) * 100);
+function updatePreviewScale() {
+  const viewport = elements.paperViewport || document.getElementById('paper-viewport');
+  const scaler = elements.paperScaler || document.getElementById('paper-scaler');
+  if (!viewport || !scaler) return;
+
+  const targetWidth = getTargetPageWidth();
+  scaler.style.width = `${targetWidth}px`;
+
+  if (elements.resumePaper) {
+    elements.resumePaper.style.width = `${targetWidth}px`;
+  }
+  if (elements.resumePaperP2) {
+    elements.resumePaperP2.style.width = `${targetWidth}px`;
+  }
+
+  let scale = 1.0;
+  if (previewZoomMode === 'auto') {
+    const availableWidth = viewport.clientWidth - 24;
+    scale = Math.min(1.0, availableWidth / targetWidth);
+    if (scale < 0.45) scale = 0.45;
+  } else {
+    scale = 1.0;
+  }
+
+  scaler.style.transform = `scale(${scale})`;
+  scaler.style.transformOrigin = 'top center';
+
+  // Ensure scroll container accounts for scaled height
+  const naturalHeight = scaler.offsetHeight;
+  const scaledHeight = Math.ceil(naturalHeight * scale);
+  viewport.style.minHeight = `${scaledHeight + 30}px`;
+}
+
+/**
+ * Paper Format Controller (A4 vs US Letter)
+ */
+function setPaperSize(size, syncLatex = true, notify = false) {
+  currentPaperSize = (size === 'letter') ? 'letter' : 'a4';
+  localStorage.setItem('jobease_paper_size', currentPaperSize);
+
+  // Update button active states
+  if (elements.btnPaperA4) {
+    elements.btnPaperA4.classList.toggle('active', currentPaperSize === 'a4');
+  }
+  if (elements.btnPaperLetter) {
+    elements.btnPaperLetter.classList.toggle('active', currentPaperSize === 'letter');
+  }
+
+  // Update paper container classes
+  const isA4 = currentPaperSize === 'a4';
+  const targetWidth = getTargetPageWidth();
+  const targetHeight = getTargetPageHeight();
+
+  if (elements.resumePaper) {
+    elements.resumePaper.classList.toggle('paper-a4', isA4);
+    elements.resumePaper.classList.toggle('paper-letter', !isA4);
+    elements.resumePaper.style.width = `${targetWidth}px`;
+  }
+  if (elements.resumePaperP2) {
+    elements.resumePaperP2.classList.toggle('paper-a4', isA4);
+    elements.resumePaperP2.classList.toggle('paper-letter', !isA4);
+    elements.resumePaperP2.style.width = `${targetWidth}px`;
+  }
+  if (elements.paperScaler) {
+    elements.paperScaler.style.width = `${targetWidth}px`;
+  }
+
+  // Update readout badges
+  if (elements.paperSpecPill) {
+    elements.paperSpecPill.textContent = isA4 
+      ? '📄 A4 Paper (210 × 297 mm)' 
+      : '📄 US Letter Paper (8.5 × 11 in)';
+  }
+
+  if (elements.pageLimitBadge) {
+    elements.pageLimitBadge.textContent = isA4
+      ? 'A4 1-Page Boundary (297mm)'
+      : 'Letter 1-Page Boundary (11in)';
+  }
+
+  // Update print page style dynamically
+  let printStyle = document.getElementById('dynamic-print-style');
+  if (!printStyle) {
+    printStyle = document.createElement('style');
+    printStyle.id = 'dynamic-print-style';
+    document.head.appendChild(printStyle);
+  }
+  printStyle.textContent = `@media print {
+    @page { size: ${currentPaperSize === 'letter' ? 'letter' : 'a4'} portrait !important; margin: 0.3in 0.35in !important; }
+    .paper-info-bar, .paper-spec-pill, .paper-budget-readout, .overflow-alert-banner, .page-limit-line, .page-limit-badge, .spacing-drawer, .section-reorder-btns, .no-print, .rp-page-badge, .page-break-divider { display: none !important; }
+    .paper-scaler { transform: none !important; }
+    .resume-paper { page-break-after: always; break-after: page; box-shadow: none !important; }
+    .resume-paper:last-child { page-break-after: avoid; break-after: avoid; }
+  }`;
+
+  if (syncLatex) {
+    if (activeTab === 'latex') {
+      updateTabLatexView();
+    }
+    if (elements.latexModal && elements.latexModal.style.display === 'flex') {
+      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder);
+    }
+  }
+
+  updatePreviewScale();
+  check1PageGuardrail();
+
+  if (notify) {
+    showToast(`Switched paper standard to ${currentPaperSize.toUpperCase()}!`, 'info');
+  }
+}
+
+/**
+ * Detect paper size declared in LaTeX source code
+ */
+function detectPaperSizeFromLatex(latexCode) {
+  if (!latexCode || typeof latexCode !== 'string') return null;
+  if (/\\documentclass\[[^\]]*letterpaper[^\]]*\]/i.test(latexCode)) {
+    return 'letter';
+  }
+  if (/\\documentclass\[[^\]]*a4paper[^\]]*\]/i.test(latexCode)) {
+    return 'a4';
+  }
+  return null;
+}
+
+function autoFit1Page() {
+  resetPaginationToPage1();
+  applySectionOrderToDOM();
+  const contentHeight = getResumeActualContentHeight();
+  const targetHeight = getTargetPageHeight();
+
+  if (contentHeight <= targetHeight && (!elements.resumePaperP2 || elements.resumePaperP2.style.display === 'none')) {
+    const currentRatio = Math.round((contentHeight / targetHeight) * 100);
     showToast(`Resume already fits within 1 page perfectly! (${currentRatio}%)`, 'success');
     return;
   }
 
-  const ratio = height / target;
+  const ratio = contentHeight / targetHeight;
   let targetSettings;
   let targetName = 'compact';
-  if (ratio <= 1.15) {
+  if (ratio <= 1.10) {
     targetSettings = { ...SPACING_PRESETS.compact };
     targetName = 'compact';
-  } else if (ratio <= 1.35) {
+  } else if (ratio <= 1.25) {
     targetSettings = {
       sectionGap: 1,
       itemGap: 0,
@@ -689,51 +1470,248 @@ function autoFit1Page() {
 
   applySpacing(targetSettings, false, targetName);
 
-  // Micro-adjustment iteration to guarantee fitting under 100%
   setTimeout(() => {
-    const curH = elements.resumePaper.scrollHeight;
-    if (curH > target) {
-      const neededScale = Math.max(88, Math.floor(spacingState.fontScale * (target / curH) * 0.99));
+    resetPaginationToPage1();
+    renderPreview();
+    const curH = getResumeActualContentHeight();
+    const curTarget = getTargetPageHeight();
+    if (curH > curTarget) {
+      const neededScale = Math.max(86, Math.floor(spacingState.fontScale * (curTarget / curH) * 0.98));
       spacingState.fontScale = neededScale;
       spacingState.sectionGap = 0;
       spacingState.itemGap = 0;
+      spacingState.lineHeight = 1.15;
       spacingState.pageMargin = 8;
       applySpacing(spacingState, false, 'ultra-compact');
+      resetPaginationToPage1();
+      renderPreview();
     }
-    const finalRatio = Math.round((elements.resumePaper.scrollHeight / target) * 100);
-    showToast(`✨ Auto-fit applied! Page budget: ${finalRatio}% (1 Page Safe)`, 'success');
-  }, 60);
+    const finalRatio = Math.round((getResumeActualContentHeight() / getTargetPageHeight()) * 100);
+    showToast(`✨ Auto-fit applied! Page budget: ${finalRatio}% (${currentPaperSize.toUpperCase()} 1 Page Safe)`, 'success');
+  }, 90);
+}
+
+/**
+ * Restores any sections or items that were placed into Page 2 back into Page 1 (#resume-paper)
+ */
+function resetPaginationToPage1() {
+  if (!elements.resumePaper) return;
+  const paper1 = elements.resumePaper;
+  const limitLine = elements.pageLimitLine || document.getElementById('page-limit-line');
+
+  if (elements.rpPage2Content) {
+    const p2Sections = Array.from(elements.rpPage2Content.querySelectorAll(':scope > .rp-section'));
+    p2Sections.forEach(sec => {
+      if (sec.dataset.continuedFor) {
+        const origId = sec.dataset.continuedFor;
+        const origSec = document.getElementById(origId);
+        if (origSec) {
+          const itemsContainer = sec.querySelector('.rp-items-container') || sec.querySelector('.rp-bullets') || sec;
+          const origItemsContainer = origSec.querySelector('#rp-experience-container, #rp-projects-container, #rp-education-container, .rp-bullets') || origSec;
+          const itemsToRestore = Array.from(itemsContainer.children);
+          itemsToRestore.forEach(item => {
+            if (!item.classList.contains('rp-section-title')) {
+              origItemsContainer.appendChild(item);
+            }
+          });
+        }
+        sec.remove();
+      } else {
+        if (limitLine && limitLine.parentNode === paper1) {
+          paper1.insertBefore(sec, limitLine);
+        } else {
+          paper1.appendChild(sec);
+        }
+      }
+    });
+    elements.rpPage2Content.innerHTML = '';
+  }
+
+  if (elements.resumePaperP2) {
+    elements.resumePaperP2.style.display = 'none';
+  }
+  if (elements.pageBreakDivider) {
+    elements.pageBreakDivider.style.display = 'none';
+  }
+  if (elements.rpPageBadge1) {
+    elements.rpPageBadge1.textContent = 'Page 1 of 1';
+  }
+  paper1.classList.remove('has-page-2');
+  paper1.classList.add('single-page');
+}
+
+/**
+ * Intelligent Multi-Page Pagination Engine:
+ * Strictly verifies content against true physical page height.
+ * If content fits, displays only Page 1 (1 Page Safe).
+ * If content overflows, separates into Page 1 and Page 2 as distinct paper sheets.
+ */
+function paginateResume() {
+  if (!elements.resumePaper) return;
+  resetPaginationToPage1();
+  applySectionOrderToDOM(false);
+
+  const paper1 = elements.resumePaper;
+  const targetHeight = getTargetPageHeight(); // 1123 for A4, 1056 for Letter
+  const targetWidth = getTargetPageWidth();   // 794 for A4, 816 for Letter
+
+  const paperStyle = window.getComputedStyle(paper1);
+  const padBottom = parseFloat(paperStyle.paddingBottom) || 34;
+  const maxPage1Bottom = targetHeight - padBottom;
+
+  const visibleSections = Array.from(paper1.querySelectorAll(':scope > .rp-section')).filter(s => {
+    return s.style.display !== 'none' && s.offsetParent !== null;
+  });
+
+  if (visibleSections.length === 0) {
+    updatePreviewScale();
+    return;
+  }
+
+  const lastSec = visibleSections[visibleSections.length - 1];
+  const totalContentBottom = lastSec.offsetTop + lastSec.offsetHeight;
+
+  const isA4 = currentPaperSize === 'a4';
+  const paperName = isA4 ? 'A4' : 'Letter';
+
+  // CASE 1: All content fits on 1 Page
+  if (totalContentBottom <= maxPage1Bottom) {
+    if (elements.resumePaperP2) elements.resumePaperP2.style.display = 'none';
+    if (elements.pageBreakDivider) elements.pageBreakDivider.style.display = 'none';
+    if (elements.rpPageBadge1) elements.rpPageBadge1.textContent = 'Page 1 of 1';
+
+    paper1.style.minHeight = `${targetHeight}px`;
+    paper1.style.maxHeight = `${targetHeight}px`;
+    paper1.classList.remove('is-overflowing', 'has-page-2');
+    paper1.classList.add('single-page');
+
+    const totalActualHeight = totalContentBottom + padBottom;
+    const ratio = Math.round((totalActualHeight / targetHeight) * 100);
+
+    if (elements.paperBudgetReadout) {
+      elements.paperBudgetReadout.textContent = `Budget: ${totalActualHeight}px / ${targetHeight}px (${ratio}% filled - 1 Page Safe)`;
+    }
+
+    elements.meterFill.style.width = `${Math.min(ratio, 100)}%`;
+    elements.meterFill.classList.remove('warning', 'overflow');
+
+    if (ratio > 94) {
+      elements.meterFill.classList.add('warning');
+      elements.meterText.textContent = `${ratio}% (${paperName} Near Limit)`;
+      elements.overflowBanner.classList.remove('active');
+    } else {
+      elements.meterText.textContent = `${ratio}% (${paperName} 1 Page Safe)`;
+      elements.overflowBanner.classList.remove('active');
+    }
+
+    updatePreviewScale();
+    return;
+  }
+
+  // CASE 2: Content exceeds 1 Page -> Display 2 separate pages
+  let splitIndex = -1;
+  for (let i = 0; i < visibleSections.length; i++) {
+    const sec = visibleSections[i];
+    const secBottom = sec.offsetTop + sec.offsetHeight;
+    if (secBottom > maxPage1Bottom) {
+      splitIndex = i;
+      break;
+    }
+  }
+
+  if (splitIndex === -1) {
+    updatePreviewScale();
+    return;
+  }
+
+  if (elements.resumePaperP2 && elements.pageBreakDivider && elements.rpPage2Content) {
+    elements.resumePaperP2.style.display = 'flex';
+    elements.resumePaperP2.style.minHeight = `${targetHeight}px`;
+    elements.pageBreakDivider.style.display = 'flex';
+
+    if (elements.rpPageBadge1) elements.rpPageBadge1.textContent = 'Page 1 of 2';
+    if (elements.rpPageBadge2) elements.rpPageBadge2.textContent = 'Page 2 of 2';
+
+    paper1.style.minHeight = `${targetHeight}px`;
+    paper1.style.maxHeight = `${targetHeight}px`;
+    paper1.classList.remove('single-page');
+    paper1.classList.add('has-page-2');
+
+    const splitSection = visibleSections[splitIndex];
+    const subItems = Array.from(splitSection.querySelectorAll('.rp-experience-item, .rp-project-item, .rp-bullets > li'));
+
+    let overflowingItems = [];
+    if (subItems.length > 1) {
+      const page1Rect = paper1.getBoundingClientRect();
+      const currentScale = (page1Rect.width > 0 && targetWidth > 0) ? (page1Rect.width / targetWidth) : 1;
+      subItems.forEach(item => {
+        const itemRect = item.getBoundingClientRect();
+        const itemBottomOnPage1 = (itemRect.bottom - page1Rect.top) / currentScale;
+        if (itemBottomOnPage1 > maxPage1Bottom) {
+          overflowingItems.push(item);
+        }
+      });
+    }
+
+    if (overflowingItems.length > 0 && overflowingItems.length < subItems.length) {
+      // Split section partially
+      const clonedSec = document.createElement('section');
+      clonedSec.className = 'rp-section';
+      clonedSec.dataset.continuedFor = splitSection.id;
+
+      const titleText = splitSection.querySelector('.rp-section-title')?.textContent || 'Section';
+      const clonedTitle = document.createElement('h3');
+      clonedTitle.className = 'rp-section-title';
+      clonedTitle.textContent = `${titleText} (Continued)`;
+      clonedSec.appendChild(clonedTitle);
+
+      const isBullets = !!splitSection.querySelector('.rp-bullets');
+      const itemsWrapper = document.createElement(isBullets ? 'ul' : 'div');
+      itemsWrapper.className = isBullets ? 'rp-bullets' : 'rp-items-container';
+      overflowingItems.forEach(itm => itemsWrapper.appendChild(itm));
+      clonedSec.appendChild(itemsWrapper);
+
+      elements.rpPage2Content.appendChild(clonedSec);
+    } else {
+      // Entire section to Page 2
+      elements.rpPage2Content.appendChild(splitSection);
+    }
+
+    // Move all subsequent sections to Page 2
+    for (let i = splitIndex + 1; i < visibleSections.length; i++) {
+      elements.rpPage2Content.appendChild(visibleSections[i]);
+    }
+
+    // Measure Page 2 fill
+    const p2Children = Array.from(elements.rpPage2Content.children).filter(el => el.offsetParent !== null);
+    let p2Bottom = 0;
+    if (p2Children.length > 0) {
+      const lastP2 = p2Children[p2Children.length - 1];
+      p2Bottom = lastP2.offsetTop + lastP2.offsetHeight + padBottom;
+    }
+    const p2Ratio = Math.round((p2Bottom / targetHeight) * 100);
+    const overflowLines = Math.max(1, Math.round(p2Bottom / 18));
+
+    if (elements.paperBudgetReadout) {
+      elements.paperBudgetReadout.textContent = `Budget: 2 Pages • Page 1: 100% full • Page 2: ${p2Ratio}% filled`;
+    }
+
+    elements.meterFill.style.width = '100%';
+    elements.meterFill.classList.add('overflow');
+    elements.meterText.textContent = `100%+ (${paperName} Spills to 2 Pages - ~${overflowLines}L over)`;
+    elements.overflowBanner.classList.add('active');
+  }
+
+  updatePreviewScale();
 }
 
 /**
  * 1-Page Guardrail Engine:
- * Dynamically measures preview scroll height vs calibrated 1-page baseline.
- * Alerts user if content exceeds 1-page rule.
+ * Accurately calculates percentage filled and updates multi-page pagination.
  */
 function check1PageGuardrail() {
   requestAnimationFrame(() => {
-    const actualHeight = elements.resumePaper.scrollHeight;
-    const ratio = Math.round((actualHeight / PAGE_LIMIT_HEIGHT) * 100);
-
-    // Update Top Navigation Meter
-    elements.meterFill.style.width = `${Math.min(ratio, 100)}%`;
-    elements.meterFill.classList.remove('warning', 'overflow');
-
-    if (ratio > 100) {
-      elements.meterFill.classList.add('overflow');
-      elements.meterText.textContent = `${ratio}% (Exceeds 1 Page!)`;
-      elements.overflowBanner.classList.add('active');
-      elements.pageLimitLine.style.display = 'flex';
-    } else if (ratio > 94) {
-      elements.meterFill.classList.add('warning');
-      elements.meterText.textContent = `${ratio}% (Near Limit)`;
-      elements.overflowBanner.classList.remove('active');
-      elements.pageLimitLine.style.display = 'flex';
-    } else {
-      elements.meterText.textContent = `${ratio}% (1 Page Safe)`;
-      elements.overflowBanner.classList.remove('active');
-      elements.pageLimitLine.style.display = 'flex';
-    }
+    paginateResume();
   });
 }
 
@@ -755,6 +1733,9 @@ function switchTab(tab) {
   if (tab === 'form') {
     loadResumeIntoForm(currentResume);
   } else if (tab === 'json') {
+    currentResume.sectionTitles = { ...currentSectionTitles };
+    currentResume.sectionOrder = [...currentSectionOrder];
+    currentResume.enabledSections = [...currentEnabledSections];
     elements.rawJsonTextarea.value = JSON.stringify(currentResume, null, 2);
   } else if (tab === 'latex') {
     updateTabLatexView();
@@ -764,9 +1745,52 @@ function switchTab(tab) {
 function handleRawJsonEdit() {
   try {
     const parsed = JSON.parse(elements.rawJsonTextarea.value);
+    if (!parsed || typeof parsed !== 'object') return;
+
+    // Normalize Form-aligned alias keys to canonical keys
+    if (parsed.workExperience && !parsed.experience) parsed.experience = parsed.workExperience;
+    if (parsed.technicalSkills && !parsed.skills) parsed.skills = parsed.technicalSkills;
+    if (parsed.skillsAndTechnologies && !parsed.skills) parsed.skills = parsed.skillsAndTechnologies;
+    if (parsed.technicalProjects && !parsed.projects) parsed.projects = parsed.technicalProjects;
+    if (parsed.keyProjects && !parsed.projects) parsed.projects = parsed.keyProjects;
+    if (parsed.professionalSummary && !parsed.summary) parsed.summary = parsed.professionalSummary;
+    if (parsed.patentsAndPublications && !parsed.publications) parsed.publications = parsed.patentsAndPublications;
+    if (parsed.honorsAndAchievements && !parsed.achievements) parsed.achievements = parsed.honorsAndAchievements;
+    if (parsed.volunteerExperience && !parsed.volunteer) parsed.volunteer = parsed.volunteerExperience;
+
+    if (parsed.sectionTitles && typeof parsed.sectionTitles === 'object') {
+      currentSectionTitles = { ...DEFAULT_SECTION_TITLES, ...parsed.sectionTitles };
+      try {
+        localStorage.setItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
+      } catch (e) {}
+    }
+
+    if (Array.isArray(parsed.customSections)) {
+      parsed.customSections.forEach(cs => {
+        if (cs && cs.id && cs.title) {
+          currentSectionTitles[cs.id] = cs.title;
+        }
+      });
+    }
+
+    if (Array.isArray(parsed.sectionOrder) && parsed.sectionOrder.length > 0) {
+      currentSectionOrder = parsed.sectionOrder;
+      try {
+        localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+      } catch (e) {}
+    }
+
+    if (Array.isArray(parsed.enabledSections)) {
+      currentEnabledSections = parsed.enabledSections;
+      try {
+        localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+      } catch (e) {}
+    }
+
     currentResume = parsed;
     renderPreview();
     check1PageGuardrail();
+    triggerAutoSave();
   } catch {
     // Wait until valid JSON is typed
   }
@@ -776,8 +1800,17 @@ function handleRawJsonEdit() {
  * Populate Editor Form with Resume JSON State
  */
 function loadResumeIntoForm(resume) {
+  // Sync section heading text in the Form
+  ALL_SECTION_IDS.forEach(secId => {
+    const titleSpan = document.querySelector(`.section-heading-text[data-section-title-for="${secId}"]`);
+    if (titleSpan) {
+      titleSpan.textContent = getSectionTitle(secId);
+    }
+  });
+
   elements.piName.value = resume.personalInfo?.name || '';
   elements.piTitle.value = resume.personalInfo?.title || '';
+  if (elements.piRole) elements.piRole.value = resume.personalInfo?.role || '';
   elements.piEmail.value = resume.personalInfo?.email || '';
   elements.piPhone.value = resume.personalInfo?.phone || '';
   elements.piLocation.value = resume.personalInfo?.location || '';
@@ -788,20 +1821,39 @@ function loadResumeIntoForm(resume) {
   
   elements.resumeSummaryInput.value = resume.summary || '';
 
-  const s = resume.skills || {};
-  const langVal = s.languages || (s.technical || []).join(', ');
-  const aiVal = s.aiAgentic || (s.frameworks || []).join(', ');
-  const mlVal = s.mlCv || '';
-  const cloudVal = s.cloudDevOps || (s.tools || []).join(', ');
+  // Migration: Ensure skills is an array
+  if (resume.skills && !Array.isArray(resume.skills)) {
+    const s = resume.skills;
+    const newSkills = [];
+    const langVal = s.languages || (s.technical || []).join(', ');
+    if (langVal) newSkills.push({ category: 'Languages', items: langVal });
+    
+    const aiVal = s.aiAgentic || (s.frameworks || []).join(', ');
+    if (aiVal) newSkills.push({ category: 'AI, LLM & Agentic Systems', items: aiVal });
+    
+    const mlVal = s.mlCv || '';
+    if (mlVal) newSkills.push({ category: 'ML/DL & Computer Vision', items: mlVal });
+    
+    const cloudVal = s.cloudDevOps || (s.tools || []).join(', ');
+    if (cloudVal) newSkills.push({ category: 'Cloud, DevOps & MLOps', items: cloudVal });
+    
+    resume.skills = newSkills;
+    currentResume.skills = newSkills; // Update reference
+  } else if (!resume.skills) {
+    resume.skills = [];
+  }
 
-  if (elements.skillsLanguagesInput) elements.skillsLanguagesInput.value = langVal;
-  if (elements.skillsAiInput) elements.skillsAiInput.value = aiVal;
-  if (elements.skillsMlInput) elements.skillsMlInput.value = mlVal;
-  if (elements.skillsCloudInput) elements.skillsCloudInput.value = cloudVal;
+  renderSkillsFormList();
 
   renderExperienceFormList();
   renderProjectsFormList();
   renderEducationFormList();
+  renderCertificationsFormList();
+  renderPublicationsFormList();
+  renderVolunteerFormList();
+  renderCustomSectionsFormList();
+  applySectionOrderToDOM(true);
+  syncAllSectionCheckboxesFromState();
   renderPreview();
 }
 
@@ -812,6 +1864,7 @@ function syncFormToState() {
   currentResume.personalInfo = {
     name: elements.piName.value,
     title: elements.piTitle.value,
+    role: elements.piRole ? elements.piRole.value : (currentResume.personalInfo?.role || ''),
     email: elements.piEmail.value,
     phone: elements.piPhone.value,
     location: elements.piLocation.value,
@@ -823,30 +1876,67 @@ function syncFormToState() {
 
   currentResume.summary = elements.resumeSummaryInput.value;
 
-  const languagesStr = elements.skillsLanguagesInput ? elements.skillsLanguagesInput.value : '';
-  const aiStr = elements.skillsAiInput ? elements.skillsAiInput.value : '';
-  const mlStr = elements.skillsMlInput ? elements.skillsMlInput.value : '';
-  const cloudStr = elements.skillsCloudInput ? elements.skillsCloudInput.value : '';
-
-  currentResume.skills = {
-    ...currentResume.skills,
-    languages: languagesStr,
-    aiAgentic: aiStr,
-    mlCv: mlStr,
-    cloudDevOps: cloudStr,
-    technical: parseCommaList(languagesStr),
-    frameworks: [...parseCommaList(aiStr), ...parseCommaList(mlStr)],
-    tools: parseCommaList(cloudStr),
-    softSkills: currentResume.skills?.softSkills || []
-  };
+  // Extract dynamic skills from form
+  if (elements.skillsListContainer) {
+    const skillItems = [];
+    elements.skillsListContainer.querySelectorAll('.skill-item').forEach(el => {
+      const cat = el.querySelector('[data-skill-field="category"]').value;
+      const items = el.querySelector('[data-skill-field="items"]').value;
+      skillItems.push({ category: cat, items: items });
+    });
+    currentResume.skills = skillItems;
+  }
 
   renderPreview();
   check1PageGuardrail();
+  triggerAutoSave();
 }
 
 function parseCommaList(str) {
   if (!str) return [];
   return str.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Skills Form Builder
+ */
+function renderSkillsFormList() {
+  if (!elements.skillsListContainer) return;
+  elements.skillsListContainer.innerHTML = '';
+  
+  (currentResume.skills || []).forEach((skill, idx) => {
+    const item = document.createElement('div');
+    item.className = 'skill-item form-group';
+    item.style.border = '1px solid #334155';
+    item.style.padding = '10px';
+    item.style.borderRadius = '6px';
+    item.style.backgroundColor = '#1e293b';
+    item.innerHTML = `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <strong style="font-size: 0.85rem; color: #E2E8F0;">Category #${idx + 1}</strong>
+        <button class="bullet-remove-btn" title="Delete Category" data-skill-del="${idx}">✕ Remove</button>
+      </div>
+      <div class="form-row-2">
+        <input type="text" class="form-input" placeholder="Category (e.g. Languages)" value="${skill.category || ''}" data-skill-field="category">
+        <input type="text" class="form-input" placeholder="Skills (comma separated)" value="${skill.items || ''}" data-skill-field="items">
+      </div>
+    `;
+    elements.skillsListContainer.appendChild(item);
+  });
+
+  // Attach handlers
+  elements.skillsListContainer.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', syncFormToState);
+  });
+
+  elements.skillsListContainer.querySelectorAll('[data-skill-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.skillDel, 10);
+      currentResume.skills.splice(idx, 1);
+      renderSkillsFormList();
+      syncFormToState();
+    });
+  });
 }
 
 /**
@@ -863,14 +1953,17 @@ function renderExperienceFormList() {
         <button class="bullet-remove-btn" title="Delete Experience" data-exp-del="${expIdx}">✕ Remove</button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Company Name" value="${exp.company || ''}" data-exp-field="company" data-idx="${expIdx}">
         <input type="text" class="form-input" placeholder="Role / Title" value="${exp.role || ''}" data-exp-field="role" data-idx="${expIdx}">
+        <input type="text" class="form-input" placeholder="Company Name" value="${exp.company || ''}" data-exp-field="company" data-idx="${expIdx}">
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input" placeholder="Dates (e.g. 2022 - Present)" value="${exp.startDate || ''} - ${exp.endDate || ''}" data-exp-field="dates" data-idx="${expIdx}">
         <input type="text" class="form-input" placeholder="Location" value="${exp.location || ''}" data-exp-field="location" data-idx="${expIdx}">
       </div>
-      <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div class="form-row-1" style="margin-top: 6px;">
+        <input type="text" class="form-input" placeholder="Tech Stack (e.g. React, Node.js, AWS)" value="${exp.technologies || ''}" data-exp-field="technologies" data-idx="${expIdx}">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
         <label class="form-label" style="display: flex; justify-content: space-between;">
           <span>Bullet Points</span>
           <a href="#" style="color: var(--primary); text-decoration: none;" data-add-bullet="${expIdx}">+ Add Bullet</a>
@@ -953,6 +2046,15 @@ function handleExperienceInput(e) {
   check1PageGuardrail();
 }
 
+function addNewSkillCat() {
+  if (!Array.isArray(currentResume.skills)) {
+    currentResume.skills = [];
+  }
+  currentResume.skills.push({ category: '', items: '' });
+  renderSkillsFormList();
+  syncFormToState();
+}
+
 function addNewExperienceItem() {
   if (!currentResume.experience) currentResume.experience = [];
   currentResume.experience.unshift({
@@ -984,6 +2086,10 @@ function renderProjectsFormList() {
       <div class="form-row-2">
         <input type="text" class="form-input" placeholder="Project Name" value="${proj.name || ''}" data-proj-field="name" data-idx="${pIdx}">
         <input type="text" class="form-input" placeholder="Technologies" value="${proj.roleOrTech || ''}" data-proj-field="roleOrTech" data-idx="${pIdx}">
+      </div>
+      <div class="form-row-2" style="margin-top: 6px; margin-bottom: 6px;">
+        <input type="url" class="form-input" placeholder="GitHub Link" value="${proj.githubUrl || ''}" data-proj-field="githubUrl" data-idx="${pIdx}">
+        <input type="url" class="form-input" placeholder="Website Link" value="${proj.websiteUrl || ''}" data-proj-field="websiteUrl" data-idx="${pIdx}">
       </div>
       <textarea class="form-textarea" placeholder="Description & Impact" rows="2" data-proj-field="bullet" data-idx="${pIdx}">${(proj.bullets || [])[0] || ''}</textarea>
     `;
@@ -1046,6 +2152,9 @@ function renderEducationFormList() {
         <input type="text" class="form-input" placeholder="Degree" value="${edu.degree || ''}" data-edu-field="degree" data-idx="${eIdx}">
         <input type="text" class="form-input" placeholder="Year" value="${edu.year || ''}" data-edu-field="year" data-idx="${eIdx}">
       </div>
+      <div class="form-row-1" style="margin-top: 6px;">
+        <input type="text" class="form-input" placeholder="Courses (e.g. Data Structures, Algorithms)" value="${edu.courses || ''}" data-edu-field="courses" data-idx="${eIdx}">
+      </div>
     `;
     elements.educationListContainer.appendChild(item);
   });
@@ -1084,12 +2193,741 @@ function addNewEducationItem() {
 }
 
 /**
+ * Certifications Form Builder
+ */
+function renderCertificationsFormList() {
+  if (!elements.certificationsListContainer) return;
+  elements.certificationsListContainer.innerHTML = '';
+  if (!Array.isArray(currentResume.certifications) || currentResume.certifications.length === 0) {
+    elements.certificationsListContainer.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 8px 0;">
+        No certifications added yet. Click "+ Add Certification" to showcase verified licenses, cloud certs, or credentials.
+      </div>
+    `;
+    return;
+  }
+
+  currentResume.certifications.forEach((cert, cIdx) => {
+    const title = typeof cert === 'string' ? cert : (cert.title || cert.name || '');
+    const issuer = typeof cert === 'string' ? '' : (cert.issuer || cert.details || '');
+    const linkText = typeof cert === 'string' ? '' : (cert.linkText || '');
+    const linkUrl = typeof cert === 'string' ? '' : (cert.linkUrl || '');
+
+    const item = document.createElement('div');
+    item.className = 'edu-item';
+    item.innerHTML = `
+      <div class="exp-item-header">
+        <strong style="font-size: 0.82rem; color: #E2E8F0;">Certification #${cIdx + 1}</strong>
+        <button class="bullet-remove-btn" data-cert-del="${cIdx}">✕ Remove</button>
+      </div>
+      <div class="form-row-2">
+        <input type="text" class="form-input" placeholder="Certification Name (e.g. AWS Certified Solutions Architect)" value="${escapeHtml(title)}" data-cert-field="title" data-idx="${cIdx}">
+        <input type="text" class="form-input" placeholder="Issuing Organization / Authority" value="${escapeHtml(issuer)}" data-cert-field="issuer" data-idx="${cIdx}">
+      </div>
+      <div class="form-row-2" style="margin-top: 6px;">
+        <input type="text" class="form-input" placeholder="Link Label (e.g. Credential)" value="${escapeHtml(linkText)}" data-cert-field="linkText" data-idx="${cIdx}">
+        <input type="url" class="form-input" placeholder="Credential Verification URL" value="${escapeHtml(linkUrl)}" data-cert-field="linkUrl" data-idx="${cIdx}">
+      </div>
+    `;
+    elements.certificationsListContainer.appendChild(item);
+  });
+
+  elements.certificationsListContainer.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const field = e.target.dataset.certField;
+      if (typeof currentResume.certifications[idx] === 'string') {
+        currentResume.certifications[idx] = { title: currentResume.certifications[idx], issuer: '', linkText: '', linkUrl: '' };
+      }
+      currentResume.certifications[idx][field] = e.target.value;
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.certificationsListContainer.querySelectorAll('[data-cert-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.certDel, 10);
+      currentResume.certifications.splice(idx, 1);
+      renderCertificationsFormList();
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+}
+
+function addNewCertificationItem() {
+  if (!currentResume.certifications) currentResume.certifications = [];
+  currentResume.certifications.push({
+    title: 'Professional Certification',
+    issuer: 'Issuing Body / Platform',
+    linkText: 'Credentials',
+    linkUrl: ''
+  });
+  renderCertificationsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Patents & Publications Form Builder
+ */
+function renderPublicationsFormList() {
+  if (!elements.publicationsListContainer) return;
+  elements.publicationsListContainer.innerHTML = '';
+  if (!Array.isArray(currentResume.publications) || currentResume.publications.length === 0) {
+    elements.publicationsListContainer.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 8px 0;">
+        No patents or publications added yet. Click "+ Add Publication" to highlight research papers, conference proceedings, or patents.
+      </div>
+    `;
+    return;
+  }
+
+  currentResume.publications.forEach((pub, pIdx) => {
+    const title = typeof pub === 'string' ? pub : (pub.title || pub.name || '');
+    const venue = typeof pub === 'string' ? '' : (pub.venue || pub.details || pub.publisher || '');
+    const linkText = typeof pub === 'string' ? '' : (pub.linkText || '');
+    const linkUrl = typeof pub === 'string' ? '' : (pub.linkUrl || '');
+
+    const item = document.createElement('div');
+    item.className = 'edu-item';
+    item.innerHTML = `
+      <div class="exp-item-header">
+        <strong style="font-size: 0.82rem; color: #E2E8F0;">Publication / Patent #${pIdx + 1}</strong>
+        <button class="bullet-remove-btn" data-pub-del="${pIdx}">✕ Remove</button>
+      </div>
+      <div class="form-row-2">
+        <input type="text" class="form-input" placeholder="Title of Paper / Patent" value="${escapeHtml(title)}" data-pub-field="title" data-idx="${pIdx}">
+        <input type="text" class="form-input" placeholder="Conference / Journal / Patent Office" value="${escapeHtml(venue)}" data-pub-field="venue" data-idx="${pIdx}">
+      </div>
+      <div class="form-row-2" style="margin-top: 6px;">
+        <input type="text" class="form-input" placeholder="Link Label (e.g. IEEE Xplore / DOI)" value="${escapeHtml(linkText)}" data-pub-field="linkText" data-idx="${pIdx}">
+        <input type="url" class="form-input" placeholder="Publication / Patent URL" value="${escapeHtml(linkUrl)}" data-pub-field="linkUrl" data-idx="${pIdx}">
+      </div>
+    `;
+    elements.publicationsListContainer.appendChild(item);
+  });
+
+  elements.publicationsListContainer.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const field = e.target.dataset.pubField;
+      if (typeof currentResume.publications[idx] === 'string') {
+        currentResume.publications[idx] = { title: currentResume.publications[idx], venue: '', linkText: '', linkUrl: '' };
+      }
+      currentResume.publications[idx][field] = e.target.value;
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.publicationsListContainer.querySelectorAll('[data-pub-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.pubDel, 10);
+      currentResume.publications.splice(idx, 1);
+      renderPublicationsFormList();
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+}
+
+function addNewPublicationItem() {
+  if (!currentResume.publications) currentResume.publications = [];
+  currentResume.publications.push({
+    title: 'Research Paper / Patent Title',
+    venue: 'Conference / Journal / Patent Office',
+    linkText: 'DOI / Link',
+    linkUrl: ''
+  });
+  renderPublicationsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Achievements Form Builder
+ */
+function renderAchievementsFormList() {
+  if (!elements.achievementsListContainer) return;
+  elements.achievementsListContainer.innerHTML = '';
+  if (!Array.isArray(currentResume.achievements) || currentResume.achievements.length === 0) {
+    elements.achievementsListContainer.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 8px 0;">
+        No achievements added yet. Click "+ Add Achievement" to showcase certifications, papers, or awards.
+      </div>
+    `;
+    return;
+  }
+
+  currentResume.achievements.forEach((ach, aIdx) => {
+    const title = typeof ach === 'string' ? ach : (ach.title || '');
+    const details = typeof ach === 'string' ? '' : (ach.details || '');
+    const item = document.createElement('div');
+    item.className = 'edu-item';
+    item.innerHTML = `
+      <div class="exp-item-header">
+        <strong style="font-size: 0.82rem; color: #E2E8F0;">Achievement #${aIdx + 1}</strong>
+        <button class="bullet-remove-btn" data-ach-del="${aIdx}">✕ Remove</button>
+      </div>
+      <div class="form-row-2">
+        <input type="text" class="form-input" placeholder="Title / Honor" value="${escapeHtml(title)}" data-ach-field="title" data-idx="${aIdx}">
+        <input type="text" class="form-input" placeholder="Details / Description" value="${escapeHtml(details)}" data-ach-field="details" data-idx="${aIdx}">
+      </div>
+    `;
+    elements.achievementsListContainer.appendChild(item);
+  });
+
+  elements.achievementsListContainer.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const field = e.target.dataset.achField;
+      if (typeof currentResume.achievements[idx] === 'string') {
+        currentResume.achievements[idx] = { title: currentResume.achievements[idx], details: '' };
+      }
+      currentResume.achievements[idx][field] = e.target.value;
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.achievementsListContainer.querySelectorAll('[data-ach-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.achDel, 10);
+      currentResume.achievements.splice(idx, 1);
+      renderAchievementsFormList();
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+}
+
+function addNewAchievementItem() {
+  if (!currentResume.achievements) currentResume.achievements = [];
+  currentResume.achievements.push({
+    title: 'New Award / Certification',
+    details: 'Details and credentials'
+  });
+  renderAchievementsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Volunteer Form Builder
+ */
+function renderVolunteerFormList() {
+  if (!elements.volunteerListContainer) return;
+  elements.volunteerListContainer.innerHTML = '';
+  if (!Array.isArray(currentResume.volunteer) || currentResume.volunteer.length === 0) {
+    elements.volunteerListContainer.innerHTML = `
+      <div style="color: var(--text-dim); font-size: 0.78rem; text-align: center; padding: 8px 0;">
+        No volunteer experience added yet. Click "+ Add Volunteer" to showcase leadership and community impact.
+      </div>
+    `;
+    return;
+  }
+
+  currentResume.volunteer.forEach((vol, vIdx) => {
+    const role = typeof vol === 'string' ? vol : (vol.role || vol.title || '');
+    const details = typeof vol === 'string' ? '' : (vol.details || '');
+    const item = document.createElement('div');
+    item.className = 'edu-item';
+    item.innerHTML = `
+      <div class="exp-item-header">
+        <strong style="font-size: 0.82rem; color: #E2E8F0;">Volunteer #${vIdx + 1}</strong>
+        <button class="bullet-remove-btn" data-vol-del="${vIdx}">✕ Remove</button>
+      </div>
+      <div class="form-row-2">
+        <input type="text" class="form-input" placeholder="Role / Organization" value="${escapeHtml(role)}" data-vol-field="role" data-idx="${vIdx}">
+        <input type="text" class="form-input" placeholder="Details / Impact" value="${escapeHtml(details)}" data-vol-field="details" data-idx="${vIdx}">
+      </div>
+    `;
+    elements.volunteerListContainer.appendChild(item);
+  });
+
+  elements.volunteerListContainer.querySelectorAll('input').forEach(el => {
+    el.addEventListener('input', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const field = e.target.dataset.volField;
+      if (typeof currentResume.volunteer[idx] === 'string') {
+        currentResume.volunteer[idx] = { role: currentResume.volunteer[idx], details: '' };
+      }
+      currentResume.volunteer[idx][field] = e.target.value;
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.volunteerListContainer.querySelectorAll('[data-vol-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.volDel, 10);
+      currentResume.volunteer.splice(idx, 1);
+      renderVolunteerFormList();
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+}
+
+function addNewVolunteerItem() {
+  if (!currentResume.volunteer) currentResume.volunteer = [];
+  currentResume.volunteer.push({
+    role: 'Volunteer Organization',
+    details: 'Community initiative and contributions'
+  });
+  renderVolunteerFormList();
+  renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Custom Sections Engine
+ */
+function addCustomSection(initialTitle = 'Leadership & Activities') {
+  if (!Array.isArray(currentResume.customSections)) {
+    currentResume.customSections = [];
+  }
+  const customId = 'sec_custom_' + Date.now();
+  const newSection = {
+    id: customId,
+    title: initialTitle,
+    items: [
+      {
+        title: 'Role / Project Title',
+        subtitle: 'Organization / Subtitle',
+        date: '2025 - Present',
+        location: 'Location',
+        bullets: ['Spearheaded strategic initiative delivering measurable results and domain impact.']
+      }
+    ]
+  };
+  currentResume.customSections.push(newSection);
+  currentSectionTitles[customId] = initialTitle;
+  if (!currentSectionOrder.includes(customId)) {
+    currentSectionOrder.push(customId);
+  }
+  if (!currentEnabledSections.includes(customId)) {
+    currentEnabledSections.push(customId);
+  }
+
+  saveProfileToStorage();
+  renderCustomSectionsFormList();
+  applySectionOrderToDOM();
+  renderPreview();
+  check1PageGuardrail();
+  showToast(`Added new custom section "${initialTitle}"!`, 'success');
+
+  setTimeout(() => startRenamingSection(customId), 120);
+}
+
+function renderCustomSectionsFormList() {
+  const container = elements.customSectionsContainer;
+  if (!container) return;
+  container.innerHTML = '';
+
+  const customSections = Array.isArray(currentResume.customSections) ? currentResume.customSections : [];
+  customSections.forEach((sec, sIdx) => {
+    const isEnabled = currentEnabledSections.includes(sec.id);
+    const card = document.createElement('div');
+    card.className = `card-section ${!isEnabled ? 'is-excluded' : ''}`;
+    card.dataset.sectionId = sec.id;
+
+    card.innerHTML = `
+      <div class="card-title">
+        <div class="card-title-left">
+          <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
+            <input type="checkbox" class="section-toggle-checkbox" data-section="${sec.id}" ${isEnabled ? 'checked' : ''}>
+            <span class="custom-checkmark"></span>
+            <span class="section-heading-text" data-section-title-for="${sec.id}">${escapeHtml(getSectionTitle(sec.id))}</span>
+          </label>
+          <button type="button" class="btn-rename-section" data-section="${sec.id}" title="Rename Section">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <span class="section-status-tag ${!isEnabled ? 'is-excluded' : ''}" id="status-tag-${sec.id}">${isEnabled ? 'Included' : 'Excluded'}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div class="section-reorder-btns">
+            <button type="button" class="btn-section-move" data-section="${sec.id}" data-dir="up" title="Move Section Up">▲</button>
+            <button type="button" class="btn-section-move" data-section="${sec.id}" data-dir="down" title="Move Section Down">▼</button>
+          </div>
+          <button type="button" class="btn btn-secondary btn-icon btn-add-custom-item" data-sec-id="${sec.id}" title="Add Item">
+            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+          </button>
+          <button type="button" class="btn-delete-section" data-sec-id="${sec.id}" title="Delete Custom Section">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        </div>
+      </div>
+      <div class="section-content-body">
+        <div class="custom-sec-items-list" data-sec-id="${sec.id}" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </div>
+    `;
+
+    const itemsList = card.querySelector('.custom-sec-items-list');
+    (sec.items || []).forEach((item, itmIdx) => {
+      const itmEl = document.createElement('div');
+      itmEl.className = 'exp-item';
+      itmEl.innerHTML = `
+        <div class="exp-item-header">
+          <strong style="font-size: 0.85rem; color: #E2E8F0;">Item #${itmIdx + 1}</strong>
+          <button class="bullet-remove-btn" title="Delete Item" data-sec-id="${sec.id}" data-itm-del="${itmIdx}">✕ Remove</button>
+        </div>
+        <div class="form-row-2">
+          <input type="text" class="form-input" placeholder="Title / Role / Heading" value="${escapeHtml(item.title || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="title">
+          <input type="text" class="form-input" placeholder="Subtitle / Organization" value="${escapeHtml(item.subtitle || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="subtitle">
+        </div>
+        <div class="form-row-2" style="margin-top: 6px;">
+          <input type="text" class="form-input" placeholder="Dates (e.g. 2025 - Present)" value="${escapeHtml(item.date || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="date">
+          <input type="text" class="form-input" placeholder="Location (optional)" value="${escapeHtml(item.location || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="location">
+        </div>
+        <div style="margin-top: 8px;">
+          <label class="form-label" style="font-size: 0.76rem;">Bullet Points</label>
+          <div class="custom-bullets-list" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">
+            ${(item.bullets || []).map((b, bIdx) => `
+              <div class="bullet-input-row" style="margin-bottom: 4px;">
+                <input type="text" class="form-input" value="${escapeHtml(b)}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-idx="${bIdx}">
+                <button class="bullet-remove-btn" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-del="${bIdx}">✕</button>
+              </div>
+            `).join('')}
+          </div>
+          <button class="btn btn-outline btn-add-custom-bullet" style="font-size: 0.72rem; padding: 3px 8px; margin-top: 4px;" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">+ Add Bullet</button>
+        </div>
+      `;
+      itemsList.appendChild(itmEl);
+    });
+
+    container.appendChild(card);
+  });
+
+  attachCustomSectionListeners();
+}
+
+function attachCustomSectionListeners() {
+  const container = elements.customSectionsContainer;
+  if (!container) return;
+
+  // Add Item button
+  container.querySelectorAll('.btn-add-custom-item').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec) {
+        if (!Array.isArray(sec.items)) sec.items = [];
+        sec.items.push({
+          title: 'New Item',
+          subtitle: '',
+          date: '',
+          location: '',
+          bullets: ['Key contribution or accomplishment.']
+        });
+        renderCustomSectionsFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+
+  // Delete Section button
+  container.querySelectorAll('.btn-delete-section').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const secTitle = getSectionTitle(secId);
+      if (confirm(`Are you sure you want to delete the "${secTitle}" section?`)) {
+        currentResume.customSections = (currentResume.customSections || []).filter(s => s.id !== secId);
+        currentSectionOrder = currentSectionOrder.filter(id => id !== secId);
+        currentEnabledSections = currentEnabledSections.filter(id => id !== secId);
+        delete currentSectionTitles[secId];
+        
+        const paperSec = document.getElementById(`rp-section-${secId}`);
+        if (paperSec) paperSec.remove();
+
+        saveProfileToStorage();
+        renderCustomSectionsFormList();
+        applySectionOrderToDOM();
+        renderPreview();
+        check1PageGuardrail();
+        showToast(`Deleted "${secTitle}" section.`, 'info');
+      }
+    };
+  });
+
+  // Delete Item button
+  container.querySelectorAll('[data-itm-del]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmDel, 10);
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec && Array.isArray(sec.items)) {
+        sec.items.splice(itmIdx, 1);
+        renderCustomSectionsFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+
+  // Add Bullet button
+  container.querySelectorAll('.btn-add-custom-bullet').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec && sec.items && sec.items[itmIdx]) {
+        if (!Array.isArray(sec.items[itmIdx].bullets)) sec.items[itmIdx].bullets = [];
+        sec.items[itmIdx].bullets.push('Spearheaded key technical contributions and achieved positive outcomes.');
+        renderCustomSectionsFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+
+  // Delete Bullet button
+  container.querySelectorAll('[data-b-del]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const bIdx = parseInt(btn.dataset.bDel, 10);
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec && sec.items && sec.items[itmIdx] && Array.isArray(sec.items[itmIdx].bullets)) {
+        sec.items[itmIdx].bullets.splice(bIdx, 1);
+        renderCustomSectionsFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+
+  // Input changes
+  container.querySelectorAll('input[data-itm-field]').forEach(input => {
+    input.oninput = (e) => {
+      const secId = input.dataset.secId;
+      const itmIdx = parseInt(input.dataset.itmIdx, 10);
+      const field = input.dataset.itmField;
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec && sec.items && sec.items[itmIdx]) {
+        sec.items[itmIdx][field] = e.target.value;
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+
+  // Bullet text changes
+  container.querySelectorAll('input[data-b-idx]').forEach(input => {
+    input.oninput = (e) => {
+      const secId = input.dataset.secId;
+      const itmIdx = parseInt(input.dataset.itmIdx, 10);
+      const bIdx = parseInt(input.dataset.bIdx, 10);
+      const sec = (currentResume.customSections || []).find(s => s.id === secId);
+      if (sec && sec.items && sec.items[itmIdx] && Array.isArray(sec.items[itmIdx].bullets)) {
+        sec.items[itmIdx].bullets[bIdx] = e.target.value;
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    };
+  });
+}
+
+/**
+ * Toggle Section Selection (Include / Exclude from Resume)
+ */
+function toggleSection(sectionId, isEnabled) {
+  if (isEnabled) {
+    if (!currentEnabledSections.includes(sectionId)) {
+      currentEnabledSections.push(sectionId);
+    }
+  } else {
+    currentEnabledSections = currentEnabledSections.filter(id => id !== sectionId);
+  }
+
+  localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+
+  updateSectionUIState(sectionId, isEnabled);
+  renderPreview();
+  check1PageGuardrail();
+
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  showToast(`${getSectionTitle(sectionId)} ${isEnabled ? 'included in' : 'excluded from'} resume!`, isEnabled ? 'success' : 'info');
+  triggerAutoSave();
+}
+
+function updateSectionUIState(sectionId, isEnabled) {
+  const card = document.querySelector(`.card-section[data-section-id="${sectionId}"]`);
+  if (card) {
+    card.classList.toggle('is-excluded', !isEnabled);
+  }
+
+  const tag = document.getElementById(`status-tag-${sectionId}`);
+  if (tag) {
+    tag.textContent = isEnabled ? 'Included' : 'Excluded';
+    tag.classList.toggle('is-excluded', !isEnabled);
+  }
+
+  const cb = document.querySelector(`.section-toggle-checkbox[data-section="${sectionId}"]`);
+  if (cb && cb.checked !== isEnabled) {
+    cb.checked = isEnabled;
+  }
+}
+
+function syncAllSectionCheckboxesFromState() {
+  const allSecs = [...ALL_SECTION_IDS, ...(currentResume.customSections || []).map(s => s.id)];
+  allSecs.forEach(secId => {
+    const isEnabled = currentEnabledSections.includes(secId);
+    updateSectionUIState(secId, isEnabled);
+  });
+}
+
+/**
+ * Move Section Up or Down & Apply in Real Time
+ */
+function moveSection(sectionId, direction) {
+  const currentIndex = currentSectionOrder.indexOf(sectionId);
+  if (currentIndex === -1) return;
+
+  const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (newIndex < 0 || newIndex >= currentSectionOrder.length) return;
+
+  // Swap sections
+  const temp = currentSectionOrder[currentIndex];
+  currentSectionOrder[currentIndex] = currentSectionOrder[newIndex];
+  currentSectionOrder[newIndex] = temp;
+
+  // Persist order in localStorage
+  localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+
+  // Instantly reorder in DOM (both Paper and Form)
+  applySectionOrderToDOM(true);
+
+  // Recalculate 1-page budget in real time
+  check1PageGuardrail();
+
+  // Sync LaTeX view if open
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  showToast(`Moved ${getSectionTitle(sectionId)} ${direction}!`, 'info');
+  triggerAutoSave();
+}
+
+function updateSectionMoveButtonStates() {
+  const order = currentSectionOrder;
+  order.forEach((secId, idx) => {
+    const upBtn = document.querySelector(`.btn-section-move[data-section="${secId}"][data-dir="up"]`);
+    const downBtn = document.querySelector(`.btn-section-move[data-section="${secId}"][data-dir="down"]`);
+    if (upBtn) upBtn.disabled = (idx === 0);
+    if (downBtn) downBtn.disabled = (idx === order.length - 1);
+  });
+}
+
+function applySectionOrderToDOM(updateForm = false) {
+  const paper = elements.resumePaper;
+  const limitLine = elements.pageLimitLine || document.getElementById('page-limit-line');
+
+  if (paper) {
+    const paperSectionMap = {
+      summary: document.getElementById('rp-section-summary'),
+      education: document.getElementById('rp-section-education'),
+      skills: document.getElementById('rp-section-skills'),
+      experience: document.getElementById('rp-section-experience'),
+      projects: document.getElementById('rp-section-projects'),
+      certifications: document.getElementById('rp-section-certifications'),
+      publications: document.getElementById('rp-section-publications'),
+      achievements: document.getElementById('rp-section-achievements'),
+      volunteer: document.getElementById('rp-section-volunteer')
+    };
+
+    currentSectionOrder.forEach(secId => {
+      const el = paperSectionMap[secId] || document.getElementById(`rp-section-${secId}`);
+      if (el && el.parentNode === paper) {
+        if (limitLine && limitLine.parentNode === paper) {
+          paper.insertBefore(el, limitLine);
+        } else {
+          paper.appendChild(el);
+        }
+      }
+    });
+  }
+
+  if (updateForm) {
+    const formView = elements.editorFormView;
+    if (formView) {
+      currentSectionOrder.forEach(secId => {
+        const card = formView.querySelector(`.card-section[data-section-id="${secId}"]`);
+        if (card && card.parentNode === formView) {
+          formView.appendChild(card);
+        }
+      });
+
+      if (elements.customSectionsContainer && elements.customSectionsContainer.parentNode === formView) {
+        formView.appendChild(elements.customSectionsContainer);
+      }
+      const addToolbar = formView.querySelector('.add-section-toolbar');
+      if (addToolbar && addToolbar.parentNode === formView) {
+        formView.appendChild(addToolbar);
+      }
+    }
+  }
+
+  updateSectionMoveButtonStates();
+}
+
+/**
  * Live 1-Page Paper Rendering
  */
 function renderPreview() {
+  resetPaginationToPage1();
+  applySectionOrderToDOM(false);
+
+  // Update section title text in Preview for all standard sections
+  ALL_SECTION_IDS.forEach(secId => {
+    const el = document.querySelector(`.rp-section-title[data-rp-title-for="${secId}"]`) ||
+               document.querySelector(`#rp-section-${secId} .rp-section-title`);
+    if (el) {
+      el.textContent = getSectionTitle(secId);
+    }
+  });
+
   const pi = currentResume.personalInfo || {};
   elements.rpName.textContent = pi.name || 'Candidate Name';
-  elements.rpTitle.textContent = pi.title || 'Professional Title';
+  if (elements.rpTitle) {
+    if (pi.title && pi.title.trim()) {
+      elements.rpTitle.textContent = pi.title;
+      elements.rpTitle.style.display = '';
+    } else {
+      elements.rpTitle.textContent = '';
+      elements.rpTitle.style.display = 'none';
+    }
+  }
 
   // Contacts rendering
   const contactsContainer = elements.rpContacts || document.getElementById('rp-contacts');
@@ -1123,167 +2961,207 @@ function renderPreview() {
   }
 
   // Summary
-  if (currentResume.summary) {
-    elements.rpSummaryText.textContent = currentResume.summary;
-    document.getElementById('rp-section-summary').style.display = 'flex';
-  } else {
-    document.getElementById('rp-section-summary').style.display = 'none';
+  const summarySec = document.getElementById('rp-section-summary');
+  if (summarySec) {
+    if (currentEnabledSections.includes('summary') && currentResume.summary && currentResume.summary.trim()) {
+      elements.rpSummaryText.textContent = currentResume.summary;
+      summarySec.style.display = 'flex';
+    } else {
+      summarySec.style.display = 'none';
+    }
   }
 
   // Skills (4 Dedicated Subsections)
-  const s = currentResume.skills || {};
-  const langText = s.languages || (s.technical || []).join(', ');
-  const aiText = s.aiAgentic || (s.frameworks || []).join(', ');
-  const mlText = s.mlCv || '';
-  const cloudText = s.cloudDevOps || (s.tools || []).join(', ');
+  const skillsSec = document.getElementById('rp-section-skills');
+  if (skillsSec) {
+    skillsSec.style.display = currentEnabledSections.includes('skills') ? 'flex' : 'none';
+  }
 
-  const elLang = elements.rpSkillsLanguages || elements.rpSkillsTech;
-  const elAi = elements.rpSkillsAi || elements.rpSkillsFrameworks;
-  const elMl = elements.rpSkillsMl;
-  const elCloud = elements.rpSkillsCloud || elements.rpSkillsTools;
-
-  if (elLang) {
-    elLang.style.display = langText ? 'block' : 'none';
-    elLang.innerHTML = langText ? `<strong>Languages:</strong> ${escapeHtml(langText)}` : '';
-  }
-  if (elAi) {
-    elAi.style.display = aiText ? 'block' : 'none';
-    elAi.innerHTML = aiText ? `<strong>AI, LLM & Agentic Systems:</strong> ${escapeHtml(aiText)}` : '';
-  }
-  if (elMl) {
-    elMl.style.display = mlText ? 'block' : 'none';
-    elMl.innerHTML = mlText ? `<strong>ML/DL & CV:</strong> ${escapeHtml(mlText)}` : '';
-  }
-  if (elCloud) {
-    elCloud.style.display = cloudText ? 'block' : 'none';
-    elCloud.innerHTML = cloudText ? `<strong>Cloud, DevOps & MLOps:</strong> ${escapeHtml(cloudText)}` : '';
+  const sData = currentResume.skills || [];
+  if (elements.rpSkillsGroup) {
+    elements.rpSkillsGroup.innerHTML = '';
+    
+    if (Array.isArray(sData)) {
+      sData.forEach(skill => {
+        if (!skill.category && !skill.items) return;
+        const line = document.createElement('div');
+        line.className = 'rp-skills-line';
+        line.innerHTML = `<strong>${escapeHtml(skill.category || 'Category')}:</strong> ${escapeHtml(skill.items || '')}`;
+        elements.rpSkillsGroup.appendChild(line);
+      });
+    } else {
+      // Legacy fallback
+      const s = sData;
+      const langText = s.languages || (s.technical || []).join(', ');
+      const aiText = s.aiAgentic || (s.frameworks || []).join(', ');
+      const mlText = s.mlCv || '';
+      const cloudText = s.cloudDevOps || (s.tools || []).join(', ');
+      
+      const lines = [
+        { c: 'Languages', i: langText },
+        { c: 'AI, LLM & Agentic Systems', i: aiText },
+        { c: 'ML/DL & CV', i: mlText },
+        { c: 'Cloud, DevOps & MLOps', i: cloudText }
+      ];
+      
+      lines.forEach(l => {
+        if (l.i) {
+          const line = document.createElement('div');
+          line.className = 'rp-skills-line';
+          line.innerHTML = `<strong>${escapeHtml(l.c)}:</strong> ${escapeHtml(l.i)}`;
+          elements.rpSkillsGroup.appendChild(line);
+        }
+      });
+    }
   }
 
   // Education
+  const eduSec = document.getElementById('rp-section-education');
+  if (eduSec) {
+    eduSec.style.display = (currentEnabledSections.includes('education') && Array.isArray(currentResume.education) && currentResume.education.length > 0) ? 'flex' : 'none';
+  }
   elements.rpEducationContainer.innerHTML = '';
   (currentResume.education || []).forEach(edu => {
     const item = document.createElement('div');
     item.className = 'rp-project-item';
 
-    if (currentTemplate === 'latex') {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div><strong class="rp-role">${escapeHtml(edu.institution || '')}</strong></div>
-          <div class="rp-meta">${escapeHtml(edu.location || '')}</div>
-        </div>
-        <div class="rp-item-header" style="margin-top: -2px;">
-          <div style="font-style: italic; font-size: 0.78rem;">${escapeHtml(edu.degree || '')}</div>
-          <div class="rp-meta" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(edu.year || '')}</div>
-        </div>
-        ${edu.courses ? `<ul class="rp-bullets" style="margin-top: 2px;"><li><strong>Courses:</strong> ${escapeHtml(edu.courses)}</li></ul>` : ''}
-      `;
-    } else {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div>
-            <span class="rp-role">${escapeHtml(edu.institution || '')}</span>
-            <span style="color: var(--resume-text-muted); margin: 0 4px;">—</span>
-            <span class="rp-company" style="font-weight: normal; color: var(--resume-text);">${escapeHtml(edu.degree || '')}</span>
-          </div>
-          <div class="rp-meta">${escapeHtml(edu.year || '')}</div>
-        </div>
-        ${edu.courses ? `<ul class="rp-bullets"><li><strong>Courses:</strong> ${escapeHtml(edu.courses)}</li></ul>` : ''}
-      `;
+    const bullets = [];
+    if (edu.courses) {
+      bullets.push(`<li><strong>Courses:</strong> ${escapeHtml(edu.courses)}</li>`);
     }
+    if (Array.isArray(edu.bullets)) {
+      edu.bullets.forEach(b => bullets.push(`<li>${escapeHtml(b)}</li>`));
+    }
+
+    item.innerHTML = `
+      <div class="rp-item-header">
+        <div class="rp-subheading-left"><strong class="rp-role">${escapeHtml(edu.institution || '')}</strong></div>
+        <div class="rp-meta rp-subheading-dates">${escapeHtml(edu.location || '')}</div>
+      </div>
+      <div class="rp-item-header" style="margin-top: -2px;">
+        <div class="rp-subheading-left"><span class="rp-company" style="font-style: italic;">${escapeHtml(edu.degree || '')}</span></div>
+        <div class="rp-meta rp-subheading-dates" style="font-style: italic;">${escapeHtml(edu.year || '')}</div>
+      </div>
+      ${bullets.length > 0 ? `<ul class="rp-bullets" style="margin-top: 1px;">${bullets.join('')}</ul>` : ''}
+    `;
     elements.rpEducationContainer.appendChild(item);
   });
 
   // Experience
+  const expSec = document.getElementById('rp-section-experience');
+  if (expSec) {
+    expSec.style.display = (currentEnabledSections.includes('experience') && Array.isArray(currentResume.experience) && currentResume.experience.length > 0) ? 'flex' : 'none';
+  }
   elements.rpExperienceContainer.innerHTML = '';
   (currentResume.experience || []).forEach(exp => {
     const item = document.createElement('div');
     item.className = 'rp-experience-item';
     const dates = [exp.startDate, exp.endDate].filter(Boolean).join(' - ');
-    const title = exp.technologies ? `${exp.company}` : (exp.role && !exp.company.includes(exp.role) ? `${exp.company} - ${exp.role}` : exp.company);
-    const sub = exp.technologies || exp.role;
-
-    if (currentTemplate === 'latex') {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div><strong class="rp-role">${escapeHtml(title)}</strong></div>
-          <div class="rp-meta">${escapeHtml(exp.location || '')}</div>
-        </div>
-        <div class="rp-item-header" style="margin-top: -2px;">
-          <div class="rp-company" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(sub || '')}</div>
-          <div class="rp-meta" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(dates)}</div>
-        </div>
-        <ul class="rp-bullets">
-          ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-        </ul>
-      `;
-    } else {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div>
-            <span class="rp-role">${escapeHtml(exp.role || '')}</span>
-            <span style="color: var(--resume-text-muted); margin: 0 4px;">|</span>
-            <span class="rp-company">${escapeHtml(exp.company || '')}</span>
-          </div>
-          <div class="rp-meta">${escapeHtml(dates)} ${exp.location ? `• ${escapeHtml(exp.location)}` : ''}</div>
-        </div>
-        <ul class="rp-bullets">
-          ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-        </ul>
-      `;
+    const roleText = exp.role || '';
+    let title = exp.company || '';
+    if (roleText && !title.includes(roleText)) {
+      title = title ? `${roleText} - ${title}` : roleText;
     }
+    const sub = exp.technologies || '';
+
+    item.innerHTML = `
+      <div class="rp-item-header">
+        <div class="rp-subheading-left"><strong class="rp-role">${escapeHtml(title)}</strong></div>
+        <div class="rp-meta rp-subheading-dates">${escapeHtml(exp.location || '')}</div>
+      </div>
+      <div class="rp-item-header" style="margin-top: -2px;">
+        <div class="rp-subheading-left"><span class="rp-company" style="font-style: italic;">${escapeHtml(sub)}</span></div>
+        <div class="rp-meta rp-subheading-dates" style="font-style: italic;">${escapeHtml(dates)}</div>
+      </div>
+      <ul class="rp-bullets">
+        ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+      </ul>
+    `;
     elements.rpExperienceContainer.appendChild(item);
   });
 
   // Projects
+  const projSec = document.getElementById('rp-section-projects');
+  if (projSec) {
+    projSec.style.display = (currentEnabledSections.includes('projects') && Array.isArray(currentResume.projects) && currentResume.projects.length > 0) ? 'flex' : 'none';
+  }
   elements.rpProjectsContainer.innerHTML = '';
   (currentResume.projects || []).forEach(proj => {
     const item = document.createElement('div');
     item.className = 'rp-project-item';
 
+    const projName = proj.name || proj.title || 'Project';
+    const roleOrTech = proj.roleOrTech || proj.technologies || '';
+
     const links = [];
-    if (proj.githubUrl) links.push(`<a href="${escapeHtml(proj.githubUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">GitHub</a>`);
-    else if (proj.link && proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank" style="color: inherit; text-decoration: underline;">GitHub</a>`);
-    if (proj.websiteUrl) links.push(`<a href="${escapeHtml(proj.websiteUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">Website</a>`);
-    else if (proj.link && !proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank" style="color: inherit; text-decoration: underline;">Website</a>`);
+    if (proj.githubUrl) links.push(`<a href="${escapeHtml(proj.githubUrl)}" target="_blank">GitHub</a>`);
+    else if (proj.link && proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank">GitHub</a>`);
+    if (proj.websiteUrl) links.push(`<a href="${escapeHtml(proj.websiteUrl)}" target="_blank">Website</a>`);
+    else if (proj.link && !proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank">Website</a>`);
     const linksStr = links.length ? ' | ' + links.join(' | ') : '';
     const descStr = proj.description ? `: ${escapeHtml(proj.description)}` : '';
 
-    if (currentTemplate === 'latex') {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div><strong class="rp-role">${escapeHtml(proj.name || '')}</strong>${descStr} ${linksStr ? `<span style="font-size: 0.76rem;">${linksStr}</span>` : ''}</div>
-          <div class="rp-meta"></div>
-        </div>
-        ${proj.roleOrTech ? `<div style="font-style: italic; font-size: 0.78rem; margin-top: -2px;">${escapeHtml(proj.roleOrTech)}</div>` : ''}
-        <ul class="rp-bullets">
-          ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-        </ul>
-      `;
-    } else {
-      item.innerHTML = `
-        <div class="rp-item-header">
-          <div>
-            <span class="rp-role">${escapeHtml(proj.name || '')}</span>
-            ${proj.roleOrTech ? `<span class="rp-meta" style="margin-left: 6px;">[${escapeHtml(proj.roleOrTech)}]</span>` : ''}
-          </div>
-          ${proj.link ? `<div class="rp-meta"><a href="${escapeHtml(proj.link)}" target="_blank" style="color: var(--resume-primary); text-decoration: none;">View Project</a></div>` : ''}
-        </div>
-        <ul class="rp-bullets">
-          ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-        </ul>
-      `;
-    }
+    item.innerHTML = `
+      <div class="rp-item-header">
+        <div class="rp-subheading-left"><strong class="rp-role">${escapeHtml(projName)}</strong>${descStr}${linksStr ? ` <span class="rp-project-links">${linksStr}</span>` : ''}</div>
+        <div class="rp-meta"></div>
+      </div>
+      ${roleOrTech ? `<div class="rp-item-header" style="margin-top: -2px;"><div class="rp-subheading-left"><span class="rp-company" style="font-style: italic;">${escapeHtml(roleOrTech)}</span></div><div class="rp-meta"></div></div>` : ''}
+      <ul class="rp-bullets">
+        ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+      </ul>
+    `;
     elements.rpProjectsContainer.appendChild(item);
   });
 
-  // Achievements & Certifications
+  // Certifications
+  const certSec = document.getElementById('rp-section-certifications');
+  const certContainer = document.getElementById('rp-certifications-container');
+  if (certSec && certContainer) {
+    if (currentEnabledSections.includes('certifications') && Array.isArray(currentResume.certifications) && currentResume.certifications.length > 0) {
+      certSec.style.display = 'flex';
+      certContainer.innerHTML = currentResume.certifications.map(cert => {
+        if (typeof cert === 'string') return `<li>${escapeHtml(cert)}</li>`;
+        let text = `<strong>${escapeHtml(cert.title || cert.name || '')}</strong>`;
+        if (cert.issuer || cert.details) text += ` -- ${escapeHtml(cert.issuer || cert.details)}`;
+        if (cert.linkUrl) {
+          text += ` | <a href="${escapeHtml(cert.linkUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">${escapeHtml(cert.linkText || 'Credential')}</a>`;
+        }
+        return `<li>${text}</li>`;
+      }).join('');
+    } else {
+      certSec.style.display = 'none';
+    }
+  }
+
+  // Patents & Publications
+  const pubSec = document.getElementById('rp-section-publications');
+  const pubContainer = document.getElementById('rp-publications-container');
+  if (pubSec && pubContainer) {
+    if (currentEnabledSections.includes('publications') && Array.isArray(currentResume.publications) && currentResume.publications.length > 0) {
+      pubSec.style.display = 'flex';
+      pubContainer.innerHTML = currentResume.publications.map(pub => {
+        if (typeof pub === 'string') return `<li>${escapeHtml(pub)}</li>`;
+        let text = `<em>"${escapeHtml(pub.title || pub.name || '')}"</em>`;
+        if (pub.venue || pub.details || pub.publisher) text += ` -- ${escapeHtml(pub.venue || pub.details || pub.publisher)}`;
+        if (pub.linkUrl) {
+          text += ` | <a href="${escapeHtml(pub.linkUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">${escapeHtml(pub.linkText || 'Publication')}</a>`;
+        }
+        return `<li>${text}</li>`;
+      }).join('');
+    } else {
+      pubSec.style.display = 'none';
+    }
+  }
+
+  // Honors & Achievements
   const achSec = document.getElementById('rp-section-achievements');
   const achContainer = document.getElementById('rp-achievements-container');
   if (achSec && achContainer) {
-    if (Array.isArray(currentResume.achievements) && currentResume.achievements.length > 0) {
+    if (currentEnabledSections.includes('achievements') && Array.isArray(currentResume.achievements) && currentResume.achievements.length > 0) {
       achSec.style.display = 'flex';
       achContainer.innerHTML = currentResume.achievements.map(ach => {
-        if (typeof ach === 'string') return `<li>${ach}</li>`;
+        if (typeof ach === 'string') return `<li>${escapeHtml(ach)}</li>`;
         let text = '';
         if (ach.isPaper) {
           text = `<em>"${escapeHtml(ach.details || ach.title)}"</em>`;
@@ -1306,16 +3184,65 @@ function renderPreview() {
   const volSec = document.getElementById('rp-section-volunteer');
   const volContainer = document.getElementById('rp-volunteer-container');
   if (volSec && volContainer) {
-    if (Array.isArray(currentResume.volunteer) && currentResume.volunteer.length > 0) {
+    if (currentEnabledSections.includes('volunteer') && Array.isArray(currentResume.volunteer) && currentResume.volunteer.length > 0) {
       volSec.style.display = 'flex';
       volContainer.innerHTML = currentResume.volunteer.map(vol => {
-        if (typeof vol === 'string') return `<li>${vol}</li>`;
+        if (typeof vol === 'string') return `<li>${escapeHtml(vol)}</li>`;
         return `<li><strong>${escapeHtml(vol.role || vol.title)}</strong> -- ${escapeHtml(vol.details)}</li>`;
       }).join('');
     } else {
       volSec.style.display = 'none';
     }
   }
+
+  // Custom Sections Rendering in Preview Paper
+  const customSections = Array.isArray(currentResume.customSections) ? currentResume.customSections : [];
+  customSections.forEach(cs => {
+    let secEl = document.getElementById(`rp-section-${cs.id}`);
+    if (!secEl) {
+      secEl = document.createElement('section');
+      secEl.className = 'rp-section';
+      secEl.id = `rp-section-${cs.id}`;
+      elements.resumePaper.insertBefore(secEl, elements.pageLimitLine);
+    }
+
+    const isEnabled = currentEnabledSections.includes(cs.id) && Array.isArray(cs.items) && cs.items.length > 0;
+    secEl.style.display = isEnabled ? 'flex' : 'none';
+
+    const itemsHtml = (cs.items || []).map(item => {
+      const bullets = (item.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('');
+      return `
+        <div class="rp-project-item">
+          <div class="rp-item-header">
+            <div class="rp-subheading-left"><strong class="rp-role">${escapeHtml(item.title || '')}</strong></div>
+            <div class="rp-meta rp-subheading-dates">${escapeHtml(item.location || '')}</div>
+          </div>
+          ${(item.subtitle || item.date) ? `
+            <div class="rp-item-header" style="margin-top: -2px;">
+              <div class="rp-subheading-left"><span class="rp-company" style="font-style: italic;">${escapeHtml(item.subtitle || '')}</span></div>
+              <div class="rp-meta rp-subheading-dates" style="font-style: italic;">${escapeHtml(item.date || '')}</div>
+            </div>
+          ` : ''}
+          ${bullets ? `<ul class="rp-bullets">${bullets}</ul>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    secEl.innerHTML = `
+      <h3 class="rp-section-title" data-rp-title-for="${cs.id}">${escapeHtml(getSectionTitle(cs.id))}</h3>
+      <div>${itemsHtml}</div>
+    `;
+  });
+
+  // Remove any deleted custom sections from preview paper
+  elements.resumePaper.querySelectorAll('.rp-section[id^="rp-section-sec_custom_"]').forEach(el => {
+    const secId = el.id.replace('rp-section-', '');
+    if (!customSections.some(cs => cs.id === secId)) {
+      el.remove();
+    }
+  });
+
+  paginateResume();
 }
 
 /**
@@ -1352,12 +3279,14 @@ async function evaluateMatch() {
       data = { success: true, analysis: clientHeuristicMatch(currentResume, jdText) };
     }
 
-    renderAnalysisResults(data.analysis);
+    currentAnalysis = data.analysis;
+    renderAnalysisResults(currentAnalysis);
     showToast('Resume evaluated against target job description!', 'success');
   } catch (err) {
     console.warn('Backend unavailable, running browser heuristic engine:', err);
     const analysis = clientHeuristicMatch(currentResume, jdText);
-    renderAnalysisResults(analysis);
+    currentAnalysis = analysis;
+    renderAnalysisResults(currentAnalysis);
     showToast('Evaluated using intelligent heuristic engine.', 'info');
   } finally {
     elements.btnAnalyze.disabled = false;
@@ -1372,6 +3301,7 @@ async function evaluateMatch() {
  * Display AI Analysis, ATS Score, and Actionable Suggestions
  */
 function renderAnalysisResults(analysis) {
+  currentAnalysis = analysis;
   const score = analysis.matchScore || 70;
   elements.scoreCircle.style.setProperty('--score', score);
   elements.scoreText.textContent = `${score}%`;
@@ -1389,31 +3319,57 @@ function renderAnalysisResults(analysis) {
 
   elements.scoreSummary.textContent = analysis.summary || 'Review the suggestions below to tailor your resume.';
 
-  // Render Missing Hard Skills with Category Routing & Picker
+  // Render Active Engine Badge
+  if (elements.scoreProvider) {
+    const provider = analysis.providerUsed || 'Built-in Heuristic Engine';
+    let icon = '⚙️';
+    if (provider.toLowerCase().includes('groq')) icon = '⚡';
+    else if (provider.toLowerCase().includes('gemini')) icon = '✨';
+    else if (provider.toLowerCase().includes('openai')) icon = '🤖';
+
+    elements.scoreProvider.innerHTML = `
+      <span class="provider-pill" title="Optimized via ${escapeHtml(provider)}">
+        <span>${icon}</span>
+        <span>${escapeHtml(provider)}</span>
+      </span>
+    `;
+  }
+
+  // Render Missing Hard Skills with Dynamic Category Routing & Picker
   elements.missingSkillsTags.innerHTML = '';
   const missing = analysis.missingHardSkills || [];
   if (missing.length === 0) {
     elements.missingSkillsTags.innerHTML = '<span style="color: #34D399; font-size: 0.8rem;">All core technical skills matched!</span>';
   } else {
     missing.forEach(skill => {
+      const matchedCat = findOrMatchSkillCategory(skill);
+      const catLabel = matchedCat ? matchedCat.category : (SKILL_CATEGORIES[classifySkill(skill)]?.label || 'Skills');
       const catKey = classifySkill(skill);
       const catMeta = SKILL_CATEGORIES[catKey] || SKILL_CATEGORIES.languages;
 
       const wrapper = document.createElement('div');
       wrapper.className = 'skill-picker-wrapper';
 
+      // Build options dynamically from candidate's actual editable categories
+      const activeCats = (Array.isArray(currentResume.skills) && currentResume.skills.length > 0)
+        ? currentResume.skills.map(s => s.category).filter(Boolean)
+        : ['Languages', 'AI, LLM & Agentic Systems', 'ML/DL & CV', 'Cloud, DevOps & MLOps'];
+
+      const optionsHtml = activeCats.map(catName => `
+        <div class="skill-picker-option" data-cat="${escapeHtml(catName)}">
+          <span class="opt-dot" style="background:#38BDF8;"></span>${escapeHtml(catName)}
+        </div>
+      `).join('');
+
       wrapper.innerHTML = `
-        <span class="skill-tag missing" title="Click to add ${escapeHtml(skill)} to ${catMeta.label}">
-          <span>+ ${escapeHtml(skill)}</span>
-          <span class="skill-cat-pill ${catMeta.cssClass}">${catMeta.shortLabel}</span>
-          <span class="skill-picker-toggle" title="Change destination subsection">▾</span>
+        <span class="skill-tag missing" title="Click to add ${escapeHtml(skill)} to ${escapeHtml(catLabel)}">
+          <span class="skill-add-label">+ ${escapeHtml(skill)}</span>
+          <span class="skill-cat-pill ${catMeta.cssClass}">${escapeHtml(catLabel)}</span>
+          <span class="skill-picker-toggle" title="Change destination category">▾</span>
         </span>
         <div class="skill-picker-menu">
-          <div style="font-size: 0.65rem; color: var(--text-dim); padding: 3px 8px; text-transform: uppercase; font-weight: 700;">Add to section:</div>
-          <div class="skill-picker-option" data-cat="languages"><span class="opt-dot" style="background:#3B82F6;"></span>Languages</div>
-          <div class="skill-picker-option" data-cat="aiAgentic"><span class="opt-dot" style="background:#A855F7;"></span>AI, LLM & Agentic</div>
-          <div class="skill-picker-option" data-cat="mlCv"><span class="opt-dot" style="background:#10B981;"></span>ML/DL & CV</div>
-          <div class="skill-picker-option" data-cat="cloudDevOps"><span class="opt-dot" style="background:#F59E0B;"></span>Cloud, DevOps & MLOps</div>
+          <div style="font-size: 0.65rem; color: var(--text-dim); padding: 3px 8px; text-transform: uppercase; font-weight: 700;">Add to category:</div>
+          ${optionsHtml}
         </div>
       `;
 
@@ -1430,7 +3386,7 @@ function renderAnalysisResults(analysis) {
           menuEl.classList.toggle('active');
           return;
         }
-        addSkillToResume(skill, catKey);
+        addSkillToResume(skill, catLabel);
       });
 
       wrapper.querySelectorAll('.skill-picker-option').forEach(opt => {
@@ -1470,7 +3426,10 @@ function renderAnalysisResults(analysis) {
       let badgeLabel = 'Skill';
       if (sug.type === 'experience_bullet') {
         badgeClass = 'badge-bullet';
-        badgeLabel = 'Experience Bullet';
+        badgeLabel = sug.targetTitle ? `Experience: ${sug.targetTitle}` : 'Experience Bullet';
+      } else if (sug.type === 'project_bullet') {
+        badgeClass = 'badge-project';
+        badgeLabel = sug.targetTitle ? `Project: ${sug.targetTitle}` : 'Project Bullet';
       } else if (sug.type === 'summary') {
         badgeClass = 'badge-summary';
         badgeLabel = 'Summary';
@@ -1504,100 +3463,250 @@ function renderAnalysisResults(analysis) {
   }
 }
 
+function ensureSectionEnabled(secId) {
+  if (Array.isArray(currentEnabledSections) && !currentEnabledSections.includes(secId)) {
+    toggleSection(secId, true);
+  }
+}
+
+/**
+ * Matches a skill to the candidate's existing dynamic/editable category names
+ */
+function findOrMatchSkillCategory(skill, targetCategoryHint = null) {
+  const currentSkills = Array.isArray(currentResume.skills) ? currentResume.skills : [];
+  if (currentSkills.length === 0) {
+    return null;
+  }
+
+  // 1. If explicit targetCategoryHint is provided
+  if (targetCategoryHint && typeof targetCategoryHint === 'string') {
+    const hintLower = targetCategoryHint.toLowerCase().trim();
+    // Exact match on category title
+    const directMatch = currentSkills.find(s => (s.category || '').toLowerCase().trim() === hintLower);
+    if (directMatch) return directMatch;
+
+    // Partial match on category title
+    const partialMatch = currentSkills.find(s => {
+      const cat = (s.category || '').toLowerCase().trim();
+      return cat.includes(hintLower) || hintLower.includes(cat);
+    });
+    if (partialMatch) return partialMatch;
+
+    // Check if targetCategoryHint is a known key (languages, aiAgentic, mlCv, cloudDevOps)
+    const keyMeta = SKILL_CATEGORIES[targetCategoryHint];
+    if (keyMeta) {
+      const labelLower = keyMeta.label.toLowerCase();
+      const metaMatch = currentSkills.find(s => {
+        const cat = (s.category || '').toLowerCase();
+        return cat.includes(labelLower) || labelLower.includes(cat);
+      });
+      if (metaMatch) return metaMatch;
+    }
+  }
+
+  // 2. Classify skill using canonical classifier
+  const defaultKey = classifySkill(skill); // 'languages', 'aiAgentic', 'mlCv', 'cloudDevOps'
+  
+  const keywordsMap = {
+    languages: ['language', 'prog', 'core', 'code', 'script', 'tech'],
+    aiAgentic: ['ai', 'llm', 'agent', 'rag', 'genai', 'prompt', 'model'],
+    mlCv: ['ml', 'dl', 'vision', 'learn', 'data', 'cv'],
+    cloudDevOps: ['cloud', 'devops', 'ops', 'tool', 'infra', 'backend', 'framework', 'database', 'db']
+  };
+
+  const targetKeywords = keywordsMap[defaultKey] || [];
+  for (const s of currentSkills) {
+    const catName = (s.category || '').toLowerCase();
+    if (targetKeywords.some(kw => catName.includes(kw))) {
+      return s;
+    }
+  }
+
+  // Fallback to first available category
+  return currentSkills[0];
+}
+
 /**
  * 1-Click Suggestion Applicator
  */
 function applyAiSuggestion(sug) {
   if (sug.type === 'skill' && sug.action?.value) {
-    const targetCat = sug.action.category || classifySkill(sug.action.value[0]);
-    const catMeta = SKILL_CATEGORIES[targetCat] || SKILL_CATEGORIES.languages;
-    sug.action.value.forEach(sk => addSkillToResume(sk, targetCat));
-    showToast(`Added ${sug.action.value.join(', ')} to ${catMeta.label}!`, 'success');
+    ensureSectionEnabled('skills');
+    const targetCat = sug.targetCategory || sug.action.category || null;
+    const skillsList = Array.isArray(sug.action.value) ? sug.action.value : [sug.action.value];
+    skillsList.forEach(sk => addSkillToResume(sk, targetCat));
+    const secTitle = getSectionTitle('skills');
+    showToast(`Added ${skillsList.join(', ')} to ${secTitle}!`, 'success');
   } else if (sug.type === 'experience_bullet' && sug.recommendedBullet) {
-    if (currentResume.experience && currentResume.experience.length > 0) {
-      currentResume.experience[0].bullets.unshift(sug.recommendedBullet);
+    ensureSectionEnabled('experience');
+    if (!currentResume.experience) currentResume.experience = [];
+    const expIdx = (typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.experience.length)
+      ? sug.targetIndex
+      : 0;
+
+    const secTitle = getSectionTitle('experience');
+    if (currentResume.experience.length > 0) {
+      if (!Array.isArray(currentResume.experience[expIdx].bullets)) {
+        currentResume.experience[expIdx].bullets = [];
+      }
+      currentResume.experience[expIdx].bullets.unshift(sug.recommendedBullet);
       loadResumeIntoForm(currentResume);
       highlightPreviewElement(elements.rpExperienceContainer);
-      showToast('Applied recommended bullet point to primary experience!', 'success');
+      const roleName = currentResume.experience[expIdx].title || 'experience';
+      showToast(`Applied recommended bullet to ${roleName} in ${secTitle}!`, 'success');
+    } else {
+      currentResume.experience.push({
+        title: sug.targetTitle || 'Software Engineer',
+        company: 'Technology Corp',
+        location: 'Remote',
+        period: '2022 - Present',
+        bullets: [sug.recommendedBullet]
+      });
+      loadResumeIntoForm(currentResume);
+      highlightPreviewElement(elements.rpExperienceContainer);
+      showToast(`Created role with recommended bullet in ${secTitle}!`, 'success');
+    }
+  } else if (sug.type === 'project_bullet' && sug.recommendedBullet) {
+    ensureSectionEnabled('projects');
+    if (!currentResume.projects) currentResume.projects = [];
+    const projIdx = (typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.projects.length)
+      ? sug.targetIndex
+      : 0;
+
+    const secTitle = getSectionTitle('projects');
+    if (currentResume.projects.length > 0) {
+      if (!Array.isArray(currentResume.projects[projIdx].bullets)) {
+        currentResume.projects[projIdx].bullets = [];
+      }
+      currentResume.projects[projIdx].bullets.unshift(sug.recommendedBullet);
+      loadResumeIntoForm(currentResume);
+      highlightPreviewElement(elements.rpProjectsContainer);
+      const projName = currentResume.projects[projIdx].title || 'project';
+      showToast(`Applied recommended bullet to ${projName} in ${secTitle}!`, 'success');
+    } else {
+      currentResume.projects.push({
+        title: sug.targetTitle || 'Featured Technical Project',
+        tech: 'Python, Docker, Kubernetes, AWS',
+        link: 'https://github.com/example/project',
+        bullets: [sug.recommendedBullet]
+      });
+      loadResumeIntoForm(currentResume);
+      highlightPreviewElement(elements.rpProjectsContainer);
+      showToast(`Added project with recommended bullet to ${secTitle}!`, 'success');
     }
   } else if (sug.type === 'summary' && sug.recommendedSummary) {
+    ensureSectionEnabled('summary');
     currentResume.summary = sug.recommendedSummary;
     elements.resumeSummaryInput.value = sug.recommendedSummary;
     renderPreview();
     highlightPreviewElement(elements.rpSummaryText);
-    showToast('Updated Professional Summary with keyword alignment!', 'success');
+    const secTitle = getSectionTitle('summary');
+    showToast(`Updated ${secTitle} with keyword alignment!`, 'success');
   }
   check1PageGuardrail();
 }
 
 /**
- * Category-Aware Skill Addition Engine
- * Intelligently routes skills to Languages, AI/LLMs, ML/CV, or Cloud/DevOps.
+ * Category-Aware Dynamic Skill Addition Engine
+ * Supports user-editable custom category names & real-time synchronization
  */
 function addSkillToResume(skill, targetCategory = null) {
   if (!skill) return;
   const cleanSkill = skill.trim();
   if (!cleanSkill) return;
 
-  const categoryKey = targetCategory || classifySkill(cleanSkill);
-  const categoryMeta = SKILL_CATEGORIES[categoryKey] || SKILL_CATEGORIES.languages;
+  ensureSectionEnabled('skills');
 
-  if (!currentResume.skills) currentResume.skills = {};
-
-  // Extract existing items as array
-  let currentList = [];
-  if (typeof currentResume.skills[categoryKey] === 'string' && currentResume.skills[categoryKey].trim()) {
-    currentList = parseCommaList(currentResume.skills[categoryKey]);
-  } else if (Array.isArray(currentResume.skills[categoryKey])) {
-    currentList = [...currentResume.skills[categoryKey]];
-  } else {
-    if (categoryKey === 'languages') currentList = parseCommaList(elements.skillsLanguagesInput?.value || '');
-    else if (categoryKey === 'aiAgentic') currentList = parseCommaList(elements.skillsAiInput?.value || '');
-    else if (categoryKey === 'mlCv') currentList = parseCommaList(elements.skillsMlInput?.value || '');
-    else if (categoryKey === 'cloudDevOps') currentList = parseCommaList(elements.skillsCloudInput?.value || '');
+  if (!Array.isArray(currentResume.skills)) {
+    currentResume.skills = [];
   }
 
-  // Prevent duplicate insertion
-  const exists = currentList.some(s => s.toLowerCase() === cleanSkill.toLowerCase());
+  // If there are no skill categories yet, initialize with default
+  if (currentResume.skills.length === 0) {
+    const defaultCatKey = classifySkill(cleanSkill);
+    const catMeta = SKILL_CATEGORIES[defaultCatKey] || SKILL_CATEGORIES.languages;
+    currentResume.skills.push({ category: catMeta.label, items: '' });
+  }
+
+  let targetObj = findOrMatchSkillCategory(cleanSkill, targetCategory);
+  
+  if (!targetObj) {
+    const newCatName = (targetCategory && typeof targetCategory === 'string' && !SKILL_CATEGORIES[targetCategory])
+      ? targetCategory
+      : (SKILL_CATEGORIES[classifySkill(cleanSkill)]?.label || 'Technical Skills');
+    targetObj = { category: newCatName, items: '' };
+    currentResume.skills.push(targetObj);
+  }
+
+  // Parse existing items in this category
+  const existingList = parseCommaList(targetObj.items || '');
+  const exists = existingList.some(s => s.toLowerCase() === cleanSkill.toLowerCase());
   if (!exists) {
-    currentList.push(cleanSkill);
+    existingList.push(cleanSkill);
   }
+  targetObj.items = existingList.join(', ');
 
-  const updatedStr = currentList.join(', ');
-  currentResume.skills[categoryKey] = updatedStr;
+  // Update dynamic form inputs in the center editor
+  renderSkillsFormList();
 
-  // Sync to input field
-  if (categoryKey === 'languages' && elements.skillsLanguagesInput) elements.skillsLanguagesInput.value = updatedStr;
-  if (categoryKey === 'aiAgentic' && elements.skillsAiInput) elements.skillsAiInput.value = updatedStr;
-  if (categoryKey === 'mlCv' && elements.skillsMlInput) elements.skillsMlInput.value = updatedStr;
-  if (categoryKey === 'cloudDevOps' && elements.skillsCloudInput) elements.skillsCloudInput.value = updatedStr;
-
-  // Sync legacy fields
-  currentResume.skills.technical = parseCommaList(currentResume.skills.languages || '');
-  currentResume.skills.frameworks = [
-    ...parseCommaList(currentResume.skills.aiAgentic || ''),
-    ...parseCommaList(currentResume.skills.mlCv || '')
-  ];
-  currentResume.skills.tools = parseCommaList(currentResume.skills.cloudDevOps || '');
-
+  // Render live preview
   renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
 
-  // Highlight the target subsection in the live preview
-  let targetPreviewEl = null;
-  if (categoryKey === 'languages') targetPreviewEl = elements.rpSkillsLanguages;
-  else if (categoryKey === 'aiAgentic') targetPreviewEl = elements.rpSkillsAi;
-  else if (categoryKey === 'mlCv') targetPreviewEl = elements.rpSkillsMl;
-  else if (categoryKey === 'cloudDevOps') targetPreviewEl = elements.rpSkillsCloud;
-
-  if (targetPreviewEl) {
-    highlightPreviewElement(targetPreviewEl);
+  // Highlight the technical skills preview
+  if (elements.rpSkillsGroup) {
+    highlightPreviewElement(elements.rpSkillsGroup);
   }
 
-  check1PageGuardrail();
-  showToast(`✨ Added "${cleanSkill}" to ${categoryMeta.label}!`, 'success');
+  // Live Sync with AI Analysis Panel: Move from Missing Skills -> Domain Keywords Found
+  if (currentAnalysis) {
+    const cleanLower = cleanSkill.toLowerCase();
+
+    // 1. Remove from missingHardSkills
+    if (Array.isArray(currentAnalysis.missingHardSkills)) {
+      currentAnalysis.missingHardSkills = currentAnalysis.missingHardSkills.filter(
+        s => (s || '').toLowerCase().trim() !== cleanLower
+      );
+    }
+
+    // 2. Add to hardSkillsFound (Domain Keywords Found)
+    if (!Array.isArray(currentAnalysis.hardSkillsFound)) {
+      currentAnalysis.hardSkillsFound = [];
+    }
+    if (!currentAnalysis.hardSkillsFound.some(s => (s || '').toLowerCase().trim() === cleanLower)) {
+      currentAnalysis.hardSkillsFound.unshift(cleanSkill);
+    }
+
+    // 3. Dynamically increment match score
+    if (typeof currentAnalysis.matchScore === 'number' && currentAnalysis.matchScore < 98) {
+      currentAnalysis.matchScore = Math.min(98, currentAnalysis.matchScore + 4);
+    }
+
+    // 4. Update any suggestion cards that recommended this skill
+    if (Array.isArray(currentAnalysis.suggestions)) {
+      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(sug => {
+        if (sug.type === 'skill' && sug.action?.value) {
+          const vals = Array.isArray(sug.action.value) ? sug.action.value : [sug.action.value];
+          const remaining = vals.filter(v => (v || '').toLowerCase().trim() !== cleanLower);
+          if (remaining.length === 0) return false;
+          sug.action.value = remaining;
+          sug.title = `Add ${remaining.join(', ')} to ${sug.targetCategory || 'Skills'}`;
+        }
+        return true;
+      });
+    }
+
+    // Instantly refresh the left analysis panel
+    renderAnalysisResults(currentAnalysis);
+  }
+
+  const secTitle = getSectionTitle('skills');
+  showToast(`✨ Added "${cleanSkill}" to ${secTitle} (${targetObj.category})!`, 'success');
 }
 
 function highlightPreviewElement(el) {
+  if (!el) return;
   el.classList.remove('applied-highlight');
   void el.offsetWidth; // trigger reflow
   el.classList.add('applied-highlight');
@@ -1626,26 +3735,26 @@ function clientHeuristicMatch(resume, jd) {
 
   const matchScore = Math.max(50, Math.min(92, 100 - (missing.length * 9)));
 
-  // Group missing skills by subsection for tailored suggestions
+  // Group missing skills by candidate's actual editable categories
   const groupedMissing = {};
   missing.slice(0, 6).forEach(sk => {
-    const cat = classifySkill(sk);
-    if (!groupedMissing[cat]) groupedMissing[cat] = [];
-    groupedMissing[cat].push(sk);
+    const matchedCat = findOrMatchSkillCategory(sk);
+    const catName = matchedCat ? matchedCat.category : (SKILL_CATEGORIES[classifySkill(sk)]?.label || 'Technical Skills');
+    if (!groupedMissing[catName]) groupedMissing[catName] = [];
+    groupedMissing[catName].push(sk);
   });
 
-  const suggestions = Object.entries(groupedMissing).map(([catKey, skills], idx) => {
-    const catMeta = SKILL_CATEGORIES[catKey] || SKILL_CATEGORIES.languages;
+  const suggestions = Object.entries(groupedMissing).map(([catName, skills], idx) => {
     return {
-      id: `sug-hard-skill-${catKey}-${idx}`,
+      id: `sug-hard-skill-${idx}`,
       type: 'skill',
       category: 'hard_skill',
-      targetCategory: catKey,
-      title: `Add ${skills.join(', ')} to ${catMeta.label}`,
-      detail: `The target job lists these technologies as core requirements for ${catMeta.label}.`,
+      targetCategory: catName,
+      title: `Add ${skills.join(', ')} to ${catName}`,
+      detail: `The target job lists these technologies as core requirements for ${catName}.`,
       action: {
-        target: `skills.${catKey}`,
-        category: catKey,
+        target: `skills.${catName}`,
+        category: catName,
         value: skills
       }
     };
@@ -1654,14 +3763,28 @@ function clientHeuristicMatch(resume, jd) {
   suggestions.push({
     id: 'sug-bullet-quantify',
     type: 'experience_bullet',
+    targetIndex: 0,
     category: 'quantify_impact',
     title: 'Inject Cloud Architecture & Performance Metric',
     detail: 'Incorporate quantified engineering achievements with high-throughput cloud services.',
     recommendedBullet: `Architected distributed microservices deployed via Docker on AWS, reducing API response times by 35% for 250k+ daily users.`
   });
 
+  const projTitle = (resume?.projects?.[0]?.title) || 'Technical Project';
+  suggestions.push({
+    id: 'sug-proj-quantify',
+    type: 'project_bullet',
+    targetIndex: 0,
+    targetTitle: projTitle,
+    category: 'technical_depth',
+    title: `Feature Modern Cloud Stack in ${projTitle}`,
+    detail: 'Demonstrate hands-on experience building systems with containerization and cloud tooling.',
+    recommendedBullet: `Engineered scalable pipeline using Python and Docker, optimizing query performance and reducing processing latency by 28%.`
+  });
+
   return {
     matchScore,
+    providerUsed: 'Browser Offline Heuristic',
     summary: `Resume aligns with ${matchScore}% of target requirements. ${missing.length > 0 ? `Key technical gaps: ${missing.slice(0, 4).join(', ')}.` : 'Strong core alignment.'}`,
     hardSkillsFound: found,
     missingHardSkills: missing,
@@ -1770,7 +3893,15 @@ async function uploadPdfFile(file) {
     }
 
     if (structuredResume) {
-      currentResume = structuredResume;
+      // Preserve sections that the PDF parser might not extract to prevent them from vanishing
+      const mergedResume = { ...structuredResume };
+      mergedResume.certifications = currentResume.certifications || [];
+      mergedResume.publications = currentResume.publications || [];
+      mergedResume.volunteer = currentResume.volunteer || [];
+      mergedResume.customSections = currentResume.customSections || [];
+      mergedResume.sectionTitles = currentResume.sectionTitles || { ...DEFAULT_SECTION_TITLES };
+
+      currentResume = mergedResume;
       loadResumeIntoForm(currentResume);
       closeModal(elements.uploadModal);
       showToast(`Successfully tailored "${file.name}"!`, 'success');
@@ -1787,22 +3918,30 @@ async function uploadPdfFile(file) {
  */
 function exportPdf() {
   // Before printing, check 1-page guardrail
-  if (elements.resumePaper.scrollHeight > PAGE_LIMIT_HEIGHT) {
-    const proceed = confirm('Notice: Your resume currently exceeds 1 page! We recommend switching to "Compact" density to fit on exactly 1 page. Proceed with download?');
+  const contentHeight = getResumeActualContentHeight();
+  const targetHeight = getTargetPageHeight();
+  if (contentHeight > targetHeight) {
+    const proceed = confirm(`Notice: Your resume currently exceeds the 1-page limit for ${currentPaperSize.toUpperCase()}! We recommend clicking "Auto-Fit 1 Page" to fit on exactly 1 page. Proceed with print/export anyway?`);
     if (!proceed) return;
   }
   window.print();
 }
 
 function exportResumeJson() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentResume, null, 2));
+  const exportPayload = {
+    ...currentResume,
+    enabledSections: currentEnabledSections,
+    sectionOrder: currentSectionOrder
+  };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `${(currentResume.personalInfo?.name || 'resume').toLowerCase().replace(/\s+/g, '_')}_tailored.json`);
+  const downloadName = (currentResume.personalInfo?.name || 'resume').toLowerCase().replace(/\s+/g, '_');
+  downloadAnchor.setAttribute("download", `${downloadName}_tailored.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
-  showToast('Exported Resume JSON file!', 'success');
+  showToast('Exported Resume JSON file with sections and custom preferences!', 'success');
 }
 
 /**
@@ -1877,19 +4016,28 @@ async function openLatexModal() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
+      body: JSON.stringify({ 
+        resume: currentResume, 
+        font: currentFont, 
+        spacing: spacingState, 
+        paperSize: currentPaperSize, 
+        sectionOrder: currentSectionOrder,
+        enabledSections: currentEnabledSections,
+        sectionTitles: currentSectionTitles,
+        customSections: currentResume.customSections || []
+      })
     });
 
     if (res.ok) {
       const data = await res.json();
-      elements.latexCodeView.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState);
+      elements.latexCodeView.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
       elements.latexStatusText.textContent = 'LaTeX source generated successfully.';
     } else {
-      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
+      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
       elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
     }
   } catch {
-    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
     elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
   }
 }
@@ -1904,7 +4052,7 @@ function copyLatexCode() {
 function downloadTexFile(customCode) {
   const code = (typeof customCode === 'string' && customCode.trim())
     ? customCode
-    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume, currentFont, spacingState));
+    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles));
   const dataStr = "data:text/x-tex;charset=utf-8," + encodeURIComponent(code);
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -1923,23 +4071,32 @@ async function updateTabLatexView() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
+      body: JSON.stringify({ 
+        resume: currentResume, 
+        font: currentFont, 
+        spacing: spacingState, 
+        paperSize: currentPaperSize, 
+        sectionOrder: currentSectionOrder,
+        enabledSections: currentEnabledSections,
+        sectionTitles: currentSectionTitles,
+        customSections: currentResume.customSections || []
+      })
     });
     if (res.ok) {
       const data = await res.json();
-      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState);
+      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
     } else {
-      elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState);
+      elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
     }
   } catch {
-    elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState);
+    elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles);
   }
 }
 
 function openOverleaf(texCode) {
   const code = (typeof texCode === 'string' && texCode.trim())
     ? texCode
-    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume, currentFont, spacingState));
+    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume, currentFont, spacingState, currentPaperSize, currentSectionOrder, currentEnabledSections, currentSectionTitles));
 
   const form = document.getElementById('overleaf-form');
   const input = document.getElementById('overleaf-snip');
@@ -1961,7 +4118,17 @@ async function compileLatexPdf() {
     const res = await fetch('/api/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
+      body: JSON.stringify({ 
+        resume: currentResume, 
+        font: currentFont, 
+        spacing: spacingState, 
+        paperSize: currentPaperSize,
+        sectionOrder: currentSectionOrder,
+        enabledSections: currentEnabledSections,
+        sectionTitles: currentSectionTitles,
+        customSections: currentResume.customSections || [],
+        texSource: elements.tabLatexTextarea?.value || elements.latexCodeView?.value
+      })
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -2029,7 +4196,12 @@ const CLIENT_FONT_PACKAGES = {
   roboto: '\\usepackage[default]{roboto}'
 };
 
-function generateClientLatex(resume, font, spacingOpt) {
+function generateClientLatex(resume, font, spacingOpt, paperOpt, sectionOrderOpt, enabledSectionsOpt, sectionTitlesOpt) {
+  const titles = Object.assign({}, DEFAULT_SECTION_TITLES, currentSectionTitles || {}, resume.sectionTitles || {}, sectionTitlesOpt || {});
+  function getTitle(id, fallback) {
+    return titles[id] || fallback;
+  }
+
   const pi = resume.personalInfo || {};
   const name = escapeClientLatex(pi.name || 'Sumit Chouhan');
   const email = escapeClientLatex(pi.email || '');
@@ -2044,7 +4216,7 @@ function generateClientLatex(resume, font, spacingOpt) {
   const row1 = [];
   if (phone) row1.push(phone);
   if (email) row1.push(`\\href{mailto: ${email}}{${email} }`);
-  if (location && !row1.length) row1.push(location);
+  if (location) row1.push(location);
   const row1Str = row1.join(' $|$ ');
 
   // Contacts line 2: LinkedIn | Github | Leetcode | Website
@@ -2055,9 +4227,15 @@ function generateClientLatex(resume, font, spacingOpt) {
   if (portfolio) row2.push(`\\href{${escapeClientLatex(portfolio)}}{Website }`);
   const row2Str = row2.join(' $|$ \n  ');
 
+  const titleLine = pi.title ? escapeClientLatex(pi.title) : '';
+  let subtitleBlock = '';
+  if (titleLine) {
+    subtitleBlock = `\n  \\small \\textit{${titleLine}} \\\\`;
+  }
+
   let headerBlock = `% Header
 \\begin{center}
-  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
+  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{1pt}${subtitleBlock}`;
   if (row1Str) {
     headerBlock += `\n  \\small ${row1Str} \\\\`;
   }
@@ -2092,7 +4270,7 @@ function generateClientLatex(resume, font, spacingOpt) {
     }).join('\n');
 
     educationSection = `%--------------------------- 
-\\section{Education}
+\\section{${escapeClientLatex(getTitle('education', 'Education'))}}
 \\resumeSubHeadingListStart
 ${eduItems}
 \\resumeSubHeadingListEnd`;
@@ -2131,7 +4309,7 @@ ${eduItems}
 
   if (skillLines.length > 0) {
     skillsSection = `% ----------- SKILLS -----------
-\\section{Skills}
+\\section{${escapeClientLatex(getTitle('skills', 'Technical Skills'))}}
 \\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
   \\item \\small{
 ${skillLines.join(' \\\\\n')}
@@ -2151,7 +4329,10 @@ ${skillLines.join(' \\\\\n')}
         .map(b => `  \\resumeItem{${escapeClientLatex(b)}}`)
         .join('\n');
 
-      const title = job.technologies ? `${company}` : (role && !company.includes(role) ? `${company} - ${role}` : company);
+      let title = company;
+      if (role && !company.includes(role)) {
+        title = company ? `${company} - ${role}` : role;
+      }
       const subrole = job.technologies ? escapeClientLatex(job.technologies) : role;
 
       return `  \\resumeSubheading
@@ -2163,7 +4344,7 @@ ${bullets}
     }).join('\n  \\vspace{2pt}\n');
 
     experienceSection = `%---------------------------
-\\section{Experience}
+\\section{${escapeClientLatex(getTitle('experience', 'Work Experience'))}}
 \\resumeSubHeadingListStart
 ${jobs}
 \\resumeSubHeadingListEnd`;
@@ -2173,8 +4354,8 @@ ${jobs}
   let projectsSection = '';
   if (Array.isArray(resume.projects) && resume.projects.length > 0) {
     const projs = resume.projects.map(proj => {
-      const projName = escapeClientLatex(proj.name || 'Project');
-      const roleOrTech = escapeClientLatex(proj.roleOrTech || '');
+      const projName = escapeClientLatex(proj.name || proj.title || 'Project');
+      const roleOrTech = escapeClientLatex(proj.roleOrTech || proj.technologies || '');
 
       const links = [];
       if (proj.githubUrl) {
@@ -2211,7 +4392,7 @@ ${bullets}
     }).join('\n    \\vspace{2pt}\n\n');
 
     projectsSection = `%---------------------------
-\\section{Projects}
+\\section{${escapeClientLatex(getTitle('projects', 'Technical Projects'))}}
 \\resumeSubHeadingListStart
     
 ${projs}
@@ -2219,7 +4400,51 @@ ${projs}
 \\resumeSubHeadingListEnd`;
   }
 
-  // Achievements & Certifications Section
+  // Certifications Section
+  let certificationsSection = '';
+  if (Array.isArray(resume.certifications) && resume.certifications.length > 0) {
+    const certItems = resume.certifications.map(cert => {
+      if (typeof cert === 'string') return `    \\resumeItem{${escapeClientLatex(cert)}}`;
+      let text = `\\textbf{${escapeClientLatex(cert.title || cert.name || '')}}`;
+      if (cert.issuer || cert.details) {
+        text += ` -- ${escapeClientLatex(cert.issuer || cert.details)}`;
+      }
+      if (cert.linkUrl) {
+        text += ` $|$ \\href{${escapeClientLatex(cert.linkUrl)}}{${escapeClientLatex(cert.linkText || 'Credential')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    certificationsSection = `%---------------------------
+\\section{${escapeClientLatex(getTitle('certifications', 'Certifications'))}}
+\\resumeItemListStart
+${certItems}
+\\resumeItemListEnd`;
+  }
+
+  // Patents & Publications Section
+  let publicationsSection = '';
+  if (Array.isArray(resume.publications) && resume.publications.length > 0) {
+    const pubItems = resume.publications.map(pub => {
+      if (typeof pub === 'string') return `    \\resumeItem{${escapeClientLatex(pub)}}`;
+      let text = `\`\`\\textit{${escapeClientLatex(pub.title || pub.name || '')}}\'\'`;
+      if (pub.venue || pub.details || pub.publisher) {
+        text += ` -- ${escapeClientLatex(pub.venue || pub.details || pub.publisher)}`;
+      }
+      if (pub.linkUrl) {
+        text += ` $|$ \\href{${escapeClientLatex(pub.linkUrl)}}{${escapeClientLatex(pub.linkText || 'Publication')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    publicationsSection = `%---------------------------
+\\section{${escapeClientLatex(getTitle('publications', 'Patents \\& Publications'))}}
+\\resumeItemListStart
+${pubItems}
+\\resumeItemListEnd`;
+  }
+
+  // Honors & Achievements Section
   let achievementsSection = '';
   if (Array.isArray(resume.achievements) && resume.achievements.length > 0) {
     const achItems = resume.achievements.map(ach => {
@@ -2241,7 +4466,7 @@ ${projs}
     }).join('\n');
 
     achievementsSection = `%---------------------------
-\\section{Achievements \\& Certifications}
+\\section{${escapeClientLatex(getTitle('achievements', 'Honors \\& Achievements'))}}
 \\resumeItemListStart
 ${achItems}
 \\resumeItemListEnd`;
@@ -2258,7 +4483,7 @@ ${achItems}
     }).join('\n');
 
     volunteerSection = `%---------------------------
-\\section{Volunteer Experience}
+\\section{${escapeClientLatex(getTitle('volunteer', 'Volunteer Experience'))}}
 \\resumeSubHeadingListStart
 ${volItems}
 \\resumeSubHeadingListEnd`;
@@ -2268,10 +4493,31 @@ ${volItems}
   let summarySection = '';
   if (resume.summary && resume.summary.trim()) {
     summarySection = `%---------------------------
-\\section{Summary}
+\\section{${escapeClientLatex(getTitle('summary', 'Professional Summary'))}}
 \\resumeItemListStart
   \\resumeItem{${escapeClientLatex(resume.summary)}}
 \\resumeItemListEnd`;
+  }
+
+  // Custom Sections
+  const customSectionBlocks = {};
+  if (Array.isArray(resume.customSections)) {
+    resume.customSections.forEach(cs => {
+      if (!cs || !cs.id) return;
+      const csTitle = escapeClientLatex(getTitle(cs.id, cs.title || 'Additional Information'));
+      let block = `%---------------------------\n\\section{${csTitle}}`;
+      const hasHeading = cs.subtitle || cs.location || cs.detail || cs.date;
+      if (hasHeading) {
+        block += `\n\\resumeSubHeadingListStart\n  \\resumeSubheading\n    {${escapeClientLatex(cs.subtitle || '')}}{${escapeClientLatex(cs.location || '')}}\n    {${escapeClientLatex(cs.detail || '')}}{${escapeClientLatex(cs.date || '')}}`;
+      }
+      if (Array.isArray(cs.items) && cs.items.length > 0) {
+        block += `\n\\resumeItemListStart\n${cs.items.map(item => `    \\resumeItem{${escapeClientLatex(item)}}`).join('\n')}\n\\resumeItemListEnd`;
+      }
+      if (hasHeading) {
+        block += `\n\\resumeSubHeadingListEnd`;
+      }
+      customSectionBlocks[cs.id] = block;
+    });
   }
 
   const fontKey = font || currentFont || 'lmodern';
@@ -2301,7 +4547,38 @@ ${volItems}
   const bulletGap = typeof spacing.bulletGap === 'number' ? spacing.bulletGap : 0;
   const itemSep = bulletGap <= 0 ? '0pt' : `${bulletGap}pt`;
 
-  return `\\documentclass[a4paper,${docFontSize}]{article}
+  const paperChoice = paperOpt || currentPaperSize || 'a4';
+  const paperDocClass = paperChoice === 'letter' ? 'letterpaper' : 'a4paper';
+
+  const sectionMap = {
+    summary: summarySection,
+    education: educationSection,
+    skills: skillsSection,
+    experience: experienceSection,
+    projects: projectsSection,
+    certifications: certificationsSection,
+    publications: publicationsSection,
+    achievements: achievementsSection,
+    volunteer: volunteerSection,
+    ...customSectionBlocks
+  };
+
+  const orderToUse = (Array.isArray(sectionOrderOpt) && sectionOrderOpt.length > 0)
+    ? sectionOrderOpt
+    : currentSectionOrder;
+
+  const enabledList = (Array.isArray(enabledSectionsOpt) && enabledSectionsOpt.length > 0)
+    ? enabledSectionsOpt
+    : currentEnabledSections;
+  const enabledSet = new Set(enabledList);
+
+  const orderedSections = orderToUse
+    .filter(id => enabledSet.has(id))
+    .map(id => sectionMap[id])
+    .filter(sec => sec && sec.trim().length > 0)
+    .join('\n\n');
+
+  return `\\documentclass[${paperDocClass},${docFontSize}]{article}
 ${fontPackage}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
@@ -2366,20 +4643,1078 @@ ${fontPackage}
 
 ${headerBlock}
 
-${summarySection ? `${summarySection}\n\n` : ''}${educationSection}
-
-${skillsSection}
-
-${experienceSection}
-
-${projectsSection}
-
-${achievementsSection}
-
-${volunteerSection}
+${orderedSections}
 
 \\end{document}
 `;
+}
+
+/* ==========================================================================
+   Master Profile Vault & Selective Import Engine
+   ========================================================================== */
+
+let masterProfile = null;
+let currentVaultTab = 'all';
+
+/**
+ * Load or initialize Master Profile from persistent storage
+ */
+function loadMasterProfileFromStorage() {
+  try {
+    const saved = localStorage.getItem('jobease_master_profile');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        masterProfile = parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not parse jobease_master_profile from localStorage:', e);
+  }
+
+  if (!masterProfile) {
+    // Initialize Master Profile with deep clone of sample/current resume
+    masterProfile = JSON.parse(JSON.stringify(currentResume));
+    saveMasterProfileToStorage(false);
+  }
+
+  // Migration & normalization: Ensure masterProfile.skills is an Array
+  if (masterProfile.skills && !Array.isArray(masterProfile.skills)) {
+    const s = masterProfile.skills;
+    const newSkills = [];
+    const langVal = s.languages || (s.technical || []).join(', ');
+    if (langVal) newSkills.push({ category: 'Languages', items: langVal });
+    
+    const aiVal = s.aiAgentic || (s.frameworks || []).join(', ');
+    if (aiVal) newSkills.push({ category: 'AI, LLM & Agentic Systems', items: aiVal });
+    
+    const mlVal = s.mlCv || '';
+    if (mlVal) newSkills.push({ category: 'ML/DL & Computer Vision', items: mlVal });
+    
+    const cloudVal = s.cloudDevOps || (s.tools || []).join(', ');
+    if (cloudVal) newSkills.push({ category: 'Cloud, DevOps & MLOps', items: cloudVal });
+    
+    masterProfile.skills = newSkills;
+    saveMasterProfileToStorage(false);
+  }
+}
+
+/**
+ * Save Master Profile to localStorage
+ */
+function saveMasterProfileToStorage(notify = false) {
+  try {
+    localStorage.setItem('jobease_master_profile', JSON.stringify(masterProfile));
+    if (notify) {
+      showToast('Master Profile Vault updated successfully!', 'success');
+    }
+  } catch (err) {
+    console.error('Failed to save master profile:', err);
+    if (notify) {
+      showToast('Failed to save to Master Profile Vault: ' + (err.message || 'Storage full'), 'error');
+    }
+  }
+}
+
+/**
+ * Merge current active resume into the Master Profile Vault (without duplicate entries)
+ */
+function mergeActiveResumeIntoVault(notify = true) {
+  if (!masterProfile) {
+    loadMasterProfileFromStorage();
+  }
+
+  syncFormToState();
+
+  // Merge Personal Info (update non-empty fields)
+  if (currentResume.personalInfo) {
+    if (!masterProfile.personalInfo) masterProfile.personalInfo = {};
+    Object.keys(currentResume.personalInfo).forEach(k => {
+      if (currentResume.personalInfo[k]) {
+        masterProfile.personalInfo[k] = currentResume.personalInfo[k];
+      }
+    });
+  }
+
+  // Merge Summary
+  if (currentResume.summary) {
+    if (!masterProfile.summary) masterProfile.summary = currentResume.summary;
+    else if (!masterProfile.summary.includes(currentResume.summary)) {
+      masterProfile.summary = currentResume.summary;
+    }
+  }
+
+  // Merge Skills categories
+  if (Array.isArray(currentResume.skills)) {
+    if (!Array.isArray(masterProfile.skills)) masterProfile.skills = [];
+    currentResume.skills.forEach(curSkill => {
+      const existingCat = masterProfile.skills.find(
+        s => s.category.toLowerCase().trim() === curSkill.category.toLowerCase().trim()
+      );
+      if (existingCat) {
+        const curItems = curSkill.items.split(',').map(i => i.trim()).filter(Boolean);
+        const existItems = existingCat.items.split(',').map(i => i.trim()).filter(Boolean);
+        const mergedItems = [...new Set([...existItems, ...curItems])];
+        existingCat.items = mergedItems.join(', ');
+      } else {
+        masterProfile.skills.push(JSON.parse(JSON.stringify(curSkill)));
+      }
+    });
+  }
+
+  // Helper to merge array sections with bullet point de-duplication
+  function mergeArraySection(sectionKey, idMatcher) {
+    if (!Array.isArray(currentResume[sectionKey])) return;
+    if (!Array.isArray(masterProfile[sectionKey])) masterProfile[sectionKey] = [];
+
+    currentResume[sectionKey].forEach(curItem => {
+      const match = masterProfile[sectionKey].find(mItem => idMatcher(mItem, curItem));
+      if (match) {
+        // Merge bullets
+        if (Array.isArray(curItem.bullets)) {
+          if (!Array.isArray(match.bullets)) match.bullets = [];
+          curItem.bullets.forEach(b => {
+            const cleanB = (b || '').trim();
+            if (cleanB && !match.bullets.some(mb => mb.trim().toLowerCase() === cleanB.toLowerCase())) {
+              match.bullets.push(cleanB);
+            }
+          });
+        }
+      } else {
+        masterProfile[sectionKey].push(JSON.parse(JSON.stringify(curItem)));
+      }
+    });
+  }
+
+  // Experience: match by role & company
+  mergeArraySection('experience', (a, b) => {
+    return (a.role || '').toLowerCase().trim() === (b.role || '').toLowerCase().trim() &&
+           (a.company || '').toLowerCase().trim() === (b.company || '').toLowerCase().trim();
+  });
+
+  // Projects: match by name
+  mergeArraySection('projects', (a, b) => {
+    return (a.name || '').toLowerCase().trim() === (b.name || '').toLowerCase().trim();
+  });
+
+  // Education: match by institution & degree
+  mergeArraySection('education', (a, b) => {
+    return (a.institution || '').toLowerCase().trim() === (b.institution || '').toLowerCase().trim() &&
+           (a.degree || '').toLowerCase().trim() === (b.degree || '').toLowerCase().trim();
+  });
+
+  // Certifications: match by title
+  mergeArraySection('certifications', (a, b) => {
+    return (a.title || '').toLowerCase().trim() === (b.title || '').toLowerCase().trim();
+  });
+
+  // Publications: match by title
+  mergeArraySection('publications', (a, b) => {
+    return (a.title || '').toLowerCase().trim() === (b.title || '').toLowerCase().trim();
+  });
+
+  // Volunteer: match by role & organization
+  mergeArraySection('volunteer', (a, b) => {
+    return (a.role || '').toLowerCase().trim() === (b.role || '').toLowerCase().trim() &&
+           (a.organization || '').toLowerCase().trim() === (b.organization || '').toLowerCase().trim();
+  });
+
+  // Custom sections
+  if (Array.isArray(currentResume.customSections)) {
+    if (!Array.isArray(masterProfile.customSections)) masterProfile.customSections = [];
+    currentResume.customSections.forEach(curSec => {
+      const matchSec = masterProfile.customSections.find(s => s.id === curSec.id);
+      if (matchSec) {
+        matchSec.title = curSec.title;
+        if (Array.isArray(curSec.items)) {
+          if (!Array.isArray(matchSec.items)) matchSec.items = [];
+          curSec.items.forEach(curItm => {
+            const matchItm = matchSec.items.find(mi => (mi.title || '').toLowerCase().trim() === (curItm.title || '').toLowerCase().trim());
+            if (matchItm) {
+              if (Array.isArray(curItm.bullets)) {
+                if (!Array.isArray(matchItm.bullets)) matchItm.bullets = [];
+                curItm.bullets.forEach(b => {
+                  if (b && !matchItm.bullets.includes(b)) matchItm.bullets.push(b);
+                });
+              }
+            } else {
+              matchSec.items.push(JSON.parse(JSON.stringify(curItm)));
+            }
+          });
+        }
+      } else {
+        masterProfile.customSections.push(JSON.parse(JSON.stringify(curSec)));
+      }
+    });
+  }
+
+  saveMasterProfileToStorage(false);
+  saveProfileToStorage(false);
+  if (notify) {
+    showToast('Saved current resume details to your Master Profile Vault!', 'success');
+  }
+
+  if (elements.profileVaultModal && elements.profileVaultModal.classList.contains('active')) {
+    renderVaultModalContent();
+  }
+}
+
+/**
+ * Open Profile Vault Modal
+ */
+function openProfileVaultModal() {
+  loadMasterProfileFromStorage();
+  currentVaultTab = 'all';
+  if (elements.vaultSectionTabs) {
+    elements.vaultSectionTabs.querySelectorAll('.vault-tab-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.tabSec === 'all');
+    });
+  }
+  if (elements.btnVaultModeChecklist && elements.btnVaultModeJson) {
+    elements.btnVaultModeChecklist.classList.add('active');
+    elements.btnVaultModeJson.classList.remove('active');
+    if (elements.vaultSectionsContainer) elements.vaultSectionsContainer.style.display = 'flex';
+    if (elements.vaultJsonContainer) elements.vaultJsonContainer.style.display = 'none';
+    if (elements.vaultSectionTabs) elements.vaultSectionTabs.style.visibility = 'visible';
+  }
+  if (elements.vaultSearchInput) elements.vaultSearchInput.value = '';
+  if (elements.btnVaultClearSearch) elements.btnVaultClearSearch.style.display = 'none';
+  renderVaultModalContent();
+  openModal(elements.profileVaultModal);
+}
+
+/**
+ * Render interactive selective checklist inside the Vault modal
+ */
+function renderVaultModalContent(filterText = '') {
+  if (!elements.vaultSectionsContainer) return;
+  const container = elements.vaultSectionsContainer;
+  container.innerHTML = '';
+
+  const query = (filterText || '').trim().toLowerCase();
+
+  if (!masterProfile) {
+    loadMasterProfileFromStorage();
+  }
+
+  let totalRenderedSections = 0;
+
+  // Helper to test if a string matches search
+  function matchesQuery(...strings) {
+    if (!query) return true;
+    return strings.some(s => s && String(s).toLowerCase().includes(query));
+  }
+
+  // 1. Personal Info Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'personalInfo') && masterProfile.personalInfo) {
+    const pi = masterProfile.personalInfo;
+    const piMatches = matchesQuery(pi.name, pi.title, pi.email, pi.phone, pi.location, pi.linkedin, pi.github, pi.portfolio);
+    if (piMatches) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="personalInfo" id="chk-vault-sec-personalInfo" checked>
+            <label for="chk-vault-sec-personalInfo"><h3>Personal Information</h3></label>
+          </div>
+          <span class="vault-section-count-badge">Master Contact Info</span>
+        </div>
+        <div class="vault-items-list">
+          <div class="vault-item-card">
+            <div class="vault-item-main-title">
+              <span>${escapeHtml(pi.name || 'No Name')}</span>
+              <span style="font-size: 0.76rem; color: #38BDF8; font-weight: normal;">${escapeHtml(pi.title || '')}</span>
+            </div>
+            <div class="vault-item-meta" style="margin-top: 4px;">
+              ${[pi.email, pi.phone, pi.location, pi.linkedin, pi.github, pi.portfolio].filter(Boolean).map(c => escapeHtml(c)).join(' • ')}
+            </div>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 2. Technical Skills Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'skills') && Array.isArray(masterProfile.skills) && masterProfile.skills.length > 0) {
+    const skillsList = masterProfile.skills;
+    const filteredCats = skillsList.filter(s => matchesQuery(s.category, s.items));
+    if (filteredCats.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let catsHtml = '';
+      filteredCats.forEach((cat, cIdx) => {
+        const chips = (cat.items || '').split(',').map(i => i.trim()).filter(Boolean);
+        const chipsHtml = chips.map((chip, chIdx) => {
+          const chipMatches = matchesQuery(chip, cat.category);
+          if (!chipMatches) return '';
+          return `
+            <label class="vault-skill-chip-label is-checked">
+              <input type="checkbox" class="vault-skill-chip-chk" data-cat-idx="${cIdx}" data-chip-idx="${chIdx}" data-skill-val="${escapeHtml(chip)}" checked>
+              <span>${escapeHtml(chip)}</span>
+            </label>
+          `;
+        }).join('');
+
+        catsHtml += `
+          <div class="vault-skill-cat-row">
+            <div class="vault-skill-cat-title">
+              <input type="checkbox" class="vault-skill-cat-chk" data-cat-idx="${cIdx}" checked>
+              <span>${escapeHtml(cat.category)}</span>
+            </div>
+            <div class="vault-skill-chips-wrap">
+              ${chipsHtml}
+            </div>
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="skills" id="chk-vault-sec-skills" checked>
+            <label for="chk-vault-sec-skills"><h3>${escapeHtml(getSectionTitle('skills'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${filteredCats.length} Categories</span>
+        </div>
+        <div class="vault-items-list">
+          ${catsHtml}
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 3. Work Experience Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'experience') && Array.isArray(masterProfile.experience) && masterProfile.experience.length > 0) {
+    const expList = masterProfile.experience;
+    const filteredExp = expList.map((exp, idx) => {
+      const expMatch = matchesQuery(exp.role, exp.company, exp.location, exp.technologies);
+      const matchingBullets = (exp.bullets || []).filter(b => expMatch || matchesQuery(b));
+      return { exp, idx, matches: expMatch || matchingBullets.length > 0, matchingBullets };
+    }).filter(e => e.matches);
+
+    if (filteredExp.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      filteredExp.forEach(({ exp, idx, matchingBullets }) => {
+        const bulletsHtml = (exp.bullets || []).map((b, bIdx) => {
+          if (query && !matchesQuery(b, exp.role, exp.company)) return '';
+          return `
+            <label class="vault-bullet-row">
+              <input type="checkbox" class="vault-bullet-chk" data-sec="experience" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
+              <span>${escapeHtml(b)}</span>
+              <button type="button" class="vault-delete-btn" title="Delete bullet from Vault" data-vault-del-bullet="experience" data-itm-idx="${idx}" data-b-idx="${bIdx}">✕</button>
+            </label>
+          `;
+        }).join('');
+
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="experience" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(exp.role || 'Role')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(exp.startDate || '')} ${exp.endDate ? '– ' + escapeHtml(exp.endDate) : ''}</span>
+                    <button type="button" class="vault-delete-btn" title="Delete this experience from Vault" data-vault-del-item="experience" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                <div class="vault-item-subtitle">${escapeHtml(exp.company || '')} ${exp.location ? '• ' + escapeHtml(exp.location) : ''}</div>
+                ${exp.technologies ? `<div class="vault-item-meta"><strong>Tech:</strong> ${escapeHtml(exp.technologies)}</div>` : ''}
+              </div>
+            </div>
+            ${bulletsHtml ? `<div class="vault-bullets-container">${bulletsHtml}</div>` : ''}
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="experience" id="chk-vault-sec-exp" checked>
+            <label for="chk-vault-sec-exp"><h3>${escapeHtml(getSectionTitle('experience'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${filteredExp.length} Roles</span>
+        </div>
+        <div class="vault-items-list">
+          ${itemsHtml}
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 4. Projects Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'projects') && Array.isArray(masterProfile.projects) && masterProfile.projects.length > 0) {
+    const projList = masterProfile.projects;
+    const filteredProj = projList.map((p, idx) => {
+      const match = matchesQuery(p.name, p.description, p.roleOrTech, p.link, p.githubUrl, p.websiteUrl);
+      const matchingBullets = (p.bullets || []).filter(b => match || matchesQuery(b));
+      return { p, idx, matches: match || matchingBullets.length > 0 };
+    }).filter(p => p.matches);
+
+    if (filteredProj.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      filteredProj.forEach(({ p, idx }) => {
+        const bulletsHtml = (p.bullets || []).map((b, bIdx) => {
+          if (query && !matchesQuery(b, p.name, p.description)) return '';
+          return `
+            <label class="vault-bullet-row">
+              <input type="checkbox" class="vault-bullet-chk" data-sec="projects" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
+              <span>${escapeHtml(b)}</span>
+              <button type="button" class="vault-delete-btn" title="Delete bullet from Vault" data-vault-del-bullet="projects" data-itm-idx="${idx}" data-b-idx="${bIdx}">✕</button>
+            </label>
+          `;
+        }).join('');
+
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="projects" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(p.name || 'Project Name')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    ${p.roleOrTech ? `<span style="font-size: 0.74rem; color: #38BDF8; font-weight: normal;">${escapeHtml(p.roleOrTech)}</span>` : ''}
+                    <button type="button" class="vault-delete-btn" title="Delete project from Vault" data-vault-del-item="projects" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                ${p.description ? `<div class="vault-item-subtitle">${escapeHtml(p.description)}</div>` : ''}
+                ${(p.githubUrl || p.websiteUrl || p.link) ? `<div class="vault-item-meta">${[p.githubUrl, p.websiteUrl, p.link].filter(Boolean).map(l => escapeHtml(l)).join(' • ')}</div>` : ''}
+              </div>
+            </div>
+            ${bulletsHtml ? `<div class="vault-bullets-container">${bulletsHtml}</div>` : ''}
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="projects" id="chk-vault-sec-proj" checked>
+            <label for="chk-vault-sec-proj"><h3>${escapeHtml(getSectionTitle('projects'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${filteredProj.length} Projects</span>
+        </div>
+        <div class="vault-items-list">
+          ${itemsHtml}
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 5. Education Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'education') && Array.isArray(masterProfile.education) && masterProfile.education.length > 0) {
+    const eduList = masterProfile.education.filter(e => matchesQuery(e.institution, e.degree, e.location, e.year, e.courses, e.gpa));
+    if (eduList.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      eduList.forEach((e, idx) => {
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="education" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(e.institution || 'University')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(e.year || '')}</span>
+                    <button type="button" class="vault-delete-btn" title="Delete degree from Vault" data-vault-del-item="education" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                <div class="vault-item-subtitle">${escapeHtml(e.degree || '')} ${e.location ? '• ' + escapeHtml(e.location) : ''}</div>
+                ${e.courses ? `<div class="vault-item-meta"><strong>Courses:</strong> ${escapeHtml(e.courses)}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="education" id="chk-vault-sec-edu" checked>
+            <label for="chk-vault-sec-edu"><h3>${escapeHtml(getSectionTitle('education'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${eduList.length} Degrees</span>
+        </div>
+        <div class="vault-items-list">${itemsHtml}</div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 6. Certifications Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'certifications') && Array.isArray(masterProfile.certifications) && masterProfile.certifications.length > 0) {
+    const certList = masterProfile.certifications.filter(c => matchesQuery(c.title, c.issuer, c.year, c.linkUrl));
+    if (certList.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      certList.forEach((c, idx) => {
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="certifications" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(c.title || 'Certification')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(c.year || '')}</span>
+                    <button type="button" class="vault-delete-btn" title="Delete certification from Vault" data-vault-del-item="certifications" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                ${c.issuer ? `<div class="vault-item-subtitle">${escapeHtml(c.issuer)}</div>` : ''}
+                ${c.linkUrl ? `<div class="vault-item-meta">${escapeHtml(c.linkUrl)}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="certifications" id="chk-vault-sec-cert" checked>
+            <label for="chk-vault-sec-cert"><h3>${escapeHtml(getSectionTitle('certifications'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${certList.length} Certifications</span>
+        </div>
+        <div class="vault-items-list">${itemsHtml}</div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 7. Publications Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'publications') && Array.isArray(masterProfile.publications) && masterProfile.publications.length > 0) {
+    const pubList = masterProfile.publications.filter(p => matchesQuery(p.title, p.publisher, p.year, p.linkUrl));
+    if (pubList.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      pubList.forEach((p, idx) => {
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="publications" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(p.title || 'Publication')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(p.year || '')}</span>
+                    <button type="button" class="vault-delete-btn" title="Delete publication from Vault" data-vault-del-item="publications" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                ${p.publisher ? `<div class="vault-item-subtitle">${escapeHtml(p.publisher)}</div>` : ''}
+                ${p.linkUrl ? `<div class="vault-item-meta">${escapeHtml(p.linkUrl)}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="publications" id="chk-vault-sec-pub" checked>
+            <label for="chk-vault-sec-pub"><h3>${escapeHtml(getSectionTitle('publications'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${pubList.length} Publications</span>
+        </div>
+        <div class="vault-items-list">${itemsHtml}</div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 8. Volunteer Section
+  if ((currentVaultTab === 'all' || currentVaultTab === 'volunteer') && Array.isArray(masterProfile.volunteer) && masterProfile.volunteer.length > 0) {
+    const volList = masterProfile.volunteer.filter(v => matchesQuery(v.role, v.organization, v.date, v.bullets));
+    if (volList.length > 0) {
+      totalRenderedSections++;
+      const card = document.createElement('div');
+      card.className = 'vault-section-card';
+      let itemsHtml = '';
+
+      volList.forEach((v, idx) => {
+        const bulletsHtml = (v.bullets || []).map((b, bIdx) => `
+          <label class="vault-bullet-row">
+            <input type="checkbox" class="vault-bullet-chk" data-sec="volunteer" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
+            <span>${escapeHtml(b)}</span>
+            <button type="button" class="vault-delete-btn" title="Delete bullet from Vault" data-vault-del-bullet="volunteer" data-itm-idx="${idx}" data-b-idx="${bIdx}">✕</button>
+          </label>
+        `).join('');
+
+        itemsHtml += `
+          <div class="vault-item-card">
+            <div class="vault-item-header">
+              <input type="checkbox" class="vault-item-chk" data-sec="volunteer" data-itm-idx="${idx}" checked>
+              <div class="vault-item-info">
+                <div class="vault-item-main-title">
+                  <span>${escapeHtml(v.role || 'Volunteer')}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(v.date || '')}</span>
+                    <button type="button" class="vault-delete-btn" title="Delete volunteer role from Vault" data-vault-del-item="volunteer" data-itm-idx="${idx}">Delete</button>
+                  </div>
+                </div>
+                ${v.organization ? `<div class="vault-item-subtitle">${escapeHtml(v.organization)}</div>` : ''}
+              </div>
+            </div>
+            ${bulletsHtml ? `<div class="vault-bullets-container">${bulletsHtml}</div>` : ''}
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="vault-section-header">
+          <div class="vault-section-title-wrap">
+            <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="volunteer" id="chk-vault-sec-vol" checked>
+            <label for="chk-vault-sec-vol"><h3>${escapeHtml(getSectionTitle('volunteer'))}</h3></label>
+          </div>
+          <span class="vault-section-count-badge">${volList.length} Roles</span>
+        </div>
+        <div class="vault-items-list">${itemsHtml}</div>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // 9. Custom Sections
+  if ((currentVaultTab === 'all' || currentVaultTab === 'customSections') && Array.isArray(masterProfile.customSections) && masterProfile.customSections.length > 0) {
+    masterProfile.customSections.forEach((sec, sIdx) => {
+      const matchingItems = (sec.items || []).filter(itm => matchesQuery(sec.title, itm.title, itm.subtitle, itm.date, itm.bullets));
+      if (matchingItems.length > 0) {
+        totalRenderedSections++;
+        const card = document.createElement('div');
+        card.className = 'vault-section-card';
+        let itemsHtml = '';
+
+        matchingItems.forEach((itm, idx) => {
+          const bulletsHtml = (itm.bullets || []).map((b, bIdx) => `
+            <label class="vault-bullet-row">
+              <input type="checkbox" class="vault-bullet-chk" data-sec="custom_${sec.id}" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
+              <span>${escapeHtml(b)}</span>
+              <button type="button" class="vault-delete-btn" title="Delete bullet from Vault" data-vault-del-custom-bullet="${sec.id}" data-itm-idx="${idx}" data-b-idx="${bIdx}">✕</button>
+            </label>
+          `).join('');
+
+          itemsHtml += `
+            <div class="vault-item-card">
+              <div class="vault-item-header">
+                <input type="checkbox" class="vault-item-chk" data-sec="custom_${sec.id}" data-itm-idx="${idx}" checked>
+                <div class="vault-item-info">
+                  <div class="vault-item-main-title">
+                    <span>${escapeHtml(itm.title || 'Item')}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(itm.date || '')}</span>
+                      <button type="button" class="vault-delete-btn" title="Delete item from Vault" data-vault-del-custom-item="${sec.id}" data-itm-idx="${idx}">Delete</button>
+                    </div>
+                  </div>
+                  ${itm.subtitle ? `<div class="vault-item-subtitle">${escapeHtml(itm.subtitle)}</div>` : ''}
+                </div>
+              </div>
+              ${bulletsHtml ? `<div class="vault-bullets-container">${bulletsHtml}</div>` : ''}
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="vault-section-header">
+            <div class="vault-section-title-wrap">
+              <input type="checkbox" class="vault-sec-master-chk" data-vault-sec="custom_${sec.id}" id="chk-vault-sec-${sec.id}" checked>
+              <label for="chk-vault-sec-${sec.id}"><h3>${escapeHtml(sec.title || 'Custom Section')}</h3></label>
+            </div>
+            <span class="vault-section-count-badge">${matchingItems.length} Items</span>
+          </div>
+          <div class="vault-items-list">${itemsHtml}</div>
+        `;
+        container.appendChild(card);
+      }
+    });
+  }
+
+  if (totalRenderedSections === 0) {
+    container.innerHTML = `
+      <div class="vault-empty-message">
+        <svg width="40" height="40" fill="none" stroke="#64748B" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom: 10px;"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+        <p style="margin: 0; font-weight: 500;">No items found matching "${escapeHtml(filterText)}" in your Master Profile Vault.</p>
+        <p style="margin: 6px 0 0 0; font-size: 0.8rem;">Click "Save Current into Vault" to capture all details from your current resume.</p>
+      </div>
+    `;
+  }
+
+  // Update Direct JSON Textarea
+  if (elements.vaultRawJsonTextarea) {
+    elements.vaultRawJsonTextarea.value = JSON.stringify(masterProfile, null, 2);
+  }
+
+  attachVaultCheckboxHandlers();
+  updateVaultSelectedCount();
+}
+
+/**
+ * Attach hierarchical checklist event listeners inside the Vault modal
+ */
+function attachVaultCheckboxHandlers() {
+  const container = elements.vaultSectionsContainer;
+  if (!container) return;
+
+  // Master Section Checkbox Toggle
+  container.querySelectorAll('.vault-sec-master-chk').forEach(chk => {
+    chk.onchange = () => {
+      const secCard = chk.closest('.vault-section-card');
+      if (secCard) {
+        secCard.querySelectorAll('input[type="checkbox"]').forEach(c => {
+          c.checked = chk.checked;
+          if (c.classList.contains('vault-skill-chip-chk')) {
+            const label = c.closest('.vault-skill-chip-label');
+            if (label) label.classList.toggle('is-checked', chk.checked);
+          }
+        });
+      }
+      updateVaultSelectedCount();
+    };
+  });
+
+  // Skill Category Checkbox Toggle
+  container.querySelectorAll('.vault-skill-cat-chk').forEach(chk => {
+    chk.onchange = () => {
+      const catRow = chk.closest('.vault-skill-cat-row');
+      if (catRow) {
+        catRow.querySelectorAll('.vault-skill-chip-chk').forEach(c => {
+          c.checked = chk.checked;
+          const label = c.closest('.vault-skill-chip-label');
+          if (label) label.classList.toggle('is-checked', chk.checked);
+        });
+      }
+      updateVaultSelectedCount();
+    };
+  });
+
+  // Skill Chip Checkbox Toggle
+  container.querySelectorAll('.vault-skill-chip-chk').forEach(chk => {
+    chk.onchange = () => {
+      const label = chk.closest('.vault-skill-chip-label');
+      if (label) label.classList.toggle('is-checked', chk.checked);
+      updateVaultSelectedCount();
+    };
+  });
+
+  // Item Checkbox Toggle (sync with its bullet points)
+  container.querySelectorAll('.vault-item-chk').forEach(chk => {
+    chk.onchange = () => {
+      const card = chk.closest('.vault-item-card');
+      if (card) {
+        card.querySelectorAll('.vault-bullet-chk').forEach(bChk => {
+          bChk.checked = chk.checked;
+        });
+      }
+      updateVaultSelectedCount();
+    };
+  });
+
+  // Bullet point checkbox toggle (auto-check parent item if any bullet is selected)
+  container.querySelectorAll('.vault-bullet-chk').forEach(chk => {
+    chk.onchange = () => {
+      const card = chk.closest('.vault-item-card');
+      if (card) {
+        const itemChk = card.querySelector('.vault-item-chk');
+        if (itemChk && chk.checked) {
+          itemChk.checked = true;
+        }
+      }
+      updateVaultSelectedCount();
+    };
+  });
+
+  // Delete Individual Item from Vault
+  container.querySelectorAll('[data-vault-del-item]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const secKey = btn.dataset.vaultDelItem;
+      const idx = parseInt(btn.dataset.itmIdx, 10);
+      if (confirm(`Are you sure you want to delete this ${secKey} entry from your Master Profile Vault?`)) {
+        if (Array.isArray(masterProfile[secKey]) && masterProfile[secKey][idx]) {
+          masterProfile[secKey].splice(idx, 1);
+          saveMasterProfileToStorage(false);
+          renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+          showToast(`Deleted ${secKey} item from Master Profile Vault!`, 'info');
+        }
+      }
+    };
+  });
+
+  // Delete Custom Section Item from Vault
+  container.querySelectorAll('[data-vault-del-custom-item]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const secId = btn.dataset.vaultDelCustomItem;
+      const idx = parseInt(btn.dataset.itmIdx, 10);
+      if (confirm('Delete this custom section item from your Master Profile Vault?')) {
+        const sec = (masterProfile.customSections || []).find(s => s.id === secId);
+        if (sec && Array.isArray(sec.items) && sec.items[idx]) {
+          sec.items.splice(idx, 1);
+          saveMasterProfileToStorage(false);
+          renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+          showToast('Deleted custom item from Master Profile Vault!', 'info');
+        }
+      }
+    };
+  });
+
+  // Delete Individual Bullet Point from Vault
+  container.querySelectorAll('[data-vault-del-bullet]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const secKey = btn.dataset.vaultDelBullet;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const bIdx = parseInt(btn.dataset.bIdx, 10);
+      if (Array.isArray(masterProfile[secKey]) && masterProfile[secKey][itmIdx] && Array.isArray(masterProfile[secKey][itmIdx].bullets)) {
+        masterProfile[secKey][itmIdx].bullets.splice(bIdx, 1);
+        saveMasterProfileToStorage(false);
+        renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+      }
+    };
+  });
+
+  // Delete Custom Section Bullet from Vault
+  container.querySelectorAll('[data-vault-del-custom-bullet]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const secId = btn.dataset.vaultDelCustomBullet;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const bIdx = parseInt(btn.dataset.bIdx, 10);
+      const sec = (masterProfile.customSections || []).find(s => s.id === secId);
+      if (sec && Array.isArray(sec.items) && sec.items[itmIdx] && Array.isArray(sec.items[itmIdx].bullets)) {
+        sec.items[itmIdx].bullets.splice(bIdx, 1);
+        saveMasterProfileToStorage(false);
+        renderVaultModalContent(elements.vaultSearchInput ? elements.vaultSearchInput.value : '');
+      }
+    };
+  });
+}
+
+/**
+ * Recalculate and update the selected count badge in the Vault footer
+ */
+function updateVaultSelectedCount() {
+  const container = elements.vaultSectionsContainer;
+  if (!container || !elements.vaultSelectedCount) return;
+
+  let count = 0;
+  container.querySelectorAll('.vault-item-chk:checked, .vault-skill-chip-chk:checked, .vault-sec-master-chk[data-vault-sec="personalInfo"]:checked').forEach(() => {
+    count++;
+  });
+
+  elements.vaultSelectedCount.textContent = count;
+}
+
+/**
+ * Execute Selective Import from Vault into Active Resume
+ * @param {'merge'|'replace'} mode 
+ */
+function executeVaultImport(mode = 'merge') {
+  if (!masterProfile) return;
+  const container = elements.vaultSectionsContainer;
+  if (!container) return;
+
+  // 1. Personal Info
+  const piChk = container.querySelector('.vault-sec-master-chk[data-vault-sec="personalInfo"]:checked');
+  if (piChk && masterProfile.personalInfo) {
+    currentResume.personalInfo = JSON.parse(JSON.stringify(masterProfile.personalInfo));
+  }
+
+  // 2. Skills
+  const selectedSkillChips = [];
+  container.querySelectorAll('.vault-skill-cat-row').forEach(catRow => {
+    const catTitle = catRow.querySelector('.vault-skill-cat-title span')?.textContent.trim();
+    const chips = [];
+    catRow.querySelectorAll('.vault-skill-chip-chk:checked').forEach(chipChk => {
+      const chipVal = chipChk.dataset.skillVal;
+      if (chipVal) chips.push(chipVal);
+    });
+
+    if (catTitle && chips.length > 0) {
+      selectedSkillChips.push({ category: catTitle, items: chips.join(', ') });
+    }
+  });
+
+  if (selectedSkillChips.length > 0) {
+    if (mode === 'replace') {
+      currentResume.skills = selectedSkillChips;
+    } else {
+      // Merge skills
+      if (!Array.isArray(currentResume.skills)) currentResume.skills = [];
+      selectedSkillChips.forEach(selCat => {
+        const exist = currentResume.skills.find(
+          s => s.category.toLowerCase().trim() === selCat.category.toLowerCase().trim()
+        );
+        if (exist) {
+          const curItems = exist.items.split(',').map(i => i.trim()).filter(Boolean);
+          const addItems = selCat.items.split(',').map(i => i.trim()).filter(Boolean);
+          exist.items = [...new Set([...curItems, ...addItems])].join(', ');
+        } else {
+          currentResume.skills.push(JSON.parse(JSON.stringify(selCat)));
+        }
+      });
+    }
+  }
+
+  // Helper for cherry-picking items & selective bullets
+  function importArraySection(secKey, masterList) {
+    if (!Array.isArray(masterList)) return;
+    const selectedItems = [];
+
+    container.querySelectorAll(`.vault-item-chk[data-sec="${secKey}"]:checked`).forEach(chk => {
+      const itmIdx = parseInt(chk.dataset.itmIdx, 10);
+      const masterItem = masterList[itmIdx];
+      if (!masterItem) return;
+
+      const itemCopy = JSON.parse(JSON.stringify(masterItem));
+      // Filter bullets to only those checked
+      if (Array.isArray(itemCopy.bullets)) {
+        const itemCard = chk.closest('.vault-item-card');
+        if (itemCard) {
+          const checkedBullets = [];
+          itemCard.querySelectorAll(`.vault-bullet-chk[data-sec="${secKey}"][data-itm-idx="${itmIdx}"]:checked`).forEach(bChk => {
+            const bIdx = parseInt(bChk.dataset.bIdx, 10);
+            if (masterItem.bullets[bIdx]) {
+              checkedBullets.push(masterItem.bullets[bIdx]);
+            }
+          });
+          // If bullet checkboxes were rendered and selected, use them; otherwise keep existing bullets
+          if (checkedBullets.length > 0) {
+            itemCopy.bullets = checkedBullets;
+          }
+        }
+      }
+
+      selectedItems.push(itemCopy);
+    });
+
+    if (selectedItems.length > 0) {
+      if (mode === 'replace' || !Array.isArray(currentResume[secKey])) {
+        currentResume[secKey] = selectedItems;
+      } else {
+        // Merge without duplicates
+        selectedItems.forEach(sel => {
+          const existIdx = currentResume[secKey].findIndex(e => {
+            if (secKey === 'experience' || secKey === 'volunteer') {
+              return (e.role || '').toLowerCase() === (sel.role || '').toLowerCase() &&
+                     (e.company || e.organization || '').toLowerCase() === (sel.company || sel.organization || '').toLowerCase();
+            }
+            if (secKey === 'projects') return (e.name || '').toLowerCase() === (sel.name || '').toLowerCase();
+            if (secKey === 'education') return (e.institution || '').toLowerCase() === (sel.institution || '').toLowerCase();
+            if (secKey === 'certifications' || secKey === 'publications') return (e.title || '').toLowerCase() === (sel.title || '').toLowerCase();
+            return false;
+          });
+
+          if (existIdx >= 0) {
+            // Update existing entry with selected bullets
+            if (Array.isArray(sel.bullets)) {
+              currentResume[secKey][existIdx].bullets = sel.bullets;
+            }
+          } else {
+            currentResume[secKey].push(sel);
+          }
+        });
+      }
+    }
+  }
+
+  importArraySection('experience', masterProfile.experience);
+  importArraySection('projects', masterProfile.projects);
+  importArraySection('education', masterProfile.education);
+  importArraySection('certifications', masterProfile.certifications);
+  importArraySection('publications', masterProfile.publications);
+  importArraySection('volunteer', masterProfile.volunteer);
+
+  // Custom Sections import
+  if (Array.isArray(masterProfile.customSections)) {
+    masterProfile.customSections.forEach(sec => {
+      importArraySection(`custom_${sec.id}`, sec.items);
+    });
+  }
+
+  // Reload form, refresh preview, check guardrail, and re-evaluate JD match
+  loadResumeIntoForm(currentResume);
+  renderPreview();
+  check1PageGuardrail();
+  saveProfileToStorage(false);
+  closeModal(elements.profileVaultModal);
+
+  showToast(`Successfully imported selected items from Master Profile Vault (${mode === 'merge' ? 'Merged' : 'Replaced'})!`, 'success');
+
+  if (currentJD && currentJD.length > 20) {
+    evaluateMatch();
+  }
+}
+
+/**
+ * Export Master Profile Vault to JSON File
+ */
+function exportMasterProfileVaultJson() {
+  if (!masterProfile) loadMasterProfileFromStorage();
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(masterProfile, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute('href', dataStr);
+  downloadAnchor.setAttribute('download', `jobease_master_profile_vault_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+  showToast('Master Profile Vault exported as JSON file!', 'success');
+}
+
+/**
+ * Import Master Profile Vault from JSON File
+ */
+function importMasterProfileVaultJson(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const parsed = JSON.parse(event.target.result);
+      if (parsed && typeof parsed === 'object') {
+        masterProfile = parsed;
+        saveMasterProfileToStorage(false);
+        renderVaultModalContent();
+        showToast('Master Profile Vault successfully imported from file!', 'success');
+      } else {
+        showToast('Invalid JSON file format for Master Profile Vault.', 'error');
+      }
+    } catch (err) {
+      showToast('Failed to parse Master Profile JSON file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
 }
 
 function capitalize(str) {

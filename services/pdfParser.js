@@ -365,9 +365,20 @@ function parseSkills(lines, skillsObj) {
     }
   }
 
-  skillsObj.technical = Array.from(new Set(technical)).slice(0, 15);
-  skillsObj.frameworks = Array.from(new Set(frameworks)).slice(0, 15);
-  skillsObj.tools = Array.from(new Set(tools)).slice(0, 15);
+  const techItems = Array.from(new Set(technical)).slice(0, 15);
+  const fwItems = Array.from(new Set(frameworks)).slice(0, 15);
+  const toolItems = Array.from(new Set(tools)).slice(0, 15);
+
+  // Since skills is an array now, we push objects to it
+  if (techItems.length > 0) {
+    skillsObj.push({ category: 'Languages', items: techItems.join(', ') });
+  }
+  if (fwItems.length > 0) {
+    skillsObj.push({ category: 'AI, LLM & Agentic Systems', items: fwItems.join(', ') });
+  }
+  if (toolItems.length > 0) {
+    skillsObj.push({ category: 'Cloud, DevOps & MLOps', items: toolItems.join(', ') });
+  }
 }
 
 function parseExperience(lines) {
@@ -556,6 +567,7 @@ export function createEmptyResume() {
     personalInfo: {
       name: '',
       title: '',
+      role: '',
       email: '',
       phone: '',
       location: '',
@@ -564,14 +576,13 @@ export function createEmptyResume() {
       portfolio: ''
     },
     summary: '',
-    skills: {
-      technical: [],
-      frameworks: [],
-      tools: [],
-      softSkills: []
-    },
+    skills: [],
     experience: [],
     projects: [],
-    education: []
+    education: [],
+    certifications: [],
+    publications: [],
+    volunteer: [],
+    customSections: []
   };
 }
