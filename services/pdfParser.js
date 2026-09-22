@@ -118,22 +118,76 @@ function extractTextFromPdfBuffer(buffer) {
  * @param {string} rawText 
  * @returns {Object} Structured Resume
  */
+/**
+ * Merges lines that were visually broken/wrapped by PDF typesetting.
+ * Ensures bullet points, sentences, and categories stay as single continuous lines.
+ */
+function unbreakWrappedLines(rawLines, sectionKeywords) {
+  const dateRegex = /(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|19\d{2}|20\d{2})[\w\s,]*[-–—]\s*(?:present|current|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|19\d{2}|20\d{2})/i;
+  const isBulletRegex = /^[-*•·]/;
+
+  const result = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].trim();
+    if (!line) continue;
+
+    if (result.length === 0) {
+      result.push(line);
+      continue;
+    }
+
+    const prevLine = result[result.length - 1];
+
+    // Check if current line is a section header
+    let isHeader = false;
+    for (const [sec, regex] of Object.entries(sectionKeywords)) {
+      if (regex.test(line) && line.length < 40) {
+        isHeader = true;
+        break;
+      }
+    }
+
+    const isBullet = isBulletRegex.test(line);
+    const hasJobHeader = (line.includes(' - ') || line.includes(' – ') || line.includes(' | ')) && dateRegex.test(line);
+    const hasDegree = /^(bachelor|master|b\.?tech|b\.?s\.?|ph\.?d)/i.test(line);
+
+    // If current line is a continuation:
+    // 1. Prev line was a bullet, and current line is NOT a bullet, header, job header, or degree
+    const prevWasBullet = isBulletRegex.test(prevLine);
+    const shouldMergeBullet = prevWasBullet && !isBullet && !isHeader && !hasJobHeader && !hasDegree;
+
+    // 2. Prev line ended with a hyphen (broken word across lines)
+    const prevEndedHyphen = prevLine.endsWith('-');
+
+    // 3. Current line starts with lowercase letter and isn't a header
+    const startsLower = /^[a-z]/.test(line);
+
+    if (shouldMergeBullet || (prevEndedHyphen && !isHeader && !isBullet) || (startsLower && !isHeader && !isBullet)) {
+      if (prevLine.endsWith('-')) {
+        result[result.length - 1] = prevLine.slice(0, -1) + line;
+      } else {
+        result[result.length - 1] = prevLine + ' ' + line;
+      }
+    } else {
+      result.push(line);
+    }
+  }
+
+  return result;
+}
+
 export function parseResumeText(rawText) {
   if (!rawText || typeof rawText !== 'string') {
     return createEmptyResume();
   }
 
-  const lines = rawText
+  const rawLines = rawText
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(line => line.length > 0);
 
   const resume = createEmptyResume();
-  if (lines.length === 0) return resume;
-
-  // Extract contact info from top lines (first 10 lines)
-  const headerLines = lines.slice(0, Math.min(10, lines.length));
-  parseHeader(headerLines, resume.personalInfo);
+  if (rawLines.length === 0) return resume;
 
   // Identify sections
   const sectionKeywords = {
@@ -143,6 +197,13 @@ export function parseResumeText(rawText) {
     experience: /^(work\s+experience|professional\s+experience|experience|employment\s+history|volunteer\s+experience)/i,
     projects: /^(projects|key\s+projects|personal\s+projects|technical\s+projects)/i
   };
+
+  // Re-assemble broken/wrapped lines into single continuous lines
+  const lines = unbreakWrappedLines(rawLines, sectionKeywords);
+
+  // Extract contact info from top lines (first 10 lines)
+  const headerLines = lines.slice(0, Math.min(10, lines.length));
+  parseHeader(headerLines, resume.personalInfo);
 
   let currentSection = null;
   const sectionsContent = {
@@ -278,7 +339,17 @@ function parseSkills(lines, skillsObj) {
   const frameworks = [];
   const tools = [];
 
+  // Merge wrapped category lines first
+  const mergedLines = [];
   for (const line of lines) {
+    if (line.includes(':') || mergedLines.length === 0) {
+      mergedLines.push(line);
+    } else {
+      mergedLines[mergedLines.length - 1] += ' ' + line;
+    }
+  }
+
+  for (const line of mergedLines) {
     const lower = line.toLowerCase();
     const cleaned = line.replace(/^[A-Za-z\s,&/()]+:\s*/, '');
     const tokens = cleaned.split(/[,•|·/]/).map(s => s.trim()).filter(s => s.length > 0 && s.length < 35);
@@ -364,8 +435,18 @@ function parseExperience(lines) {
           bullets: []
         };
       } else if (currentExp) {
-        if (line.length > 20) {
-          currentExp.bullets.push(line);
+        // Line continuation: If current job already has a bullet, merge this line into the bullet!
+        if (currentExp.bullets.length > 0) {
+          const lastIdx = currentExp.bullets.length - 1;
+          if (currentExp.bullets[lastIdx].endsWith('-')) {
+            currentExp.bullets[lastIdx] = currentExp.bullets[lastIdx].slice(0, -1) + line;
+          } else {
+            currentExp.bullets[lastIdx] += ' ' + line;
+          }
+        } else if (line.length > 5) {
+          if (!currentExp.role || currentExp.role === 'Software Engineer') {
+            currentExp.role = line;
+          }
         }
       }
     }
@@ -407,8 +488,16 @@ function parseProjects(lines) {
     } else if (currentProj) {
       if (isBullet) {
         currentProj.bullets.push(line.replace(/^[-*•·]\s*/, '').trim());
-      } else if (line.length > 20) {
-        currentProj.bullets.push(line);
+      } else if (currentProj.bullets.length > 0) {
+        // Continuation of previous project bullet!
+        const lastIdx = currentProj.bullets.length - 1;
+        if (currentProj.bullets[lastIdx].endsWith('-')) {
+          currentProj.bullets[lastIdx] = currentProj.bullets[lastIdx].slice(0, -1) + line;
+        } else {
+          currentProj.bullets[lastIdx] += ' ' + line;
+        }
+      } else {
+        currentProj.roleOrTech = (currentProj.roleOrTech ? currentProj.roleOrTech + ' ' : '') + line;
       }
     }
   }

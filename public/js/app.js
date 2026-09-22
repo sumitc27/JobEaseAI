@@ -7,10 +7,10 @@
 import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 
 // Application State
-let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.fullstack));
+let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit || SAMPLE_RESUMES.fullstack));
 let currentJD = SAMPLE_JOB_DESCRIPTIONS.fullstack_cloud;
 let currentDensity = 'standard';
-let currentTemplate = localStorage.getItem('jobease_template') || 'modern';
+let currentTemplate = localStorage.getItem('jobease_template') || 'latex';
 let activeTab = 'form';
 const PAGE_LIMIT_HEIGHT = 932; // Calibrated 1-page letter height in pixels
 
@@ -57,6 +57,7 @@ const elements = {
   piLocation: document.getElementById('pi-location'),
   piLinkedin: document.getElementById('pi-linkedin'),
   piGithub: document.getElementById('pi-github'),
+  piLeetcode: document.getElementById('pi-leetcode'),
   piPortfolio: document.getElementById('pi-portfolio'),
   resumeSummaryInput: document.getElementById('resume-summary-input'),
   skillsTechInput: document.getElementById('skills-tech-input'),
@@ -73,6 +74,7 @@ const elements = {
   resumePaper: document.getElementById('resume-paper'),
   rpName: document.getElementById('rp-name'),
   rpTitle: document.getElementById('rp-title'),
+  rpContacts: document.getElementById('rp-contacts'),
   rpEmail: document.getElementById('rp-email'),
   rpPhone: document.getElementById('rp-phone'),
   rpLocation: document.getElementById('rp-location'),
@@ -207,10 +209,10 @@ function bindEvents() {
   // Form Inputs live synchronization
   const formInputs = [
     elements.piName, elements.piTitle, elements.piEmail, elements.piPhone,
-    elements.piLocation, elements.piLinkedin, elements.piGithub, elements.piPortfolio,
+    elements.piLocation, elements.piLinkedin, elements.piGithub, elements.piLeetcode, elements.piPortfolio,
     elements.resumeSummaryInput, elements.skillsTechInput, elements.skillsFrameworksInput,
     elements.skillsToolsInput
-  ];
+  ].filter(Boolean);
 
   formInputs.forEach(input => {
     input.addEventListener('input', syncFormToState);
@@ -239,7 +241,7 @@ function setTemplate(template, notify = true) {
     btn.classList.toggle('active', btn.dataset.template === template);
   });
 
-  elements.resumePaper.classList.remove('theme-modern', 'theme-classic', 'theme-minimalist');
+  elements.resumePaper.classList.remove('theme-modern', 'theme-classic', 'theme-minimalist', 'theme-latex');
   elements.resumePaper.classList.add(`theme-${template}`);
   localStorage.setItem('jobease_template', template);
 
@@ -249,7 +251,8 @@ function setTemplate(template, notify = true) {
     const names = {
       modern: 'Modern Tech (Sans-Serif)',
       classic: 'Classic Ivy / Harvard (Serif Executive)',
-      minimalist: 'Minimalist Clean (Compact Scandinavian)'
+      minimalist: 'Minimalist Clean (Compact Scandinavian)',
+      latex: 'LaTeX Academic (Computer Modern TeX)'
     };
     showToast(`Switched to ${names[template] || template} template!`, 'info');
   }
@@ -345,6 +348,7 @@ function loadResumeIntoForm(resume) {
   elements.piLocation.value = resume.personalInfo?.location || '';
   elements.piLinkedin.value = resume.personalInfo?.linkedin || '';
   elements.piGithub.value = resume.personalInfo?.github || '';
+  if (elements.piLeetcode) elements.piLeetcode.value = resume.personalInfo?.leetcode || '';
   elements.piPortfolio.value = resume.personalInfo?.portfolio || '';
   
   elements.resumeSummaryInput.value = resume.summary || '';
@@ -370,6 +374,7 @@ function syncFormToState() {
     location: elements.piLocation.value,
     linkedin: elements.piLinkedin.value,
     github: elements.piGithub.value,
+    leetcode: elements.piLeetcode ? elements.piLeetcode.value : (currentResume.personalInfo?.leetcode || ''),
     portfolio: elements.piPortfolio.value
   };
 
@@ -631,22 +636,36 @@ function renderPreview() {
   const pi = currentResume.personalInfo || {};
   elements.rpName.textContent = pi.name || 'Candidate Name';
   elements.rpTitle.textContent = pi.title || 'Professional Title';
-  elements.rpEmail.textContent = pi.email || '';
-  elements.rpPhone.textContent = pi.phone || '';
-  elements.rpLocation.textContent = pi.location || '';
-  
-  if (pi.linkedin) {
-    elements.rpLinkedin.style.display = 'inline';
-    elements.rpLinkedin.href = pi.linkedin;
-  } else {
-    elements.rpLinkedin.style.display = 'none';
-  }
 
-  if (pi.github) {
-    elements.rpGithub.style.display = 'inline';
-    elements.rpGithub.href = pi.github;
-  } else {
-    elements.rpGithub.style.display = 'none';
+  // Contacts rendering
+  const contactsContainer = elements.rpContacts || document.getElementById('rp-contacts');
+  if (contactsContainer) {
+    if (currentTemplate === 'latex') {
+      const line1 = [
+        pi.phone ? escapeHtml(pi.phone) : '',
+        pi.email ? `<a href="mailto:${escapeHtml(pi.email)}">${escapeHtml(pi.email)}</a>` : '',
+        pi.location ? escapeHtml(pi.location) : ''
+      ].filter(Boolean).join(' | ');
+
+      const line2Links = [];
+      if (pi.linkedin) line2Links.push(`<a href="${escapeHtml(pi.linkedin)}" target="_blank">LinkedIn</a>`);
+      if (pi.github) line2Links.push(`<a href="${escapeHtml(pi.github)}" target="_blank">Github</a>`);
+      if (pi.leetcode) line2Links.push(`<a href="${escapeHtml(pi.leetcode)}" target="_blank">Leetcode</a>`);
+      if (pi.portfolio) line2Links.push(`<a href="${escapeHtml(pi.portfolio)}" target="_blank">Website</a>`);
+      const line2 = line2Links.join(' | ');
+
+      contactsContainer.innerHTML = `<div>${line1}</div>${line2 ? `<div>${line2}</div>` : ''}`;
+    } else {
+      const parts = [];
+      if (pi.email) parts.push(`<span id="rp-email">${escapeHtml(pi.email)}</span>`);
+      if (pi.phone) parts.push(`<span id="rp-phone">${escapeHtml(pi.phone)}</span>`);
+      if (pi.location) parts.push(`<span id="rp-location">${escapeHtml(pi.location)}</span>`);
+      if (pi.linkedin) parts.push(`<a href="${escapeHtml(pi.linkedin)}" id="rp-linkedin" target="_blank">LinkedIn</a>`);
+      if (pi.github) parts.push(`<a href="${escapeHtml(pi.github)}" id="rp-github" target="_blank">GitHub</a>`);
+      if (pi.leetcode) parts.push(`<a href="${escapeHtml(pi.leetcode)}" id="rp-leetcode" target="_blank">LeetCode</a>`);
+      if (pi.portfolio) parts.push(`<a href="${escapeHtml(pi.portfolio)}" id="rp-portfolio" target="_blank">Portfolio</a>`);
+      contactsContainer.innerHTML = parts.join(' <span>•</span> ');
+    }
   }
 
   // Summary
@@ -658,33 +677,95 @@ function renderPreview() {
   }
 
   // Skills
-  const techSkills = (currentResume.skills?.technical || []).join(' • ');
-  const frameworks = (currentResume.skills?.frameworks || []).join(' • ');
-  const tools = (currentResume.skills?.tools || []).join(' • ');
+  const s = currentResume.skills || {};
+  const langText = s.languages || (s.technical || []).join(', ');
+  const aiText = s.aiAgentic || (s.frameworks || []).join(', ');
+  const mlText = s.mlCv || '';
+  const cloudText = s.cloudDevOps || (s.tools || []).join(', ');
 
-  elements.rpSkillsTech.innerHTML = techSkills ? `<strong>Technical Skills:</strong> ${escapeHtml(techSkills)}` : '';
-  elements.rpSkillsFrameworks.innerHTML = frameworks ? `<strong>Frameworks & Libraries:</strong> ${escapeHtml(frameworks)}` : '';
-  elements.rpSkillsTools.innerHTML = tools ? `<strong>Tools & Platforms:</strong> ${escapeHtml(tools)}` : '';
+  if (s.languages || s.aiAgentic || s.mlCv || s.cloudDevOps) {
+    elements.rpSkillsTech.innerHTML = langText ? `<strong>Languages:</strong> ${escapeHtml(langText)}` : '';
+    elements.rpSkillsFrameworks.innerHTML = aiText ? `<strong>AI, LLM & Agentic Systems:</strong> ${escapeHtml(aiText)}` : '';
+    elements.rpSkillsTools.innerHTML = (mlText ? `<strong>ML/DL & CV:</strong> ${escapeHtml(mlText)}<br>` : '') + 
+      (cloudText ? `<strong>Cloud, DevOps & MLOps:</strong> ${escapeHtml(cloudText)}` : '');
+  } else {
+    elements.rpSkillsTech.innerHTML = langText ? `<strong>Technical Skills:</strong> ${escapeHtml(langText)}` : '';
+    elements.rpSkillsFrameworks.innerHTML = aiText ? `<strong>Frameworks & Libraries:</strong> ${escapeHtml(aiText)}` : '';
+    elements.rpSkillsTools.innerHTML = cloudText ? `<strong>Tools & Platforms:</strong> ${escapeHtml(cloudText)}` : '';
+  }
+
+  // Education
+  elements.rpEducationContainer.innerHTML = '';
+  (currentResume.education || []).forEach(edu => {
+    const item = document.createElement('div');
+    item.className = 'rp-project-item';
+
+    if (currentTemplate === 'latex') {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div><strong class="rp-role">${escapeHtml(edu.institution || '')}</strong></div>
+          <div class="rp-meta">${escapeHtml(edu.location || '')}</div>
+        </div>
+        <div class="rp-item-header" style="margin-top: -2px;">
+          <div style="font-style: italic; font-size: 0.78rem;">${escapeHtml(edu.degree || '')}</div>
+          <div class="rp-meta" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(edu.year || '')}</div>
+        </div>
+        ${edu.courses ? `<ul class="rp-bullets" style="margin-top: 2px;"><li><strong>Courses:</strong> ${escapeHtml(edu.courses)}</li></ul>` : ''}
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div>
+            <span class="rp-role">${escapeHtml(edu.institution || '')}</span>
+            <span style="color: var(--resume-text-muted); margin: 0 4px;">—</span>
+            <span class="rp-company" style="font-weight: normal; color: var(--resume-text);">${escapeHtml(edu.degree || '')}</span>
+          </div>
+          <div class="rp-meta">${escapeHtml(edu.year || '')}</div>
+        </div>
+        ${edu.courses ? `<ul class="rp-bullets"><li><strong>Courses:</strong> ${escapeHtml(edu.courses)}</li></ul>` : ''}
+      `;
+    }
+    elements.rpEducationContainer.appendChild(item);
+  });
 
   // Experience
   elements.rpExperienceContainer.innerHTML = '';
   (currentResume.experience || []).forEach(exp => {
     const item = document.createElement('div');
     item.className = 'rp-experience-item';
-    const dates = [exp.startDate, exp.endDate].filter(Boolean).join(' – ');
-    item.innerHTML = `
-      <div class="rp-item-header">
-        <div>
-          <span class="rp-role">${escapeHtml(exp.role || '')}</span>
-          <span style="color: var(--resume-text-muted); margin: 0 4px;">|</span>
-          <span class="rp-company">${escapeHtml(exp.company || '')}</span>
+    const dates = [exp.startDate, exp.endDate].filter(Boolean).join(' - ');
+    const title = exp.technologies ? `${exp.company}` : (exp.role && !exp.company.includes(exp.role) ? `${exp.company} - ${exp.role}` : exp.company);
+    const sub = exp.technologies || exp.role;
+
+    if (currentTemplate === 'latex') {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div><strong class="rp-role">${escapeHtml(title)}</strong></div>
+          <div class="rp-meta">${escapeHtml(exp.location || '')}</div>
         </div>
-        <div class="rp-meta">${escapeHtml(dates)} ${exp.location ? `• ${escapeHtml(exp.location)}` : ''}</div>
-      </div>
-      <ul class="rp-bullets">
-        ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-      </ul>
-    `;
+        <div class="rp-item-header" style="margin-top: -2px;">
+          <div class="rp-company" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(sub || '')}</div>
+          <div class="rp-meta" style="font-style: italic; font-size: 0.78rem;">${escapeHtml(dates)}</div>
+        </div>
+        <ul class="rp-bullets">
+          ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+        </ul>
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div>
+            <span class="rp-role">${escapeHtml(exp.role || '')}</span>
+            <span style="color: var(--resume-text-muted); margin: 0 4px;">|</span>
+            <span class="rp-company">${escapeHtml(exp.company || '')}</span>
+          </div>
+          <div class="rp-meta">${escapeHtml(dates)} ${exp.location ? `• ${escapeHtml(exp.location)}` : ''}</div>
+        </div>
+        <ul class="rp-bullets">
+          ${(exp.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+        </ul>
+      `;
+    }
     elements.rpExperienceContainer.appendChild(item);
   });
 
@@ -693,38 +774,83 @@ function renderPreview() {
   (currentResume.projects || []).forEach(proj => {
     const item = document.createElement('div');
     item.className = 'rp-project-item';
-    item.innerHTML = `
-      <div class="rp-item-header">
-        <div>
-          <span class="rp-role">${escapeHtml(proj.name || '')}</span>
-          ${proj.roleOrTech ? `<span class="rp-meta" style="margin-left: 6px;">[${escapeHtml(proj.roleOrTech)}]</span>` : ''}
+
+    const links = [];
+    if (proj.githubUrl) links.push(`<a href="${escapeHtml(proj.githubUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">GitHub</a>`);
+    else if (proj.link && proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank" style="color: inherit; text-decoration: underline;">GitHub</a>`);
+    if (proj.websiteUrl) links.push(`<a href="${escapeHtml(proj.websiteUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">Website</a>`);
+    else if (proj.link && !proj.link.includes('github')) links.push(`<a href="${escapeHtml(proj.link)}" target="_blank" style="color: inherit; text-decoration: underline;">Website</a>`);
+    const linksStr = links.length ? ' | ' + links.join(' | ') : '';
+    const descStr = proj.description ? `: ${escapeHtml(proj.description)}` : '';
+
+    if (currentTemplate === 'latex') {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div><strong class="rp-role">${escapeHtml(proj.name || '')}</strong>${descStr} ${linksStr ? `<span style="font-size: 0.76rem;">${linksStr}</span>` : ''}</div>
+          <div class="rp-meta"></div>
         </div>
-        ${proj.link ? `<div class="rp-meta"><a href="${escapeHtml(proj.link)}" target="_blank" style="color: var(--resume-primary); text-decoration: none;">View Project</a></div>` : ''}
-      </div>
-      <ul class="rp-bullets">
-        ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
-      </ul>
-    `;
+        ${proj.roleOrTech ? `<div style="font-style: italic; font-size: 0.78rem; margin-top: -2px;">${escapeHtml(proj.roleOrTech)}</div>` : ''}
+        <ul class="rp-bullets">
+          ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+        </ul>
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="rp-item-header">
+          <div>
+            <span class="rp-role">${escapeHtml(proj.name || '')}</span>
+            ${proj.roleOrTech ? `<span class="rp-meta" style="margin-left: 6px;">[${escapeHtml(proj.roleOrTech)}]</span>` : ''}
+          </div>
+          ${proj.link ? `<div class="rp-meta"><a href="${escapeHtml(proj.link)}" target="_blank" style="color: var(--resume-primary); text-decoration: none;">View Project</a></div>` : ''}
+        </div>
+        <ul class="rp-bullets">
+          ${(proj.bullets || []).map(b => `<li>${escapeHtml(b)}</li>`).join('')}
+        </ul>
+      `;
+    }
     elements.rpProjectsContainer.appendChild(item);
   });
 
-  // Education
-  elements.rpEducationContainer.innerHTML = '';
-  (currentResume.education || []).forEach(edu => {
-    const item = document.createElement('div');
-    item.className = 'rp-project-item';
-    item.innerHTML = `
-      <div class="rp-item-header">
-        <div>
-          <span class="rp-role">${escapeHtml(edu.institution || '')}</span>
-          <span style="color: var(--resume-text-muted); margin: 0 4px;">—</span>
-          <span class="rp-company" style="font-weight: normal; color: var(--resume-text);">${escapeHtml(edu.degree || '')}</span>
-        </div>
-        <div class="rp-meta">${escapeHtml(edu.year || '')}</div>
-      </div>
-    `;
-    elements.rpEducationContainer.appendChild(item);
-  });
+  // Achievements & Certifications
+  const achSec = document.getElementById('rp-section-achievements');
+  const achContainer = document.getElementById('rp-achievements-container');
+  if (achSec && achContainer) {
+    if (Array.isArray(currentResume.achievements) && currentResume.achievements.length > 0) {
+      achSec.style.display = 'flex';
+      achContainer.innerHTML = currentResume.achievements.map(ach => {
+        if (typeof ach === 'string') return `<li>${ach}</li>`;
+        let text = '';
+        if (ach.isPaper) {
+          text = `<em>"${escapeHtml(ach.details || ach.title)}"</em>`;
+        } else if (ach.isCert) {
+          text = `Certification: <strong>${escapeHtml(ach.title)}</strong> - ${escapeHtml(ach.details)}`;
+        } else {
+          text = `<strong>${escapeHtml(ach.title)}</strong> -- ${escapeHtml(ach.details)}`;
+        }
+        if (ach.linkUrl) {
+          text += ` | <a href="${escapeHtml(ach.linkUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">${escapeHtml(ach.linkText || 'Link')}</a>`;
+        }
+        return `<li>${text}</li>`;
+      }).join('');
+    } else {
+      achSec.style.display = 'none';
+    }
+  }
+
+  // Volunteer Experience
+  const volSec = document.getElementById('rp-section-volunteer');
+  const volContainer = document.getElementById('rp-volunteer-container');
+  if (volSec && volContainer) {
+    if (Array.isArray(currentResume.volunteer) && currentResume.volunteer.length > 0) {
+      volSec.style.display = 'flex';
+      volContainer.innerHTML = currentResume.volunteer.map(vol => {
+        if (typeof vol === 'string') return `<li>${vol}</li>`;
+        return `<li><strong>${escapeHtml(vol.role || vol.title)}</strong> -- ${escapeHtml(vol.details)}</li>`;
+      }).join('');
+    } else {
+      volSec.style.display = 'none';
+    }
+  }
 }
 
 /**
@@ -1093,8 +1219,17 @@ function exportResumeJson() {
  * Sample Profile Toggle
  */
 function toggleSampleProfile() {
+  const isSumit = currentResume.personalInfo?.name?.includes('Sumit');
   const isFullstack = currentResume.personalInfo?.title?.includes('Full Stack');
-  currentResume = JSON.parse(JSON.stringify(isFullstack ? SAMPLE_RESUMES.data_ai : SAMPLE_RESUMES.fullstack));
+  let nextProfile;
+  if (isSumit) {
+    nextProfile = SAMPLE_RESUMES.fullstack;
+  } else if (isFullstack) {
+    nextProfile = SAMPLE_RESUMES.data_ai;
+  } else {
+    nextProfile = SAMPLE_RESUMES.sumit;
+  }
+  currentResume = JSON.parse(JSON.stringify(nextProfile));
   loadResumeIntoForm(currentResume);
   showToast(`Loaded ${currentResume.personalInfo.name} sample profile!`, 'info');
   evaluateMatch();
@@ -1300,89 +1435,307 @@ function generateClientLatex(resume) {
   const email = escapeClientLatex(pi.email || '');
   const phone = escapeClientLatex(pi.phone || '');
   const location = escapeClientLatex(pi.location || '');
-  const linkedin = escapeClientLatex(pi.linkedin || '');
-  const github = escapeClientLatex(pi.github || '');
+  const linkedin = pi.linkedin || '';
+  const github = pi.github || '';
+  const leetcode = pi.leetcode || '';
+  const portfolio = pi.portfolio || '';
 
-  const contactParts = [email, phone, location, linkedin, github].filter(Boolean);
-  const contactLine = contactParts.join(' $|$ ');
+  // Contacts line 1: Phone | Email (with optional location)
+  const row1 = [];
+  if (phone) row1.push(phone);
+  if (email) row1.push(`\\href{mailto:${email}}{${email}}`);
+  if (location && !row1.length) row1.push(location);
+  const row1Str = row1.join(' $|$ ');
 
+  // Contacts line 2: LinkedIn | Github | Leetcode | Website
+  const row2 = [];
+  if (linkedin) row2.push(`\\href{${escapeClientLatex(linkedin)}}{LinkedIn}`);
+  if (github) row2.push(`\\href{${escapeClientLatex(github)}}{Github}`);
+  if (leetcode) row2.push(`\\href{${escapeClientLatex(leetcode)}}{Leetcode}`);
+  if (portfolio) row2.push(`\\href{${escapeClientLatex(portfolio)}}{Website}`);
+  const row2Str = row2.join(' $|$ ');
+
+  let headerBlock = `\\begin{center}
+  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
+  if (row1Str) {
+    headerBlock += `\n  \\small ${row1Str} \\\\`;
+  }
+  if (row2Str) {
+    headerBlock += `\n  ${row2Str}`;
+  }
+  headerBlock += `\n\\end{center}`;
+
+  // Education Section
+  let educationSection = '';
+  if (Array.isArray(resume.education) && resume.education.length > 0) {
+    const eduItems = resume.education.map(edu => {
+      const institution = escapeClientLatex(edu.institution || 'University');
+      const degree = escapeClientLatex(edu.degree || 'Degree');
+      const year = escapeClientLatex(edu.year || '');
+      const eduLoc = escapeClientLatex(edu.location || '');
+      let itemBlock = `  \\resumeSubheading
+    {${institution}}{${eduLoc}}
+    {${degree}}{${year}}`;
+
+      const bullets = [];
+      if (edu.courses) {
+        bullets.push(`\\textbf{Courses}: ${escapeClientLatex(edu.courses)}`);
+      }
+      if (Array.isArray(edu.bullets)) {
+        edu.bullets.forEach(b => bullets.push(escapeClientLatex(b)));
+      }
+      if (bullets.length > 0) {
+        itemBlock += `\n  \\resumeItemListStart\n${bullets.map(b => `    \\resumeItem{${b}}`).join('\n')}\n  \\resumeItemListEnd`;
+      }
+      return itemBlock;
+    }).join('\n');
+
+    educationSection = `\\section{Education}
+\\resumeSubHeadingListStart
+${eduItems}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Skills Section
+  let skillsSection = '';
+  const skillsObj = resume.skills || {};
+  const skillLines = [];
+
+  if (skillsObj.languages) {
+    skillLines.push(`   \\textbf{Languages}{: ${escapeClientLatex(skillsObj.languages)}}`);
+  } else if (skillsObj.technical && skillsObj.technical.length > 0) {
+    skillLines.push(`   \\textbf{Languages}{: ${skillsObj.technical.map(escapeClientLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.aiAgentic) {
+    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${escapeClientLatex(skillsObj.aiAgentic)}}`);
+  }
+
+  if (skillsObj.mlCv) {
+    skillLines.push(`   \\textbf{ML/DL \\& CV}{: ${escapeClientLatex(skillsObj.mlCv)}}`);
+  } else if (!skillsObj.aiAgentic && skillsObj.frameworks && skillsObj.frameworks.length > 0) {
+    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${skillsObj.frameworks.map(escapeClientLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.cloudDevOps) {
+    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${escapeClientLatex(skillsObj.cloudDevOps)}}`);
+  } else if (skillsObj.tools && skillsObj.tools.length > 0) {
+    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${skillsObj.tools.map(escapeClientLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.softSkills && skillsObj.softSkills.length > 0 && !skillsObj.cloudDevOps) {
+    skillLines.push(`   \\textbf{Core Competencies}{: ${skillsObj.softSkills.map(escapeClientLatex).join(', ')}}`);
+  }
+
+  if (skillLines.length > 0) {
+    skillsSection = `\\section{Skills}
+\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
+  \\item \\small{
+${skillLines.join(' \\\\\n')}
+  }
+\\end{itemize}`;
+  }
+
+  // Experience Section
+  let experienceSection = '';
+  if (Array.isArray(resume.experience) && resume.experience.length > 0) {
+    const jobs = resume.experience.map(job => {
+      const company = escapeClientLatex(job.company || 'Company');
+      const role = escapeClientLatex(job.role || 'Role');
+      const jobLocation = escapeClientLatex(job.location || '');
+      const dates = escapeClientLatex([job.startDate, job.endDate].filter(Boolean).join(' - '));
+      const bullets = (job.bullets || [])
+        .map(b => `  \\resumeItem{${escapeClientLatex(b)}}`)
+        .join('\n');
+
+      const title = job.technologies ? `${company}` : (role && !company.includes(role) ? `${company} - ${role}` : company);
+      const subrole = job.technologies ? escapeClientLatex(job.technologies) : role;
+
+      return `  \\resumeSubheading
+  {${title}}{${jobLocation}}
+  {${subrole}}{${dates}}
+\\resumeItemListStart
+${bullets}
+\\resumeItemListEnd`;
+    }).join('\n  \\vspace{2pt}\n');
+
+    experienceSection = `\\section{Experience}
+\\resumeSubHeadingListStart
+${jobs}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Projects Section
+  let projectsSection = '';
+  if (Array.isArray(resume.projects) && resume.projects.length > 0) {
+    const projs = resume.projects.map(proj => {
+      const projName = escapeClientLatex(proj.name || 'Project');
+      const roleOrTech = escapeClientLatex(proj.roleOrTech || '');
+
+      const links = [];
+      if (proj.githubUrl) {
+        links.push(`\\href{${escapeClientLatex(proj.githubUrl)}}{GitHub}`);
+      } else if (proj.link && proj.link.includes('github')) {
+        links.push(`\\href{${escapeClientLatex(proj.link)}}{GitHub}`);
+      }
+      if (proj.websiteUrl) {
+        links.push(`\\href{${escapeClientLatex(proj.websiteUrl)}}{Website}`);
+      } else if (proj.link && !proj.link.includes('github')) {
+        links.push(`\\href{${escapeClientLatex(proj.link)}}{Website}`);
+      }
+
+      let titleHeading = `\\textbf{${projName}}`;
+      if (proj.description) {
+        titleHeading += `: ${escapeClientLatex(proj.description)}`;
+      }
+      if (links.length > 0) {
+        titleHeading += ` $|$ ${links.join(' $|$ ')}`;
+      }
+
+      const bullets = (proj.bullets || [])
+        .map(b => `    \\resumeItem{${escapeClientLatex(b)}}`)
+        .join('\n');
+
+      return `  \\resumeSubheading
+    {${titleHeading}}
+    {}
+    {\\textit{${roleOrTech}}}
+    {}
+  \\resumeItemListStart
+${bullets}
+  \\resumeItemListEnd`;
+    }).join('\n  \\vspace{2pt}\n');
+
+    projectsSection = `\\section{Projects}
+\\resumeSubHeadingListStart
+${projs}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Achievements & Certifications Section
+  let achievementsSection = '';
+  if (Array.isArray(resume.achievements) && resume.achievements.length > 0) {
+    const achItems = resume.achievements.map(ach => {
+      if (typeof ach === 'string') {
+        return `    \\resumeItem{${ach}}`;
+      }
+      let text = '';
+      if (ach.isPaper) {
+        text = `\`\`\\textit{${escapeClientLatex(ach.details || ach.title)}}\'\'`;
+      } else if (ach.isCert) {
+        text = `Certification: \\textbf{${escapeClientLatex(ach.title)}} - ${escapeClientLatex(ach.details)}`;
+      } else {
+        text = `\\textbf{${escapeClientLatex(ach.title)}} -- ${escapeClientLatex(ach.details)}`;
+      }
+      if (ach.linkUrl) {
+        text += ` $|$ \\href{${escapeClientLatex(ach.linkUrl)}}{${escapeClientLatex(ach.linkText || 'Link')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    achievementsSection = `\\section{Achievements \\& Certifications}
+\\resumeSubHeadingListStart
+${achItems}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Volunteer Experience Section
+  let volunteerSection = '';
+  if (Array.isArray(resume.volunteer) && resume.volunteer.length > 0) {
+    const volItems = resume.volunteer.map(vol => {
+      if (typeof vol === 'string') {
+        return `    \\resumeItem{${vol}}`;
+      }
+      return `    \\resumeItem{\\textbf{${escapeClientLatex(vol.role || vol.title)}} -- ${escapeClientLatex(vol.details)}}`;
+    }).join('\n');
+
+    volunteerSection = `\\section{Volunteer Experience}
+\\resumeSubHeadingListStart
+${volItems}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Summary Section (if present)
   let summarySection = '';
   if (resume.summary && resume.summary.trim()) {
-    summarySection = `\\section*{Summary}\n\\noindent\n${escapeClientLatex(resume.summary)}\n\\vspace{4pt}\n`;
+    summarySection = `\\section{Summary}
+\\resumeItemListStart
+  \\resumeItem{${escapeClientLatex(resume.summary)}}
+\\resumeItemListEnd`;
   }
 
-  let expTex = '';
-  if (Array.isArray(resume.experience) && resume.experience.length > 0) {
-    const jobs = resume.experience.map(j => {
-      const bullets = (j.bullets || []).map(b => `    \\item ${escapeClientLatex(b)}`).join('\n');
-      return `\\noindent\n\\textbf{${escapeClientLatex(j.company || 'Company')}} \\hfill ${escapeClientLatex(j.location || '')} \\\\\n\\textit{${escapeClientLatex(j.role || 'Role')}} \\hfill ${escapeClientLatex([j.startDate, j.endDate].filter(Boolean).join(' -- '))} \\\\\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${bullets}\n\\end{itemize}\n\\vspace{4pt}`;
-    }).join('\n\n');
-    expTex = `\\section*{Experience}\n${jobs}\n`;
-  }
-
-  let projTex = '';
-  if (Array.isArray(resume.projects) && resume.projects.length > 0) {
-    const projs = resume.projects.map(p => {
-      const bullets = (p.bullets || []).map(b => `    \\item ${escapeClientLatex(b)}`).join('\n');
-      const roleOrTech = p.roleOrTech ? `\\textit{[${escapeClientLatex(p.roleOrTech)}]}` : '';
-      return `\\noindent\n\\textbf{${escapeClientLatex(p.name || 'Project')}} ${roleOrTech} \\hfill ${escapeClientLatex(p.link || '')} \\\\\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${bullets}\n\\end{itemize}\n\\vspace{4pt}`;
-    }).join('\n\n');
-    projTex = `\\section*{Key Projects}\n${projs}\n`;
-  }
-
-  let skillsTex = '';
-  const skillsObj = resume.skills || {};
-  const skillGroups = [];
-  if (skillsObj.technical && skillsObj.technical.length > 0) {
-    skillGroups.push(`\\item \\textbf{Technical Skills}: ${skillsObj.technical.map(escapeClientLatex).join(', ')}`);
-  }
-  if (skillsObj.frameworks && skillsObj.frameworks.length > 0) {
-    skillGroups.push(`\\item \\textbf{Frameworks \\& Libraries}: ${skillsObj.frameworks.map(escapeClientLatex).join(', ')}`);
-  }
-  if (skillsObj.tools && skillsObj.tools.length > 0) {
-    skillGroups.push(`\\item \\textbf{Tools \\& Platforms}: ${skillsObj.tools.map(escapeClientLatex).join(', ')}`);
-  }
-  if (skillGroups.length > 0) {
-    skillsTex = `\\section*{Skills \\& Technologies}\n\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]\n${skillGroups.map(s => `    ${s}`).join('\n')}\n\\end{itemize}\n\\vspace{4pt}\n`;
-  }
-
-  let eduTex = '';
-  if (Array.isArray(resume.education) && resume.education.length > 0) {
-    const edus = resume.education.map(e => {
-      return `\\noindent\n\\textbf{${escapeClientLatex(e.institution || 'University')}} \\hfill ${escapeClientLatex(e.year || '')} \\\\\n\\textit{${escapeClientLatex(e.degree || 'Degree')}} \\\\`;
-    }).join('\n\\vspace{2pt}\n');
-    eduTex = `\\section*{Education}\n${edus}\n`;
-  }
-
-  return `\\documentclass[letterpaper,10pt]{article}
-\\usepackage[margin=0.45in]{geometry}
+  return `\\documentclass[a4paper,10pt]{article}
+\\usepackage{lmodern}
+\\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
+\\usepackage[usenames,dvipsnames]{color}
 \\usepackage{enumitem}
-\\usepackage{hyperref}
+\\usepackage[hidelinks]{hyperref}
+\\usepackage{fancyhdr}
+\\usepackage{graphicx}
 
-\\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    urlcolor=black
+%---------------------------
+% Page Setup
+\\pagestyle{fancy}
+\\fancyhf{}
+\\fancyfoot{}
+\\renewcommand{\\headrulewidth}{0pt}
+\\renewcommand{\\footrulewidth}{0pt}
+
+\\addtolength{\\oddsidemargin}{-0.5in}
+\\addtolength{\\evensidemargin}{-0.5in}
+\\addtolength{\\textwidth}{1in}
+\\addtolength{\\topmargin}{-0.6in}
+\\addtolength{\\textheight}{1.2in}
+
+\\setlength{\\tabcolsep}{0in}
+\\setlength{\\parindent}{0pt}
+
+\\urlstyle{same}
+\\raggedbottom
+\\raggedright
+
+%---------------------------
+% Section formatting
+\\titleformat{\\section}
+  {\\vspace{-4pt}\\scshape\\raggedright\\large}
+  {}
+  {0em}
+  {}
+  [\\color{black}\\titlerule\\vspace{-3pt}]
+
+%---------------------------
+% Custom Commands
+\\newcommand{\\resumeSubheading}[4]{
+  \\vspace{-1pt}\\item
+    \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}
+      \\textbf{#1} & #2 \\\\
+      \\textit{\\small#3} & \\textit{\\small #4} \\\\
+    \\end{tabular*}\\vspace{-5pt}
 }
 
-\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]
-\\titlespacing*{\\section}{0pt}{*1.2}{*0.8}
+\\newcommand{\\resumeItem}[1]{\\item\\small{#1\\vspace{-2pt}}}
 
+\\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
+\\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
+
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-4pt}}
+
+\\renewcommand{\\labelitemii}{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
+
+%---------------------------
 \\begin{document}
-\\pagestyle{empty}
 
-\\begin{center}
-    {\\textbf{\\Huge ${name}}} \\\\[4pt]
-    ${contactLine ? `{\\small ${contactLine}}` : ''}
-\\end{center}
-\\vspace{-4pt}
+${headerBlock}
 
 ${summarySection}
-${skillsTex}
-${expTex}
-${projTex}
-${eduTex}
+${educationSection}
+${skillsSection}
+${experienceSection}
+${projectsSection}
+${achievementsSection}
+${volunteerSection}
 
 \\end{document}
 `;

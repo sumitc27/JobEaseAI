@@ -1,94 +1,176 @@
-\documentclass[letterpaper,10pt]{article}
-\usepackage[margin=0.45in]{geometry}
+\documentclass[a4paper,10pt]{article}
+\usepackage{lmodern}
+\usepackage[empty]{fullpage}
 \usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
 \usepackage{enumitem}
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
 
-% Formatting overrides
-\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
-\titlespacing*{\section}{0pt}{*1.2}{*0.8}
+%---------------------------
+% Page Setup
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
 
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.6in}
+\addtolength{\textheight}{1.2in}
+
+\setlength{\tabcolsep}{0in}
+\setlength{\parindent}{0pt}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+
+%---------------------------
+% Section formatting
+\titleformat{\section}
+  {\vspace{-4pt}\scshape\raggedright\large}
+  {}
+  {0em}
+  {}
+  [\color{black}\titlerule\vspace{-3pt}]
+
+%---------------------------
+% Custom Commands
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeItem}[1]{\item\small{#1\vspace{-2pt}}}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}}
+
+\renewcommand{\labelitemii}{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+%---------------------------
 \begin{document}
-\pagestyle{empty} % Remove page numbers
 
 % Header
 \begin{center}
-    \textbf{\Huge \VAR{ personalInfo.name | escape_latex }} \\
-    \vspace{3pt}
-    \small \VAR{ personalInfo.email | escape_latex } $|$ \VAR{ personalInfo.phone | escape_latex } $|$ \VAR{ personalInfo.location | escape_latex }
-    \BLOCK{ if personalInfo.linkedin } $|$ \VAR{ personalInfo.linkedin | escape_latex } \BLOCK{ endif }
-    \BLOCK{ if personalInfo.github } $|$ \VAR{ personalInfo.github | escape_latex } \BLOCK{ endif }
+  \textbf{\Huge \scshape \VAR{ personalInfo.name | escape_latex }} \\ \vspace{2pt}
+  \small \BLOCK{ if personalInfo.phone }\VAR{ personalInfo.phone | escape_latex }\BLOCK{ endif }\BLOCK{ if personalInfo.phone and personalInfo.email } $|$ \BLOCK{ endif }\BLOCK{ if personalInfo.email }\href{mailto:\VAR{ personalInfo.email | escape_latex }}{\VAR{ personalInfo.email | escape_latex }}\BLOCK{ endif } \\
+  \small \BLOCK{ if personalInfo.linkedin }\href{\VAR{ personalInfo.linkedin | escape_latex }}{LinkedIn}\BLOCK{ endif }%%
+\BLOCK{ if personalInfo.github } $|$ \href{\VAR{ personalInfo.github | escape_latex }}{Github}\BLOCK{ endif }%%
+\BLOCK{ if personalInfo.leetcode } $|$ \href{\VAR{ personalInfo.leetcode | escape_latex }}{Leetcode}\BLOCK{ endif }%%
+\BLOCK{ if personalInfo.portfolio } $|$ \href{\VAR{ personalInfo.portfolio | escape_latex }}{Website}\BLOCK{ endif }
 \end{center}
-\vspace{-4pt}
 
-% Professional Summary
-\BLOCK{ if summary }
-\section*{Summary}
-\noindent
-\VAR{ summary | escape_latex }
-\vspace{4pt}
-\BLOCK{ endif }
-
-% Experience Section
-\BLOCK{ if experience }
-\section*{Experience}
-\BLOCK{ for job in experience }
-\noindent
-\textbf{\VAR{ job.company | escape_latex }} \hfill \VAR{ job.location | escape_latex } \\
-\textit{\VAR{ job.role | escape_latex }} \hfill \VAR{ job.startDate | escape_latex } -- \VAR{ job.endDate | escape_latex } \\
-\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-    \BLOCK{ for bullet in job.bullets }
-    \item \VAR{ bullet | escape_latex }
-    \BLOCK{ endfor }
-\end{itemize}
-\vspace{4pt}
-\BLOCK{ endfor }
-\BLOCK{ endif }
-
-% Skills Section
-\BLOCK{ if skills }
-\section*{Skills \& Technologies}
-\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-    \BLOCK{ if skills.technical }
-    \item \textbf{Technical Skills}: \VAR{ skills.technical | join(', ') | escape_latex }
-    \BLOCK{ endif }
-    \BLOCK{ if skills.frameworks }
-    \item \textbf{Frameworks \& Libraries}: \VAR{ skills.frameworks | join(', ') | escape_latex }
-    \BLOCK{ endif }
-    \BLOCK{ if skills.tools }
-    \item \textbf{Tools \& Platforms}: \VAR{ skills.tools | join(', ') | escape_latex }
-    \BLOCK{ endif }
-    \BLOCK{ if skills.softSkills }
-    \item \textbf{Core Competencies}: \VAR{ skills.softSkills | join(', ') | escape_latex }
-    \BLOCK{ endif }
-\end{itemize}
-\vspace{4pt}
-\BLOCK{ endif }
-
-% Projects Section
-\BLOCK{ if projects }
-\section*{Key Projects}
-\BLOCK{ for proj in projects }
-\noindent
-\textbf{\VAR{ proj.name | escape_latex }} \BLOCK{ if proj.roleOrTech }\textit{[\VAR{ proj.roleOrTech | escape_latex }]}\BLOCK{ endif } \hfill \VAR{ proj.link | escape_latex } \\
-\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-    \BLOCK{ for bullet in proj.bullets }
-    \item \VAR{ bullet | escape_latex }
-    \BLOCK{ endfor }
-\end{itemize}
-\vspace{4pt}
-\BLOCK{ endfor }
-\BLOCK{ endif }
-
-% Education Section
+% Education
 \BLOCK{ if education }
-\section*{Education}
-\BLOCK{ for edu in education }
-\noindent
-\textbf{\VAR{ edu.institution | escape_latex }} \hfill \VAR{ edu.year | escape_latex } \\
-\textit{\VAR{ edu.degree | escape_latex }} \\
-\vspace{2pt}
-\BLOCK{ endfor }
+\section{Education}
+\resumeSubHeadingListStart
+  \BLOCK{ for edu in education }
+  \resumeSubheading
+  {\VAR{ edu.institution | escape_latex }}{\VAR{ edu.location | default('') | escape_latex }}
+  {\VAR{ edu.degree | escape_latex }}{\VAR{ edu.year | escape_latex }}
+  \BLOCK{ if edu.courses or edu.bullets }
+  \resumeItemListStart
+    \BLOCK{ if edu.courses }
+    \resumeItem{\textbf{Courses}: \VAR{ edu.courses | escape_latex }}
+    \BLOCK{ endif }
+    \BLOCK{ if edu.bullets }
+    \BLOCK{ for b in edu.bullets }
+    \resumeItem{\VAR{ b | escape_latex }}
+    \BLOCK{ endfor }
+    \BLOCK{ endif }
+  \resumeItemListEnd
+  \BLOCK{ endif }
+  \BLOCK{ endfor }
+\resumeSubHeadingListEnd
+\BLOCK{ endif }
+
+% Skills
+\BLOCK{ if skills }
+\section{Skills}
+\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
+  \item \small{
+    \BLOCK{ if skills.languages }\textbf{Languages}{: \VAR{ skills.languages | escape_latex }} \\
+    \BLOCK{ elif skills.technical }\textbf{Languages}{: \VAR{ skills.technical | join(', ') | escape_latex }} \\
+    \BLOCK{ endif }
+    \BLOCK{ if skills.aiAgentic }\textbf{AI, LLM \& Agentic Systems}{: \VAR{ skills.aiAgentic | escape_latex }} \\
+    \BLOCK{ endif }
+    \BLOCK{ if skills.mlCv }\textbf{ML/DL \& CV}{: \VAR{ skills.mlCv | escape_latex }} \\
+    \BLOCK{ elif skills.frameworks and not skills.aiAgentic }\textbf{Frameworks \& Libraries}{: \VAR{ skills.frameworks | join(', ') | escape_latex }} \\
+    \BLOCK{ endif }
+    \BLOCK{ if skills.cloudDevOps }\textbf{Cloud, DevOps \& MLOps}{: \VAR{ skills.cloudDevOps | escape_latex }}
+    \BLOCK{ elif skills.tools }\textbf{Cloud, DevOps \& MLOps}{: \VAR{ skills.tools | join(', ') | escape_latex }}
+    \BLOCK{ endif }
+  }
+\end{itemize}
+\BLOCK{ endif }
+
+% Experience
+\BLOCK{ if experience }
+\section{Experience}
+\resumeSubHeadingListStart
+  \BLOCK{ for job in experience }
+  \resumeSubheading
+  {\BLOCK{ if job.technologies }\VAR{ job.company | escape_latex }\BLOCK{ else }\BLOCK{ if job.role and not (job.company and job.role in job.company) }\VAR{ job.company | escape_latex } - \VAR{ job.role | escape_latex }\BLOCK{ else }\VAR{ job.company | escape_latex }\BLOCK{ endif }\BLOCK{ endif }}{\VAR{ job.location | escape_latex }}
+  {\BLOCK{ if job.technologies }\VAR{ job.technologies | escape_latex }\BLOCK{ else }\VAR{ job.role | escape_latex }\BLOCK{ endif }}{\BLOCK{ if job.startDate }\VAR{ job.startDate | escape_latex }\BLOCK{ endif }\BLOCK{ if job.startDate and job.endDate } - \BLOCK{ endif }\BLOCK{ if job.endDate }\VAR{ job.endDate | escape_latex }\BLOCK{ endif }}
+  \resumeItemListStart
+    \BLOCK{ for bullet in job.bullets }
+    \resumeItem{\VAR{ bullet | escape_latex }}
+    \BLOCK{ endfor }
+  \resumeItemListEnd
+  \BLOCK{ if not loop.last }\vspace{2pt}\BLOCK{ endif }
+  \BLOCK{ endfor }
+\resumeSubHeadingListEnd
+\BLOCK{ endif }
+
+% Projects
+\BLOCK{ if projects }
+\section{Projects}
+\resumeSubHeadingListStart
+  \BLOCK{ for proj in projects }
+  \resumeSubheading
+  {\textbf{\VAR{ proj.name | escape_latex }}\BLOCK{ if proj.description }: \VAR{ proj.description | escape_latex }\BLOCK{ endif }\BLOCK{ if proj.githubUrl } $|$ \href{\VAR{ proj.githubUrl | escape_latex }}{GitHub }\BLOCK{ elif proj.link and 'github' in proj.link } $|$ \href{\VAR{ proj.link | escape_latex }}{GitHub }\BLOCK{ endif }\BLOCK{ if proj.websiteUrl } $|$ \href{\VAR{ proj.websiteUrl | escape_latex }}{Website }\BLOCK{ endif }}
+  {}
+  {\textit{\VAR{ proj.roleOrTech | escape_latex }}}
+  {}
+  \resumeItemListStart
+    \BLOCK{ for bullet in proj.bullets }
+    \resumeItem{\VAR{ bullet | escape_latex }}
+    \BLOCK{ endfor }
+  \resumeItemListEnd
+  \BLOCK{ if not loop.last }\vspace{2pt}\BLOCK{ endif }
+  \BLOCK{ endfor }
+\resumeSubHeadingListEnd
+\BLOCK{ endif }
+
+% Achievements & Certifications
+\BLOCK{ if achievements }
+\section{Achievements \& Certifications}
+\resumeItemListStart
+  \BLOCK{ for ach in achievements }
+  \resumeItem{\BLOCK{ if ach.title }\textbf{\VAR{ ach.title | escape_latex }}\BLOCK{ if ach.details } -- \VAR{ ach.details | escape_latex }\BLOCK{ endif }\BLOCK{ else }\VAR{ ach }\BLOCK{ endif }\BLOCK{ if ach.linkUrl } $|$ \href{\VAR{ ach.linkUrl | escape_latex }}{\VAR{ ach.linkText | default('Link') | escape_latex }}\BLOCK{ endif }}
+  \BLOCK{ endfor }
+\resumeItemListEnd
+\BLOCK{ endif }
+
+% Volunteer Experience
+\BLOCK{ if volunteer }
+\section{Volunteer Experience}
+\resumeItemListStart
+  \BLOCK{ for vol in volunteer }
+  \resumeItem{\BLOCK{ if vol.role }\textbf{\VAR{ vol.role | escape_latex }}\BLOCK{ if vol.details } -- \VAR{ vol.details | escape_latex }\BLOCK{ endif }\BLOCK{ else }\VAR{ vol }\BLOCK{ endif }}
+  \BLOCK{ endfor }
+\resumeItemListEnd
 \BLOCK{ endif }
 
 \end{document}

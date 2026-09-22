@@ -79,8 +79,10 @@ Cloud, DevOps & MLOps: AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability
 EXPERIENCE
 Insys India Solutions - AI/ML Developer Intern Hybrid
 React, Python, FastAPI, YOLO Jun 2026 - Aug 2026
-• Built an end-to-end computer vision pipeline for real-time Wagon Bulge Detection in adverse environments.
-• Engineered a real-time React dashboard to monitor 100+ IoT sensors.
+• Built an end-to-end computer vision pipeline for real-time Wagon Bulge Detection in adverse environments, owning the full
+ML lifecycle from data curation to production deployment.
+• Engineered a real-time React dashboard to monitor 100+ IoT sensors, optimizing distributed message broadcasting to
+drastically reduce FastAPI backend load and latency.
 • Implemented an OCR pipeline to extract wagon IDs in real-time.
 
 HypeOn - AI Engineer Intern Remote
@@ -104,6 +106,8 @@ assert(sumitParsed.skills.tools.length > 0, `Tools/DevOps extracted: ${sumitPars
 assert(sumitParsed.experience.length >= 2, `Experience extracted: ${sumitParsed.experience.length} jobs found`);
 assert(sumitParsed.education.length >= 1, `Education extracted: ${sumitParsed.education.length} found`);
 assert(sumitParsed.projects.length >= 1, `Projects extracted: ${sumitParsed.projects.length} found`);
+assert(sumitParsed.experience[0].bullets.length === 3, `Wrapped bullets merged into 3 total bullets: got ${sumitParsed.experience[0].bullets.length}`);
+assert(sumitParsed.experience[0].bullets[0].includes('production deployment'), `Wrapped line successfully extracted into one: "${sumitParsed.experience[0].bullets[0]}"`);
 
 // 3. Test AI Heuristic Match Engine
 console.log('\nTest 3: AI Heuristic Match Engine & Suggestion Generation');

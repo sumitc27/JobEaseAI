@@ -172,7 +172,7 @@
               <input type="text" class="form-input" id="pi-location" placeholder="City, State">
             </div>
           </div>
-          <div class="form-row-3">
+          <div class="form-row-2">
             <div class="form-group">
               <label class="form-label">LinkedIn</label>
               <input type="text" class="form-input" id="pi-linkedin" placeholder="https://linkedin.com/in/...">
@@ -181,9 +181,15 @@
               <label class="form-label">GitHub</label>
               <input type="text" class="form-input" id="pi-github" placeholder="https://github.com/...">
             </div>
+          </div>
+          <div class="form-row-2">
             <div class="form-group">
-              <label class="form-label">Portfolio</label>
-              <input type="text" class="form-input" id="pi-portfolio" placeholder="https://johndoe.dev">
+              <label class="form-label">LeetCode</label>
+              <input type="text" class="form-input" id="pi-leetcode" placeholder="https://leetcode.com/u/...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Portfolio / Website</label>
+              <input type="text" class="form-input" id="pi-portfolio" placeholder="https://sumitc27.vercel.app">
             </div>
           </div>
         </div>
@@ -283,7 +289,8 @@
           <div class="template-toggle" title="Switch Resume Theme Template">
             <span style="font-size: 0.72rem; color: var(--text-dim);">Template:</span>
             <div class="pill-group" id="template-pill-group">
-              <button class="pill-btn active" data-template="modern" title="Modern Tech Sans">Modern Tech</button>
+              <button class="pill-btn active" data-template="latex" title="LaTeX Academic / Computer Modern (TeX Style)">LaTeX TeX (Default)</button>
+              <button class="pill-btn" data-template="modern" title="Modern Tech Sans">Modern Tech</button>
               <button class="pill-btn" data-template="classic" title="Classic Ivy / Harvard Traditional Serif">Classic Ivy</button>
               <button class="pill-btn" data-template="minimalist" title="Minimalist Ultra-Clean Scandinavian">Minimalist</button>
             </div>
@@ -312,33 +319,33 @@
 
         <!-- The Paper Document Container -->
         <div class="paper-wrapper">
-          <div class="resume-paper theme-modern" id="resume-paper">
+          <div class="resume-paper theme-latex" id="resume-paper">
             <!-- Dynamic Paper Header -->
             <header class="rp-header">
-              <h2 class="rp-name" id="rp-name">Alex Rivera</h2>
-              <div class="rp-title" id="rp-title">Senior Full Stack Software Engineer</div>
+              <h2 class="rp-name" id="rp-name">Sumit Chouhan</h2>
+              <div class="rp-title" id="rp-title">AI/ML Developer</div>
               <div class="rp-contacts" id="rp-contacts">
-                <span id="rp-email">alex.rivera@example.com</span>
+                <span id="rp-phone">+91-7400603978</span>
                 <span>•</span>
-                <span id="rp-phone">+1 (555) 234-5678</span>
+                <span id="rp-email">27th.sumit@gmail.com</span>
                 <span>•</span>
-                <span id="rp-location">San Francisco, CA</span>
+                <span id="rp-location">Jabalpur, India</span>
                 <span>•</span>
-                <a href="#" id="rp-linkedin">LinkedIn</a>
+                <a href="https://linkedin.com/in/sumitc27" id="rp-linkedin" target="_blank">LinkedIn</a>
                 <span>•</span>
-                <a href="#" id="rp-github">GitHub</a>
+                <a href="https://github.com/sumitc27" id="rp-github" target="_blank">GitHub</a>
               </div>
             </header>
 
-            <!-- Dynamic Paper Summary -->
-            <section class="rp-section" id="rp-section-summary">
-              <h3 class="rp-section-title">Professional Summary</h3>
-              <p class="rp-summary" id="rp-summary-text"></p>
+            <!-- Dynamic Paper Education -->
+            <section class="rp-section" id="rp-section-education">
+              <h3 class="rp-section-title">Education</h3>
+              <div id="rp-education-container"></div>
             </section>
 
             <!-- Dynamic Paper Skills -->
             <section class="rp-section" id="rp-section-skills">
-              <h3 class="rp-section-title">Technical Skills</h3>
+              <h3 class="rp-section-title">Skills</h3>
               <div class="rp-skills-group">
                 <div class="rp-skills-line" id="rp-skills-tech"></div>
                 <div class="rp-skills-line" id="rp-skills-frameworks"></div>
@@ -348,20 +355,32 @@
 
             <!-- Dynamic Paper Experience -->
             <section class="rp-section" id="rp-section-experience">
-              <h3 class="rp-section-title">Work Experience</h3>
+              <h3 class="rp-section-title">Experience</h3>
               <div id="rp-experience-container"></div>
             </section>
 
             <!-- Dynamic Paper Projects -->
             <section class="rp-section" id="rp-section-projects">
-              <h3 class="rp-section-title">Technical Projects</h3>
+              <h3 class="rp-section-title">Projects</h3>
               <div id="rp-projects-container"></div>
             </section>
 
-            <!-- Dynamic Paper Education -->
-            <section class="rp-section" id="rp-section-education">
-              <h3 class="rp-section-title">Education</h3>
-              <div id="rp-education-container"></div>
+            <!-- Dynamic Paper Achievements -->
+            <section class="rp-section" id="rp-section-achievements" style="display: none;">
+              <h3 class="rp-section-title">Achievements & Certifications</h3>
+              <ul class="rp-bullets" id="rp-achievements-container"></ul>
+            </section>
+
+            <!-- Dynamic Paper Volunteer -->
+            <section class="rp-section" id="rp-section-volunteer" style="display: none;">
+              <h3 class="rp-section-title">Volunteer Experience</h3>
+              <ul class="rp-bullets" id="rp-volunteer-container"></ul>
+            </section>
+
+            <!-- Dynamic Paper Summary (Optional) -->
+            <section class="rp-section" id="rp-section-summary" style="display: none;">
+              <h3 class="rp-section-title">Summary</h3>
+              <p class="rp-summary" id="rp-summary-text"></p>
             </section>
 
             <!-- Visual 1-Page Threshold Marker Line -->

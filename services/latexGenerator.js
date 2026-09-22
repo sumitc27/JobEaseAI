@@ -36,7 +36,7 @@ export function escapeLatex(text) {
 
 /**
  * Renders normalized Resume JSON into a complete .tex document.
- * Conforms to the LaTeX template in latex_integration_guide.md
+ * Matches user's exact default LaTeX resume template with custom macros.
  * @param {Object} resumeData - Structured Resume JSON
  * @returns {string} - Formatted LaTeX source code
  */
@@ -46,161 +46,307 @@ export function generateLatexResume(resumeData) {
   const email = escapeLatex(pi.email || '');
   const phone = escapeLatex(pi.phone || '');
   const location = escapeLatex(pi.location || '');
-  const linkedin = escapeLatex(pi.linkedin || '');
-  const github = escapeLatex(pi.github || '');
+  const linkedin = pi.linkedin || '';
+  const github = pi.github || '';
+  const leetcode = pi.leetcode || '';
+  const portfolio = pi.portfolio || '';
 
-  // Build Contact Line
-  const contactParts = [email, phone, location, linkedin, github].filter(Boolean);
-  const contactLine = contactParts.join(' $|$ ');
+  // Contacts line 1: Phone | Email (with optional location)
+  const row1 = [];
+  if (phone) row1.push(phone);
+  if (email) row1.push(`\\href{mailto:${email}}{${email}}`);
+  if (location && !row1.length) row1.push(location);
+  const row1Str = row1.join(' $|$ ');
 
-  // Professional Summary
-  let summarySection = '';
-  if (resumeData.summary && resumeData.summary.trim()) {
-    summarySection = `
-% Professional Summary
-\\section*{Summary}
-\\noindent
-${escapeLatex(resumeData.summary)}
-\\vspace{4pt}
-`;
+  // Contacts line 2: LinkedIn | Github | Leetcode | Website
+  const row2 = [];
+  if (linkedin) row2.push(`\\href{${escapeLatex(linkedin)}}{LinkedIn}`);
+  if (github) row2.push(`\\href{${escapeLatex(github)}}{Github}`);
+  if (leetcode) row2.push(`\\href{${escapeLatex(leetcode)}}{Leetcode}`);
+  if (portfolio) row2.push(`\\href{${escapeLatex(portfolio)}}{Website}`);
+  const row2Str = row2.join(' $|$ ');
+
+  let headerBlock = `\\begin{center}
+  \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
+  if (row1Str) {
+    headerBlock += `\n  \\small ${row1Str} \\\\`;
   }
-
-  // Work Experience
-  let experienceSection = '';
-  if (Array.isArray(resumeData.experience) && resumeData.experience.length > 0) {
-    const jobs = resumeData.experience.map(job => {
-      const company = escapeLatex(job.company || 'Company');
-      const role = escapeLatex(job.role || 'Role');
-      const jobLocation = escapeLatex(job.location || '');
-      const dates = escapeLatex([job.startDate, job.endDate].filter(Boolean).join(' -- '));
-      
-      const bullets = (job.bullets || [])
-        .map(b => `    \\item ${escapeLatex(b)}`)
-        .join('\n');
-
-      return `\\noindent
-\\textbf{${company}} \\hfill ${jobLocation} \\\\
-\\textit{${role}} \\hfill ${dates} \\\\
-\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-${bullets}
-\\end{itemize}
-\\vspace{4pt}`;
-    }).join('\n\n');
-
-    experienceSection = `
-% Experience Section
-\\section*{Experience}
-${jobs}
-`;
+  if (row2Str) {
+    headerBlock += `\n  ${row2Str}`;
   }
+  headerBlock += `\n\\end{center}`;
 
-  // Projects
-  let projectsSection = '';
-  if (Array.isArray(resumeData.projects) && resumeData.projects.length > 0) {
-    const projs = resumeData.projects.map(proj => {
-      const projName = escapeLatex(proj.name || 'Project');
-      const roleOrTech = escapeLatex(proj.roleOrTech ? `[${proj.roleOrTech}]` : '');
-      const link = escapeLatex(proj.link || '');
-      
-      const bullets = (proj.bullets || [])
-        .map(b => `    \\item ${escapeLatex(b)}`)
-        .join('\n');
-
-      return `\\noindent
-\\textbf{${projName}} ${roleOrTech ? `\\textit{${roleOrTech}}` : ''} \\hfill ${link} \\\\
-\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-${bullets}
-\\end{itemize}
-\\vspace{4pt}`;
-    }).join('\n\n');
-
-    projectsSection = `
-% Technical Projects
-\\section*{Key Projects}
-${projs}
-`;
-  }
-
-  // Skills
-  let skillsSection = '';
-  const skillsObj = resumeData.skills || {};
-  const skillGroups = [];
-
-  if (skillsObj.technical && skillsObj.technical.length > 0) {
-    skillGroups.push(`\\item \\textbf{Technical Skills}: ${skillsObj.technical.map(escapeLatex).join(', ')}`);
-  }
-  if (skillsObj.frameworks && skillsObj.frameworks.length > 0) {
-    skillGroups.push(`\\item \\textbf{Frameworks \\& Libraries}: ${skillsObj.frameworks.map(escapeLatex).join(', ')}`);
-  }
-  if (skillsObj.tools && skillsObj.tools.length > 0) {
-    skillGroups.push(`\\item \\textbf{Tools \\& Platforms}: ${skillsObj.tools.map(escapeLatex).join(', ')}`);
-  }
-  if (skillsObj.softSkills && skillsObj.softSkills.length > 0) {
-    skillGroups.push(`\\item \\textbf{Core Competencies}: ${skillsObj.softSkills.map(escapeLatex).join(', ')}`);
-  }
-
-  if (skillGroups.length > 0) {
-    skillsSection = `
-% Skills Section
-\\section*{Skills \\& Technologies}
-\\begin{itemize}[noitemsep,topsep=1pt,leftmargin=1.2em]
-${skillGroups.map(sg => `    ${sg}`).join('\n')}
-\\end{itemize}
-\\vspace{4pt}
-`;
-  }
-
-  // Education
+  // Education Section
   let educationSection = '';
   if (Array.isArray(resumeData.education) && resumeData.education.length > 0) {
     const eduItems = resumeData.education.map(edu => {
       const institution = escapeLatex(edu.institution || 'University');
       const degree = escapeLatex(edu.degree || 'Degree');
       const year = escapeLatex(edu.year || '');
-      return `\\noindent
-\\textbf{${institution}} \\hfill ${year} \\\\
-\\textit{${degree}} \\\\`;
-    }).join('\n\\vspace{2pt}\n');
+      const eduLoc = escapeLatex(edu.location || '');
+      let itemBlock = `  \\resumeSubheading
+    {${institution}}{${eduLoc}}
+    {${degree}}{${year}}`;
 
-    educationSection = `
-% Education Section
-\\section*{Education}
+      const bullets = [];
+      if (edu.courses) {
+        bullets.push(`\\textbf{Courses}: ${escapeLatex(edu.courses)}`);
+      }
+      if (Array.isArray(edu.bullets)) {
+        edu.bullets.forEach(b => bullets.push(escapeLatex(b)));
+      }
+      if (bullets.length > 0) {
+        itemBlock += `\n  \\resumeItemListStart\n${bullets.map(b => `    \\resumeItem{${b}}`).join('\n')}\n  \\resumeItemListEnd`;
+      }
+      return itemBlock;
+    }).join('\n');
+
+    educationSection = `\\section{Education}
+\\resumeSubHeadingListStart
 ${eduItems}
-`;
+\\resumeSubHeadingListEnd`;
   }
 
-  return `\\documentclass[letterpaper,10pt]{article}
-\\usepackage[margin=0.45in]{geometry}
-\\usepackage{titlesec}
-\\usepackage{enumitem}
-\\usepackage{hyperref}
+  // Skills Section
+  let skillsSection = '';
+  const skillsObj = resumeData.skills || {};
+  const skillLines = [];
 
-% Hyperlink configuration
-\\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    urlcolor=black
+  if (skillsObj.languages) {
+    skillLines.push(`   \\textbf{Languages}{: ${escapeLatex(skillsObj.languages)}}`);
+  } else if (skillsObj.technical && skillsObj.technical.length > 0) {
+    skillLines.push(`   \\textbf{Languages}{: ${skillsObj.technical.map(escapeLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.aiAgentic) {
+    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${escapeLatex(skillsObj.aiAgentic)}}`);
+  }
+
+  if (skillsObj.mlCv) {
+    skillLines.push(`   \\textbf{ML/DL \\& CV}{: ${escapeLatex(skillsObj.mlCv)}}`);
+  } else if (!skillsObj.aiAgentic && skillsObj.frameworks && skillsObj.frameworks.length > 0) {
+    skillLines.push(`   \\textbf{AI, LLM \\& Agentic Systems}{: ${skillsObj.frameworks.map(escapeLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.cloudDevOps) {
+    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${escapeLatex(skillsObj.cloudDevOps)}}`);
+  } else if (skillsObj.tools && skillsObj.tools.length > 0) {
+    skillLines.push(`   \\textbf{Cloud, DevOps \\& MLOps}{: ${skillsObj.tools.map(escapeLatex).join(', ')}}`);
+  }
+
+  if (skillsObj.softSkills && skillsObj.softSkills.length > 0 && !skillsObj.cloudDevOps) {
+    skillLines.push(`   \\textbf{Core Competencies}{: ${skillsObj.softSkills.map(escapeLatex).join(', ')}}`);
+  }
+
+  if (skillLines.length > 0) {
+    skillsSection = `\\section{Skills}
+\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
+  \\item \\small{
+${skillLines.join(' \\\\\n')}
+  }
+\\end{itemize}`;
+  }
+
+  // Experience Section
+  let experienceSection = '';
+  if (Array.isArray(resumeData.experience) && resumeData.experience.length > 0) {
+    const jobs = resumeData.experience.map(job => {
+      const company = escapeLatex(job.company || 'Company');
+      const role = escapeLatex(job.role || 'Role');
+      const jobLocation = escapeLatex(job.location || '');
+      const dates = escapeLatex([job.startDate, job.endDate].filter(Boolean).join(' - '));
+      const bullets = (job.bullets || [])
+        .map(b => `  \\resumeItem{${escapeLatex(b)}}`)
+        .join('\n');
+
+      const title = job.technologies ? `${company}` : (role && !company.includes(role) ? `${company} - ${role}` : company);
+      const subrole = job.technologies ? escapeLatex(job.technologies) : role;
+
+      return `  \\resumeSubheading
+  {${title}}{${jobLocation}}
+  {${subrole}}{${dates}}
+\\resumeItemListStart
+${bullets}
+\\resumeItemListEnd`;
+    }).join('\n  \\vspace{2pt}\n');
+
+    experienceSection = `\\section{Experience}
+\\resumeSubHeadingListStart
+${jobs}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Projects Section
+  let projectsSection = '';
+  if (Array.isArray(resumeData.projects) && resumeData.projects.length > 0) {
+    const projs = resumeData.projects.map(proj => {
+      const projName = escapeLatex(proj.name || 'Project');
+      const roleOrTech = escapeLatex(proj.roleOrTech || '');
+      
+      const links = [];
+      if (proj.githubUrl) {
+        links.push(`\\href{${escapeLatex(proj.githubUrl)}}{GitHub}`);
+      } else if (proj.link && proj.link.includes('github')) {
+        links.push(`\\href{${escapeLatex(proj.link)}}{GitHub}`);
+      }
+      if (proj.websiteUrl) {
+        links.push(`\\href{${escapeLatex(proj.websiteUrl)}}{Website}`);
+      } else if (proj.link && !proj.link.includes('github')) {
+        links.push(`\\href{${escapeLatex(proj.link)}}{Website}`);
+      }
+
+      let titleHeading = `\\textbf{${projName}}`;
+      if (proj.description) {
+        titleHeading += `: ${escapeLatex(proj.description)}`;
+      }
+      if (links.length > 0) {
+        titleHeading += ` $|$ ${links.join(' $|$ ')}`;
+      }
+
+      const bullets = (proj.bullets || [])
+        .map(b => `    \\resumeItem{${escapeLatex(b)}}`)
+        .join('\n');
+
+      return `  \\resumeSubheading
+    {${titleHeading}}
+    {}
+    {\\textit{${roleOrTech}}}
+    {}
+  \\resumeItemListStart
+${bullets}
+  \\resumeItemListEnd`;
+    }).join('\n  \\vspace{2pt}\n');
+
+    projectsSection = `\\section{Projects}
+\\resumeSubHeadingListStart
+${projs}
+\\resumeSubHeadingListEnd`;
+  }
+
+  // Achievements & Certifications Section
+  let achievementsSection = '';
+  if (Array.isArray(resumeData.achievements) && resumeData.achievements.length > 0) {
+    const achItems = resumeData.achievements.map(ach => {
+      if (typeof ach === 'string') {
+        return `    \\resumeItem{${ach}}`;
+      }
+      let text = '';
+      if (ach.isPaper) {
+        text = `\`\`\\textit{${escapeLatex(ach.details || ach.title)}}\'\'`;
+      } else if (ach.isCert) {
+        text = `Certification: \\textbf{${escapeLatex(ach.title)}} - ${escapeLatex(ach.details)}`;
+      } else {
+        text = `\\textbf{${escapeLatex(ach.title)}} -- ${escapeLatex(ach.details)}`;
+      }
+      if (ach.linkUrl) {
+        text += ` $|$ \\href{${escapeLatex(ach.linkUrl)}}{${escapeLatex(ach.linkText || 'Link')}}`;
+      }
+      return `    \\resumeItem{${text}}`;
+    }).join('\n');
+
+    achievementsSection = `\\section{Achievements \\& Certifications}
+\\resumeItemListStart
+${achItems}
+\\resumeItemListEnd`;
+  }
+
+  // Volunteer Experience Section
+  let volunteerSection = '';
+  if (Array.isArray(resumeData.volunteer) && resumeData.volunteer.length > 0) {
+    const volItems = resumeData.volunteer.map(vol => {
+      if (typeof vol === 'string') {
+        return `    \\resumeItem{${vol}}`;
+      }
+      return `    \\resumeItem{\\textbf{${escapeLatex(vol.role || vol.title)}} -- ${escapeLatex(vol.details)}}`;
+    }).join('\n');
+
+    volunteerSection = `\\section{Volunteer Experience}
+\\resumeItemListStart
+${volItems}
+\\resumeItemListEnd`;
+  }
+
+  // Summary Section (if present)
+  let summarySection = '';
+  if (resumeData.summary && resumeData.summary.trim()) {
+    summarySection = `\\section{Summary}
+\\resumeItemListStart
+  \\resumeItem{${escapeLatex(resumeData.summary)}}
+\\resumeItemListEnd`;
+  }
+
+  return `\\documentclass[a4paper,10pt]{article}
+\\usepackage{lmodern}
+\\usepackage[empty]{fullpage}
+\\usepackage{titlesec}
+\\usepackage[usenames,dvipsnames]{color}
+\\usepackage{enumitem}
+\\usepackage[hidelinks]{hyperref}
+\\usepackage{fancyhdr}
+\\usepackage{graphicx}
+
+%---------------------------
+% Page Setup
+\\pagestyle{fancy}
+\\fancyhf{}
+\\fancyfoot{}
+\\renewcommand{\\headrulewidth}{0pt}
+\\renewcommand{\\footrulewidth}{0pt}
+
+\\addtolength{\\oddsidemargin}{-0.5in}
+\\addtolength{\\evensidemargin}{-0.5in}
+\\addtolength{\\textwidth}{1in}
+\\addtolength{\\topmargin}{-0.6in}
+\\addtolength{\\textheight}{1.2in}
+
+\\setlength{\\tabcolsep}{0in}
+\\setlength{\\parindent}{0pt}
+
+\\urlstyle{same}
+\\raggedbottom
+\\raggedright
+
+%---------------------------
+% Section formatting
+\\titleformat{\\section}
+  {\\vspace{-4pt}\\scshape\\raggedright\\large}
+  {}
+  {0em}
+  {}
+  [\\color{black}\\titlerule\\vspace{-3pt}]
+
+%---------------------------
+% Custom Commands
+\\newcommand{\\resumeSubheading}[4]{
+  \\vspace{-1pt}\\item
+    \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}
+      \\textbf{#1} & #2 \\\\
+      \\textit{\\small#3} & \\textit{\\small #4} \\\\
+    \\end{tabular*}\\vspace{-5pt}
 }
 
-% Section formatting
-\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]
-\\titlespacing*{\\section}{0pt}{*1.2}{*0.8}
+\\newcommand{\\resumeItem}[1]{\\item\\small{#1\\vspace{-2pt}}}
 
+\\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
+\\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
+
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-4pt}}
+
+\\renewcommand{\\labelitemii}{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
+
+%---------------------------
 \\begin{document}
-\\pagestyle{empty} % Remove page numbers
 
-% Header
-\\begin{center}
-    {\\textbf{\\Huge ${name}}} \\\\[4pt]
-    ${contactLine ? `{\\small ${contactLine}}` : ''}
-\\end{center}
-\\vspace{-4pt}
+${headerBlock}
 
 ${summarySection}
+${educationSection}
 ${skillsSection}
 ${experienceSection}
 ${projectsSection}
-${educationSection}
+${achievementsSection}
+${volunteerSection}
 
 \\end{document}
 `;

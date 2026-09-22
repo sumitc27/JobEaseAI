@@ -4,6 +4,117 @@
  */
 
 export const SAMPLE_RESUMES = {
+  sumit: {
+    personalInfo: {
+      name: "Sumit Chouhan",
+      title: "AI/ML Developer",
+      email: "27th.sumit@gmail.com",
+      phone: "+91-7400603978",
+      location: "Jabalpur, India",
+      linkedin: "https://linkedin.com/in/sumitc27",
+      github: "https://github.com/sumitc27",
+      leetcode: "https://leetcode.com/u/sumitc27",
+      portfolio: "https://sumitc27.vercel.app/"
+    },
+    summary: "",
+    education: [
+      {
+        institution: "Indian Institute of Information Technology, Design and Manufacturing",
+        location: "Jabalpur, India",
+        degree: "Bachelor of Technology - Mechanical Engineering",
+        year: "Aug 2023 -- May 2027",
+        courses: "Data Structures and Algorithms, Cloud Computing, Computer Networks, AI/ML Fundamentals"
+      }
+    ],
+    skills: {
+      languages: "Python, C++, SQL, JavaScript, TypeScript",
+      aiAgentic: "LangChain, RAG Pipelines, Multi-Agent Coordination, Prompt Engineering, Vector DBs",
+      mlCv: "PyTorch, TensorFlow, scikit-learn, OpenCV, YOLO, Physics-Informed Neural Networks (PINNs)",
+      cloudDevOps: "AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability",
+      technical: ["Python", "C++", "SQL", "JavaScript", "TypeScript"],
+      frameworks: ["LangChain", "RAG Pipelines", "Multi-Agent Coordination", "Prompt Engineering", "Vector DBs", "PyTorch", "TensorFlow", "scikit-learn", "OpenCV", "YOLO", "PINNs"],
+      tools: ["AWS", "Azure", "Git", "Docker", "CI/CD", "FastAPI", "AI Observability"],
+      softSkills: ["Leadership", "Research", "Team Collaboration"]
+    },
+    experience: [
+      {
+        company: "Insys India Solutions - AI/ML Developer Intern",
+        role: "AI/ML Developer Intern",
+        technologies: "React, Python, FastAPI, YOLO",
+        location: "Hybrid",
+        startDate: "Jun 2026",
+        endDate: "Aug 2026",
+        bullets: [
+          "Built an end-to-end computer vision pipeline for real-time Wagon Bulge Detection in adverse environments, owning the full ML lifecycle from data curation to production deployment.",
+          "Engineered a real-time React dashboard to monitor 100+ IoT sensors, optimizing distributed message broadcasting to drastically reduce FastAPI backend load and latency.",
+          "Implemented an OCR pipeline to extract wagon IDs in real-time, syncing historical health and inspection data to the cloud for seamless enterprise monitoring."
+        ]
+      },
+      {
+        company: "HypeOn - AI Engineer Intern",
+        role: "AI Engineer Intern",
+        technologies: "Python, n8n, React, TypeScript, LLM APIs, Docker",
+        location: "Remote",
+        startDate: "May 2026",
+        endDate: "Jun 2026",
+        bullets: [
+          "Engineered AI-native workflows using n8n and Midjourney, automating end-to-end content generation to seamlessly produce 2,000+ assets at scale.",
+          "Developed Python data collection pipelines and web scrapers, reducing manual acquisition effort and cutting workflow execution time by 50%.",
+          "Integrated enterprise systems (Klaviyo) and REST APIs with backend pods, ensuring reliable data exchange across scalable AI services."
+        ]
+      },
+      {
+        company: "ML Team Lead -- Aero Fabrication Club",
+        role: "ML Team Lead",
+        technologies: "OpenCV, TensorFlow, PyTorch, YOLO",
+        location: "IIITDM Jabalpur",
+        startDate: "Mar 2024",
+        endDate: "Apr 2026",
+        bullets: [
+          "Optimized YOLOv4-Tiny for edge inference via quantization, achieving a 70% latency reduction to optimize model execution and operational speed.",
+          "Architected multi-threaded OpenCV pipelines and curated a 1,800+ image dataset, ensuring zero-latency visual data delivery under strict hardware constraints."
+        ]
+      }
+    ],
+    projects: [
+      {
+        name: "ContextCraft",
+        description: "RAG Document Intelligence Platform",
+        githubUrl: "https://github.com/sumitc27/ContextCraft",
+        websiteUrl: "https://contextcraft-frontend.vercel.app/",
+        link: "https://github.com/sumitc27/ContextCraft",
+        roleOrTech: "Python, React, FastAPI, RAG, BM25, LLM Router, Docker",
+        bullets: [
+          "Engineered a Retrieval-Augmented Generation (RAG) backend encompassing document ingestion, chunking, and dual-strategy retrieval pipelines combining BM25 and dense embeddings with dynamic reranking.",
+          "Built prompt-driven query rewriting and answer generation modules, exposing AI reasoning to users via a custom Retrieval Inspector and Citation Chips in the React frontend.",
+          "Implemented an LLMOps observability layer using a shared LLM router and tracing compatibility utilities to monitor model latency, quality, and operational health."
+        ]
+      },
+      {
+        name: "HireSense",
+        description: "Real-Time Voice AI Interview Coach",
+        githubUrl: "https://github.com/sumitc27/HireSense",
+        websiteUrl: "https://hiresense-27th.vercel.app/",
+        link: "https://github.com/sumitc27/HireSense",
+        roleOrTech: "React, Python, WebSockets, LLMs, STT/TTS, LLM Router",
+        bullets: [
+          "Developed an AI-native voice application using a custom \"Turn Machine\" over WebSockets to seamlessly orchestrate low-latency Speech-to-Text (STT) and Text-to-Speech (TTS) interactions for human-AI collaboration.",
+          "Designed an LLM-powered \"Brain\" and Rubric engine using structured prompt engineering to dynamically validate and score candidate responses against strict quality guardrails.",
+          "Deployed a full-stack containerized architecture, building a React frontend featuring live captions, microphone controls, and waveform visualizations integrated with a Python backend."
+        ]
+      }
+    ],
+    achievements: [
+      { title: "Winner, Best Autonomous Mission", details: "SAEINDIA Aerothon 2024, awarded for designing a fully autonomous UAV pipeline" },
+      { title: "Runner-Up, Duality AI Track -- HackByte 3.0", details: "Trained AI vision models using synthetic and manipulated data to achieve top performance metrics.", linkText: "Certificate", linkUrl: "https://drive.google.com/file/d/1w5Fsf1m4dh-8LA_GSQxE-r9_5MfpJdoI/view?usp=sharing" },
+      { title: "ASME IMECE 2025", details: "Design and Development of an Automated Part Removal and Queuing System for FFF 3D Printing", isPaper: true, linkText: "ASME IMECE 2025", linkUrl: "https://asmedigitalcollection.asme.org/imece-india/proceedings-abstract/IMECE-INDIA2025/89138/V001T01A039/1228667" },
+      { title: "Machine Learning Specialization", details: "Stanford University Online (Coursera)", isCert: true, linkText: "Credentials", linkUrl: "https://www.coursera.org/account/accomplishments/specialization/J4R2XP9WQPCG" }
+    ],
+    volunteer: [
+      { role: "Training & Placement Cell Representative -- IIITDMJ", details: "Helped in managing campus recruitment operations" },
+      { role: "Co-coordinator - Athletics Club IIITDMJ", details: "Organizing campus-wide training schedules and events for 50+ athletes, and actively representing the institute at national-level sports fests." }
+    ]
+  },
   fullstack: {
     personalInfo: {
       name: "Alex Rivera",
