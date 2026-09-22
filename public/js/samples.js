@@ -128,9 +128,13 @@ export const SAMPLE_RESUMES = {
     },
     summary: "Versatile Full Stack Engineer with 5+ years of experience engineering high-performance web applications using React, TypeScript, and Node.js. Passionate about clean architecture, developer tooling, and building resilient distributed systems.",
     skills: {
-      technical: ["JavaScript (ES6+)", "TypeScript", "React", "Node.js", "Express", "HTML5/CSS3", "REST APIs", "Git"],
-      frameworks: ["Next.js", "Tailwind CSS", "Redux Toolkit", "GraphQL"],
-      tools: ["Webpack", "Vite", "Jest", "Postman", "Linux", "VS Code"],
+      languages: "JavaScript (ES6+), TypeScript, SQL, HTML5/CSS3, Python",
+      aiAgentic: "Vector Embeddings, Prompt Engineering, OpenAI APIs",
+      mlCv: "Transformers, Sentiment Analysis",
+      cloudDevOps: "React, Node.js, Express, Next.js, GraphQL, Docker, AWS, Git, Jest, Webpack",
+      technical: ["JavaScript (ES6+)", "TypeScript", "SQL", "HTML5/CSS3", "Python"],
+      frameworks: ["Vector Embeddings", "Prompt Engineering", "OpenAI APIs", "Transformers"],
+      tools: ["React", "Node.js", "Express", "Next.js", "GraphQL", "Docker", "AWS", "Git", "Jest"],
       softSkills: ["Team Mentorship", "Agile/Scrum", "Code Reviews", "Cross-Functional Collaboration"]
     },
     experience: [

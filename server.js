@@ -110,8 +110,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/export-latex') {
       const body = await readJsonBody(req);
       const resume = body.resume || body;
-      const font = body.font || (body.options && body.options.font) || 'charter';
-      const texSource = generateLatexResume(resume, { font });
+      const font = body.font || (body.options && body.options.font) || 'lmodern';
+      const spacing = body.spacing || (body.options && body.options.spacing) || {};
+      const texSource = generateLatexResume(resume, { font, spacing });
       sendJson(res, 200, { success: true, texSource });
       return;
     }
@@ -120,8 +121,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/compile') {
       const body = await readJsonBody(req);
       const resume = body.resume || body;
-      const font = body.font || (body.options && body.options.font) || 'charter';
-      const texSource = generateLatexResume(resume, { font });
+      const font = body.font || (body.options && body.options.font) || 'lmodern';
+      const spacing = body.spacing || (body.options && body.options.spacing) || {};
+      const texSource = generateLatexResume(resume, { font, spacing });
       const result = await compileLatexToPdf(texSource);
 
       if (result.success && result.pdfBuffer) {

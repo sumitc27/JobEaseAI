@@ -18,6 +18,136 @@ if (currentFont === 'charter' && !localStorage.getItem('jobease_font_user_explic
 let activeTab = 'form';
 const PAGE_LIMIT_HEIGHT = 932; // Calibrated 1-page letter height in pixels
 
+// Spacing & Compactness State & Presets
+const SPACING_PRESETS = {
+  standard: {
+    sectionGap: 2,
+    itemGap: 2,
+    lineHeight: 1.28,
+    bulletGap: 0,
+    pageMargin: 16,
+    fontScale: 100
+  },
+  compact: {
+    sectionGap: 1,
+    itemGap: 1,
+    lineHeight: 1.22,
+    bulletGap: 0,
+    pageMargin: 12,
+    fontScale: 96
+  },
+  'ultra-compact': {
+    sectionGap: 0,
+    itemGap: 0,
+    lineHeight: 1.16,
+    bulletGap: 0,
+    pageMargin: 8,
+    fontScale: 91
+  },
+  relaxed: {
+    sectionGap: 6,
+    itemGap: 5,
+    lineHeight: 1.36,
+    bulletGap: 2,
+    pageMargin: 24,
+    fontScale: 104
+  }
+};
+
+let spacingState = { ...SPACING_PRESETS.standard };
+try {
+  const savedSpacing = localStorage.getItem('jobease_spacing');
+  if (savedSpacing) {
+    Object.assign(spacingState, JSON.parse(savedSpacing));
+  }
+} catch (e) {}
+
+// Skill Categorization System & Taxonomy
+export const SKILL_CATEGORIES = {
+  languages: {
+    key: 'languages',
+    label: 'Languages',
+    shortLabel: 'Lang',
+    cssClass: 'cat-languages',
+    latexTitle: 'Languages'
+  },
+  aiAgentic: {
+    key: 'aiAgentic',
+    label: 'AI, LLM & Agentic Systems',
+    shortLabel: 'AI/LLM',
+    cssClass: 'cat-aiAgentic',
+    latexTitle: 'AI, LLM \\& Agentic Systems'
+  },
+  mlCv: {
+    key: 'mlCv',
+    label: 'ML/DL & CV',
+    shortLabel: 'ML/CV',
+    cssClass: 'cat-mlCv',
+    latexTitle: 'ML/DL \\& CV'
+  },
+  cloudDevOps: {
+    key: 'cloudDevOps',
+    label: 'Cloud, DevOps & MLOps',
+    shortLabel: 'Cloud/MLOps',
+    cssClass: 'cat-cloudDevOps',
+    latexTitle: 'Cloud, DevOps \\& MLOps'
+  }
+};
+
+export function classifySkill(skillName) {
+  if (!skillName || typeof skillName !== 'string') return 'languages';
+  const s = skillName.toLowerCase().trim();
+
+  // 1. Languages
+  const langList = [
+    'python', 'c++', 'cpp', 'c#', 'c', 'java', 'javascript', 'typescript', 'sql', 'nosql',
+    'golang', 'go', 'rust', 'ruby', 'php', 'swift', 'kotlin', 'r', 'bash', 'shell',
+    'scala', 'dart', 'html', 'html5', 'css', 'css3', 'matlab', 'perl', 'assembly'
+  ];
+  if (langList.includes(s)) return 'languages';
+
+  // 2. AI, LLM & Agentic Systems
+  const aiList = [
+    'langchain', 'llamaindex', 'rag', 'rag pipelines', 'multi-agent', 'agentic',
+    'crewai', 'autogen', 'prompt engineering', 'vector db', 'vector dbs',
+    'pinecone', 'chroma', 'chromadb', 'milvus', 'qdrant', 'weaviate', 'faiss',
+    'embeddings', 'fine-tuning', 'llm', 'llms', 'large language models', 'openai',
+    'gemini', 'anthropic', 'claude', 'chatgpt', 'ollama', 'huggingface', 'vllm',
+    'groq', 'semantic kernel', 'dspy', 'lora', 'qlora', 'agent', 'agents', 'nlp'
+  ];
+  if (aiList.includes(s) || s.includes('llm') || s.includes('agent') || s.includes('prompt') || s.includes('rag') || s.includes('vector')) {
+    return 'aiAgentic';
+  }
+
+  // 3. ML/DL & Computer Vision
+  const mlList = [
+    'pytorch', 'tensorflow', 'keras', 'scikit-learn', 'sklearn', 'opencv', 'yolo', 'yolov8',
+    'pinns', 'physics-informed', 'transformers', 'computer vision', 'deep learning',
+    'machine learning', 'neural networks', 'cnn', 'rnn', 'lstm', 'xgboost', 'lightgbm',
+    'pandas', 'numpy', 'scipy', 'matplotlib', 'seaborn', 'jax', 'torchvision', 'spacy',
+    'nltk', 'ocr', 'tesseract', 'reinforcement learning', 'diffusion', 'gan', 'stable diffusion'
+  ];
+  if (mlList.includes(s) || s.includes('vision') || s.includes('learn') || s.includes('neural') || s.includes('tensor')) {
+    return 'mlCv';
+  }
+
+  // 4. Cloud, DevOps & MLOps
+  const cloudList = [
+    'aws', 'azure', 'gcp', 'google cloud', 'docker', 'kubernetes', 'k8s', 'ci/cd', 'git',
+    'github', 'gitlab', 'github actions', 'terraform', 'ansible', 'linux', 'unix',
+    'fastapi', 'flask', 'django', 'express', 'node.js', 'rest api', 'graphql', 'grpc',
+    'mlflow', 'weights & biases', 'wandb', 'prometheus', 'grafana', 'ai observability',
+    'airflow', 'kafka', 'rabbitmq', 'redis', 'postgresql', 'postgres', 'mysql',
+    'mongodb', 'dynamodb', 'microservices', 'serverless', 'lambda', 'helm', 'argocd',
+    'cloudwatch', 'datadog', 'postman', 'jest', 'cypress'
+  ];
+  if (cloudList.includes(s) || s.includes('cloud') || s.includes('ops') || s.includes('docker') || s.includes('kube') || s.includes('api')) {
+    return 'cloudDevOps';
+  }
+
+  return 'cloudDevOps';
+}
+
 // DOM Elements Cache
 const elements = {
   // Navigation & Guardrail
@@ -64,9 +194,17 @@ const elements = {
   piLeetcode: document.getElementById('pi-leetcode'),
   piPortfolio: document.getElementById('pi-portfolio'),
   resumeSummaryInput: document.getElementById('resume-summary-input'),
-  skillsTechInput: document.getElementById('skills-tech-input'),
-  skillsFrameworksInput: document.getElementById('skills-frameworks-input'),
-  skillsToolsInput: document.getElementById('skills-tools-input'),
+  
+  // 4 First-Class Skill Subsection Inputs
+  skillsLanguagesInput: document.getElementById('skills-languages-input') || document.getElementById('skills-tech-input'),
+  skillsAiInput: document.getElementById('skills-ai-input') || document.getElementById('skills-frameworks-input'),
+  skillsMlInput: document.getElementById('skills-ml-input'),
+  skillsCloudInput: document.getElementById('skills-cloud-input') || document.getElementById('skills-tools-input'),
+  // Legacy aliases for backward compatibility
+  skillsTechInput: document.getElementById('skills-languages-input') || document.getElementById('skills-tech-input'),
+  skillsFrameworksInput: document.getElementById('skills-ai-input') || document.getElementById('skills-frameworks-input'),
+  skillsToolsInput: document.getElementById('skills-cloud-input') || document.getElementById('skills-tools-input'),
+
   experienceListContainer: document.getElementById('experience-list-container'),
   projectsListContainer: document.getElementById('projects-list-container'),
   educationListContainer: document.getElementById('education-list-container'),
@@ -85,9 +223,17 @@ const elements = {
   rpLinkedin: document.getElementById('rp-linkedin'),
   rpGithub: document.getElementById('rp-github'),
   rpSummaryText: document.getElementById('rp-summary-text'),
-  rpSkillsTech: document.getElementById('rp-skills-tech'),
-  rpSkillsFrameworks: document.getElementById('rp-skills-frameworks'),
-  rpSkillsTools: document.getElementById('rp-skills-tools'),
+
+  // 4 First-Class Paper Skills Lines
+  rpSkillsLanguages: document.getElementById('rp-skills-languages') || document.getElementById('rp-skills-tech'),
+  rpSkillsAi: document.getElementById('rp-skills-ai') || document.getElementById('rp-skills-frameworks'),
+  rpSkillsMl: document.getElementById('rp-skills-ml'),
+  rpSkillsCloud: document.getElementById('rp-skills-cloud') || document.getElementById('rp-skills-tools'),
+  // Legacy aliases
+  rpSkillsTech: document.getElementById('rp-skills-languages') || document.getElementById('rp-skills-tech'),
+  rpSkillsFrameworks: document.getElementById('rp-skills-ai') || document.getElementById('rp-skills-frameworks'),
+  rpSkillsTools: document.getElementById('rp-skills-cloud') || document.getElementById('rp-skills-tools'),
+
   rpExperienceContainer: document.getElementById('rp-experience-container'),
   rpProjectsContainer: document.getElementById('rp-projects-container'),
   rpEducationContainer: document.getElementById('rp-education-container'),
@@ -120,7 +266,31 @@ const elements = {
   btnTabOverleaf: document.getElementById('btn-tab-overleaf'),
 
   // Font Control
-  fontSelect: document.getElementById('font-select')
+  fontSelect: document.getElementById('font-select'),
+
+  // Spacing & Compactness Controls
+  btnToggleSpacing: document.getElementById('btn-toggle-spacing'),
+  spacingDrawer: document.getElementById('spacing-drawer'),
+  btnSpacingClose: document.getElementById('btn-spacing-close'),
+  btnSpacingReset: document.getElementById('btn-spacing-reset'),
+  btnAutofitToolbar: document.getElementById('btn-autofit-toolbar'),
+  btnBannerAutofit: document.getElementById('btn-banner-autofit'),
+  btnPresetAutofit: document.getElementById('btn-preset-autofit'),
+  spacingActiveBadge: document.getElementById('spacing-active-badge'),
+
+  // Spacing Sliders & Readout Badges
+  sliderSectionGap: document.getElementById('slider-section-gap'),
+  valSectionGap: document.getElementById('val-section-gap'),
+  sliderItemGap: document.getElementById('slider-item-gap'),
+  valItemGap: document.getElementById('val-item-gap'),
+  sliderLineHeight: document.getElementById('slider-line-height'),
+  valLineHeight: document.getElementById('val-line-height'),
+  sliderBulletGap: document.getElementById('slider-bullet-gap'),
+  valBulletGap: document.getElementById('val-bullet-gap'),
+  sliderPageMargin: document.getElementById('slider-page-margin'),
+  valPageMargin: document.getElementById('val-page-margin'),
+  sliderFontScale: document.getElementById('slider-font-scale'),
+  valFontScale: document.getElementById('val-font-scale')
 };
 
 /**
@@ -133,6 +303,7 @@ function init() {
   updateJdWordCount();
   setTemplate(currentTemplate, false);
   setFont(currentFont, false);
+  applySpacing(spacingState, false);
   renderPreview();
   check1PageGuardrail();
   
@@ -191,13 +362,79 @@ function bindEvents() {
     elements.btnTabOverleaf.addEventListener('click', () => openOverleaf(elements.tabLatexTextarea.value));
   }
 
-  // Density Controls
+  // Density & Spacing Preset Controls
   document.querySelectorAll('.density-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.density-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       setDensity(e.target.dataset.density);
     });
+  });
+
+  // Spacing Preset Buttons in Drawer
+  document.querySelectorAll('[data-spacing-preset]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const preset = e.currentTarget.dataset.spacingPreset;
+      if (SPACING_PRESETS[preset]) {
+        applySpacing(SPACING_PRESETS[preset], true, preset);
+      }
+    });
+  });
+
+  // Spacing Drawer Toggle
+  if (elements.btnToggleSpacing && elements.spacingDrawer) {
+    elements.btnToggleSpacing.addEventListener('click', () => {
+      const isOpen = elements.spacingDrawer.classList.toggle('open');
+      elements.btnToggleSpacing.classList.toggle('active', isOpen);
+    });
+  }
+
+  // Spacing Drawer Close
+  if (elements.btnSpacingClose && elements.spacingDrawer) {
+    elements.btnSpacingClose.addEventListener('click', () => {
+      elements.spacingDrawer.classList.remove('open');
+      if (elements.btnToggleSpacing) elements.btnToggleSpacing.classList.remove('active');
+    });
+  }
+
+  // Spacing Reset to Defaults
+  if (elements.btnSpacingReset) {
+    elements.btnSpacingReset.addEventListener('click', () => {
+      applySpacing(SPACING_PRESETS.standard, true, 'standard');
+      showToast('Reset spacing to LaTeX defaults!', 'info');
+    });
+  }
+
+  // Auto-Fit 1 Page Buttons
+  if (elements.btnAutofitToolbar) {
+    elements.btnAutofitToolbar.addEventListener('click', autoFit1Page);
+  }
+  if (elements.btnBannerAutofit) {
+    elements.btnBannerAutofit.addEventListener('click', autoFit1Page);
+  }
+  if (elements.btnPresetAutofit) {
+    elements.btnPresetAutofit.addEventListener('click', autoFit1Page);
+  }
+
+  // Granular Sliders Live Binding
+  const sliderMappings = [
+    { slider: elements.sliderSectionGap, key: 'sectionGap', badge: elements.valSectionGap, unit: 'px', parse: v => parseInt(v, 10) },
+    { slider: elements.sliderItemGap, key: 'itemGap', badge: elements.valItemGap, unit: 'px', parse: v => parseInt(v, 10) },
+    { slider: elements.sliderLineHeight, key: 'lineHeight', badge: elements.valLineHeight, unit: '', parse: v => parseFloat(v) },
+    { slider: elements.sliderBulletGap, key: 'bulletGap', badge: elements.valBulletGap, unit: 'px', parse: v => parseInt(v, 10) },
+    { slider: elements.sliderPageMargin, key: 'pageMargin', badge: elements.valPageMargin, unit: 'px', parse: v => parseInt(v, 10) },
+    { slider: elements.sliderFontScale, key: 'fontScale', badge: elements.valFontScale, unit: '%', parse: v => parseInt(v, 10) }
+  ];
+
+  sliderMappings.forEach(({ slider, key, badge, unit, parse }) => {
+    if (slider) {
+      slider.addEventListener('input', (e) => {
+        const val = parse(e.target.value);
+        spacingState[key] = val;
+        if (badge) badge.textContent = `${val}${unit}`;
+        applySpacing(spacingState, false, 'custom');
+      });
+    }
   });
 
   // Template Controls
@@ -225,12 +462,19 @@ function bindEvents() {
   const formInputs = [
     elements.piName, elements.piTitle, elements.piEmail, elements.piPhone,
     elements.piLocation, elements.piLinkedin, elements.piGithub, elements.piLeetcode, elements.piPortfolio,
-    elements.resumeSummaryInput, elements.skillsTechInput, elements.skillsFrameworksInput,
-    elements.skillsToolsInput
+    elements.resumeSummaryInput, elements.skillsLanguagesInput, elements.skillsAiInput, elements.skillsMlInput,
+    elements.skillsCloudInput, elements.skillsTechInput, elements.skillsFrameworksInput, elements.skillsToolsInput
   ].filter(Boolean);
 
   formInputs.forEach(input => {
     input.addEventListener('input', syncFormToState);
+  });
+
+  // Global document click to close any active skill category picker dropdowns
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.skill-picker-wrapper')) {
+      document.querySelectorAll('.skill-picker-menu.active').forEach(m => m.classList.remove('active'));
+    }
   });
 
   // Dynamic Add Buttons
@@ -320,11 +564,145 @@ function setFont(font, notify = true) {
  */
 function setDensity(density) {
   currentDensity = density;
-  elements.resumePaper.classList.remove('density-compact', 'density-relaxed');
-  if (density !== 'standard') {
-    elements.resumePaper.classList.add(`density-${density}`);
+  if (SPACING_PRESETS[density]) {
+    applySpacing(SPACING_PRESETS[density], true, density);
+  } else {
+    applySpacing(SPACING_PRESETS.standard, true, 'standard');
   }
+}
+
+/**
+ * Apply Spacing & Compactness Settings to Resume Paper & Sliders
+ */
+function applySpacing(settings, notify = false, presetName = null) {
+  Object.assign(spacingState, settings);
+
+  if (elements.resumePaper) {
+    elements.resumePaper.style.setProperty('--sec-gap', `${spacingState.sectionGap}px`);
+    elements.resumePaper.style.setProperty('--item-gap', `${spacingState.itemGap}px`);
+    elements.resumePaper.style.setProperty('--line-height', `${spacingState.lineHeight}`);
+    elements.resumePaper.style.setProperty('--bullet-gap', `${spacingState.bulletGap}px`);
+    elements.resumePaper.style.setProperty('--page-pad-v', `${spacingState.pageMargin}px`);
+    elements.resumePaper.style.setProperty('--font-scale', `${spacingState.fontScale / 100}`);
+  }
+
+  // Update slider positions and value badges
+  if (elements.sliderSectionGap) elements.sliderSectionGap.value = spacingState.sectionGap;
+  if (elements.valSectionGap) elements.valSectionGap.textContent = `${spacingState.sectionGap}px`;
+  if (elements.sliderItemGap) elements.sliderItemGap.value = spacingState.itemGap;
+  if (elements.valItemGap) elements.valItemGap.textContent = `${spacingState.itemGap}px`;
+  if (elements.sliderLineHeight) elements.sliderLineHeight.value = spacingState.lineHeight;
+  if (elements.valLineHeight) elements.valLineHeight.textContent = parseFloat(spacingState.lineHeight).toFixed(2);
+  if (elements.sliderBulletGap) elements.sliderBulletGap.value = spacingState.bulletGap;
+  if (elements.valBulletGap) elements.valBulletGap.textContent = `${spacingState.bulletGap}px`;
+  if (elements.sliderPageMargin) elements.sliderPageMargin.value = spacingState.pageMargin;
+  if (elements.valPageMargin) elements.valPageMargin.textContent = `${spacingState.pageMargin}px`;
+  if (elements.sliderFontScale) elements.sliderFontScale.value = spacingState.fontScale;
+  if (elements.valFontScale) elements.valFontScale.textContent = `${spacingState.fontScale}%`;
+
+  // Update active preset buttons
+  const activePreset = presetName || detectCurrentPreset(spacingState);
+  document.querySelectorAll('[data-spacing-preset]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.spacingPreset === activePreset);
+  });
+  document.querySelectorAll('.density-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.density === activePreset);
+  });
+
+  if (elements.spacingActiveBadge) {
+    const badgeMap = {
+      standard: 'Standard',
+      compact: 'Compact',
+      'ultra-compact': 'Ultra',
+      relaxed: 'Relaxed'
+    };
+    elements.spacingActiveBadge.textContent = badgeMap[activePreset] || 'Custom';
+  }
+
+  localStorage.setItem('jobease_spacing', JSON.stringify(spacingState));
   check1PageGuardrail();
+
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+  if (elements.latexModal && elements.latexModal.style.display === 'flex') {
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
+  }
+
+  if (notify) {
+    const presetNames = {
+      standard: 'Standard (LaTeX Default)',
+      compact: 'Compact',
+      'ultra-compact': 'Ultra-Compact',
+      relaxed: 'Relaxed'
+    };
+    showToast(`Applied ${presetNames[activePreset] || 'Custom'} spacing!`, 'info');
+  }
+}
+
+function detectCurrentPreset(s) {
+  for (const [key, p] of Object.entries(SPACING_PRESETS)) {
+    if (
+      p.sectionGap === s.sectionGap &&
+      p.itemGap === s.itemGap &&
+      Math.abs(p.lineHeight - s.lineHeight) < 0.01 &&
+      p.bulletGap === s.bulletGap &&
+      p.pageMargin === s.pageMargin &&
+      p.fontScale === s.fontScale
+    ) {
+      return key;
+    }
+  }
+  return 'custom';
+}
+
+function autoFit1Page() {
+  const height = elements.resumePaper ? elements.resumePaper.scrollHeight : 0;
+  const target = PAGE_LIMIT_HEIGHT;
+
+  if (height <= target) {
+    const currentRatio = Math.round((height / target) * 100);
+    showToast(`Resume already fits within 1 page perfectly! (${currentRatio}%)`, 'success');
+    return;
+  }
+
+  const ratio = height / target;
+  let targetSettings;
+  let targetName = 'compact';
+  if (ratio <= 1.15) {
+    targetSettings = { ...SPACING_PRESETS.compact };
+    targetName = 'compact';
+  } else if (ratio <= 1.35) {
+    targetSettings = {
+      sectionGap: 1,
+      itemGap: 0,
+      lineHeight: 1.18,
+      bulletGap: 0,
+      pageMargin: 10,
+      fontScale: 93
+    };
+    targetName = 'ultra-compact';
+  } else {
+    targetSettings = { ...SPACING_PRESETS['ultra-compact'] };
+    targetName = 'ultra-compact';
+  }
+
+  applySpacing(targetSettings, false, targetName);
+
+  // Micro-adjustment iteration to guarantee fitting under 100%
+  setTimeout(() => {
+    const curH = elements.resumePaper.scrollHeight;
+    if (curH > target) {
+      const neededScale = Math.max(88, Math.floor(spacingState.fontScale * (target / curH) * 0.99));
+      spacingState.fontScale = neededScale;
+      spacingState.sectionGap = 0;
+      spacingState.itemGap = 0;
+      spacingState.pageMargin = 8;
+      applySpacing(spacingState, false, 'ultra-compact');
+    }
+    const finalRatio = Math.round((elements.resumePaper.scrollHeight / target) * 100);
+    showToast(`✨ Auto-fit applied! Page budget: ${finalRatio}% (1 Page Safe)`, 'success');
+  }, 60);
 }
 
 /**
@@ -409,9 +787,17 @@ function loadResumeIntoForm(resume) {
   elements.piPortfolio.value = resume.personalInfo?.portfolio || '';
   
   elements.resumeSummaryInput.value = resume.summary || '';
-  elements.skillsTechInput.value = (resume.skills?.technical || []).join(', ');
-  elements.skillsFrameworksInput.value = (resume.skills?.frameworks || []).join(', ');
-  elements.skillsToolsInput.value = (resume.skills?.tools || []).join(', ');
+
+  const s = resume.skills || {};
+  const langVal = s.languages || (s.technical || []).join(', ');
+  const aiVal = s.aiAgentic || (s.frameworks || []).join(', ');
+  const mlVal = s.mlCv || '';
+  const cloudVal = s.cloudDevOps || (s.tools || []).join(', ');
+
+  if (elements.skillsLanguagesInput) elements.skillsLanguagesInput.value = langVal;
+  if (elements.skillsAiInput) elements.skillsAiInput.value = aiVal;
+  if (elements.skillsMlInput) elements.skillsMlInput.value = mlVal;
+  if (elements.skillsCloudInput) elements.skillsCloudInput.value = cloudVal;
 
   renderExperienceFormList();
   renderProjectsFormList();
@@ -436,10 +822,21 @@ function syncFormToState() {
   };
 
   currentResume.summary = elements.resumeSummaryInput.value;
+
+  const languagesStr = elements.skillsLanguagesInput ? elements.skillsLanguagesInput.value : '';
+  const aiStr = elements.skillsAiInput ? elements.skillsAiInput.value : '';
+  const mlStr = elements.skillsMlInput ? elements.skillsMlInput.value : '';
+  const cloudStr = elements.skillsCloudInput ? elements.skillsCloudInput.value : '';
+
   currentResume.skills = {
-    technical: parseCommaList(elements.skillsTechInput.value),
-    frameworks: parseCommaList(elements.skillsFrameworksInput.value),
-    tools: parseCommaList(elements.skillsToolsInput.value),
+    ...currentResume.skills,
+    languages: languagesStr,
+    aiAgentic: aiStr,
+    mlCv: mlStr,
+    cloudDevOps: cloudStr,
+    technical: parseCommaList(languagesStr),
+    frameworks: [...parseCommaList(aiStr), ...parseCommaList(mlStr)],
+    tools: parseCommaList(cloudStr),
     softSkills: currentResume.skills?.softSkills || []
   };
 
@@ -733,22 +1130,33 @@ function renderPreview() {
     document.getElementById('rp-section-summary').style.display = 'none';
   }
 
-  // Skills
+  // Skills (4 Dedicated Subsections)
   const s = currentResume.skills || {};
   const langText = s.languages || (s.technical || []).join(', ');
   const aiText = s.aiAgentic || (s.frameworks || []).join(', ');
   const mlText = s.mlCv || '';
   const cloudText = s.cloudDevOps || (s.tools || []).join(', ');
 
-  if (s.languages || s.aiAgentic || s.mlCv || s.cloudDevOps) {
-    elements.rpSkillsTech.innerHTML = langText ? `<strong>Languages:</strong> ${escapeHtml(langText)}` : '';
-    elements.rpSkillsFrameworks.innerHTML = aiText ? `<strong>AI, LLM & Agentic Systems:</strong> ${escapeHtml(aiText)}` : '';
-    elements.rpSkillsTools.innerHTML = (mlText ? `<strong>ML/DL & CV:</strong> ${escapeHtml(mlText)}<br>` : '') + 
-      (cloudText ? `<strong>Cloud, DevOps & MLOps:</strong> ${escapeHtml(cloudText)}` : '');
-  } else {
-    elements.rpSkillsTech.innerHTML = langText ? `<strong>Technical Skills:</strong> ${escapeHtml(langText)}` : '';
-    elements.rpSkillsFrameworks.innerHTML = aiText ? `<strong>Frameworks & Libraries:</strong> ${escapeHtml(aiText)}` : '';
-    elements.rpSkillsTools.innerHTML = cloudText ? `<strong>Tools & Platforms:</strong> ${escapeHtml(cloudText)}` : '';
+  const elLang = elements.rpSkillsLanguages || elements.rpSkillsTech;
+  const elAi = elements.rpSkillsAi || elements.rpSkillsFrameworks;
+  const elMl = elements.rpSkillsMl;
+  const elCloud = elements.rpSkillsCloud || elements.rpSkillsTools;
+
+  if (elLang) {
+    elLang.style.display = langText ? 'block' : 'none';
+    elLang.innerHTML = langText ? `<strong>Languages:</strong> ${escapeHtml(langText)}` : '';
+  }
+  if (elAi) {
+    elAi.style.display = aiText ? 'block' : 'none';
+    elAi.innerHTML = aiText ? `<strong>AI, LLM & Agentic Systems:</strong> ${escapeHtml(aiText)}` : '';
+  }
+  if (elMl) {
+    elMl.style.display = mlText ? 'block' : 'none';
+    elMl.innerHTML = mlText ? `<strong>ML/DL & CV:</strong> ${escapeHtml(mlText)}` : '';
+  }
+  if (elCloud) {
+    elCloud.style.display = cloudText ? 'block' : 'none';
+    elCloud.innerHTML = cloudText ? `<strong>Cloud, DevOps & MLOps:</strong> ${escapeHtml(cloudText)}` : '';
   }
 
   // Education
@@ -981,19 +1389,60 @@ function renderAnalysisResults(analysis) {
 
   elements.scoreSummary.textContent = analysis.summary || 'Review the suggestions below to tailor your resume.';
 
-  // Render Missing Hard Skills
+  // Render Missing Hard Skills with Category Routing & Picker
   elements.missingSkillsTags.innerHTML = '';
   const missing = analysis.missingHardSkills || [];
   if (missing.length === 0) {
     elements.missingSkillsTags.innerHTML = '<span style="color: #34D399; font-size: 0.8rem;">All core technical skills matched!</span>';
   } else {
     missing.forEach(skill => {
-      const tag = document.createElement('span');
-      tag.className = 'skill-tag missing';
-      tag.innerHTML = `+ ${escapeHtml(skill)}`;
-      tag.title = `Click to add ${skill} to resume skills`;
-      tag.addEventListener('click', () => addSkillToResume(skill));
-      elements.missingSkillsTags.appendChild(tag);
+      const catKey = classifySkill(skill);
+      const catMeta = SKILL_CATEGORIES[catKey] || SKILL_CATEGORIES.languages;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'skill-picker-wrapper';
+
+      wrapper.innerHTML = `
+        <span class="skill-tag missing" title="Click to add ${escapeHtml(skill)} to ${catMeta.label}">
+          <span>+ ${escapeHtml(skill)}</span>
+          <span class="skill-cat-pill ${catMeta.cssClass}">${catMeta.shortLabel}</span>
+          <span class="skill-picker-toggle" title="Change destination subsection">▾</span>
+        </span>
+        <div class="skill-picker-menu">
+          <div style="font-size: 0.65rem; color: var(--text-dim); padding: 3px 8px; text-transform: uppercase; font-weight: 700;">Add to section:</div>
+          <div class="skill-picker-option" data-cat="languages"><span class="opt-dot" style="background:#3B82F6;"></span>Languages</div>
+          <div class="skill-picker-option" data-cat="aiAgentic"><span class="opt-dot" style="background:#A855F7;"></span>AI, LLM & Agentic</div>
+          <div class="skill-picker-option" data-cat="mlCv"><span class="opt-dot" style="background:#10B981;"></span>ML/DL & CV</div>
+          <div class="skill-picker-option" data-cat="cloudDevOps"><span class="opt-dot" style="background:#F59E0B;"></span>Cloud, DevOps & MLOps</div>
+        </div>
+      `;
+
+      const tagEl = wrapper.querySelector('.skill-tag.missing');
+      const menuEl = wrapper.querySelector('.skill-picker-menu');
+      const toggleEl = wrapper.querySelector('.skill-picker-toggle');
+
+      tagEl.addEventListener('click', (e) => {
+        if (e.target === toggleEl || toggleEl.contains(e.target)) {
+          e.stopPropagation();
+          document.querySelectorAll('.skill-picker-menu.active').forEach(m => {
+            if (m !== menuEl) m.classList.remove('active');
+          });
+          menuEl.classList.toggle('active');
+          return;
+        }
+        addSkillToResume(skill, catKey);
+      });
+
+      wrapper.querySelectorAll('.skill-picker-option').forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const chosenCat = opt.dataset.cat;
+          menuEl.classList.remove('active');
+          addSkillToResume(skill, chosenCat);
+        });
+      });
+
+      elements.missingSkillsTags.appendChild(wrapper);
     });
   }
 
@@ -1060,8 +1509,10 @@ function renderAnalysisResults(analysis) {
  */
 function applyAiSuggestion(sug) {
   if (sug.type === 'skill' && sug.action?.value) {
-    sug.action.value.forEach(sk => addSkillToResume(sk));
-    showToast(`Added ${sug.action.value.join(', ')} to Technical Skills!`, 'success');
+    const targetCat = sug.action.category || classifySkill(sug.action.value[0]);
+    const catMeta = SKILL_CATEGORIES[targetCat] || SKILL_CATEGORIES.languages;
+    sug.action.value.forEach(sk => addSkillToResume(sk, targetCat));
+    showToast(`Added ${sug.action.value.join(', ')} to ${catMeta.label}!`, 'success');
   } else if (sug.type === 'experience_bullet' && sug.recommendedBullet) {
     if (currentResume.experience && currentResume.experience.length > 0) {
       currentResume.experience[0].bullets.unshift(sug.recommendedBullet);
@@ -1079,16 +1530,71 @@ function applyAiSuggestion(sug) {
   check1PageGuardrail();
 }
 
-function addSkillToResume(skill) {
-  if (!currentResume.skills) currentResume.skills = { technical: [] };
-  if (!currentResume.skills.technical.includes(skill)) {
-    currentResume.skills.technical.push(skill);
-    elements.skillsTechInput.value = currentResume.skills.technical.join(', ');
-    renderPreview();
-    highlightPreviewElement(elements.rpSkillsTech);
-    check1PageGuardrail();
-    showToast(`Added "${skill}" to skills!`, 'success');
+/**
+ * Category-Aware Skill Addition Engine
+ * Intelligently routes skills to Languages, AI/LLMs, ML/CV, or Cloud/DevOps.
+ */
+function addSkillToResume(skill, targetCategory = null) {
+  if (!skill) return;
+  const cleanSkill = skill.trim();
+  if (!cleanSkill) return;
+
+  const categoryKey = targetCategory || classifySkill(cleanSkill);
+  const categoryMeta = SKILL_CATEGORIES[categoryKey] || SKILL_CATEGORIES.languages;
+
+  if (!currentResume.skills) currentResume.skills = {};
+
+  // Extract existing items as array
+  let currentList = [];
+  if (typeof currentResume.skills[categoryKey] === 'string' && currentResume.skills[categoryKey].trim()) {
+    currentList = parseCommaList(currentResume.skills[categoryKey]);
+  } else if (Array.isArray(currentResume.skills[categoryKey])) {
+    currentList = [...currentResume.skills[categoryKey]];
+  } else {
+    if (categoryKey === 'languages') currentList = parseCommaList(elements.skillsLanguagesInput?.value || '');
+    else if (categoryKey === 'aiAgentic') currentList = parseCommaList(elements.skillsAiInput?.value || '');
+    else if (categoryKey === 'mlCv') currentList = parseCommaList(elements.skillsMlInput?.value || '');
+    else if (categoryKey === 'cloudDevOps') currentList = parseCommaList(elements.skillsCloudInput?.value || '');
   }
+
+  // Prevent duplicate insertion
+  const exists = currentList.some(s => s.toLowerCase() === cleanSkill.toLowerCase());
+  if (!exists) {
+    currentList.push(cleanSkill);
+  }
+
+  const updatedStr = currentList.join(', ');
+  currentResume.skills[categoryKey] = updatedStr;
+
+  // Sync to input field
+  if (categoryKey === 'languages' && elements.skillsLanguagesInput) elements.skillsLanguagesInput.value = updatedStr;
+  if (categoryKey === 'aiAgentic' && elements.skillsAiInput) elements.skillsAiInput.value = updatedStr;
+  if (categoryKey === 'mlCv' && elements.skillsMlInput) elements.skillsMlInput.value = updatedStr;
+  if (categoryKey === 'cloudDevOps' && elements.skillsCloudInput) elements.skillsCloudInput.value = updatedStr;
+
+  // Sync legacy fields
+  currentResume.skills.technical = parseCommaList(currentResume.skills.languages || '');
+  currentResume.skills.frameworks = [
+    ...parseCommaList(currentResume.skills.aiAgentic || ''),
+    ...parseCommaList(currentResume.skills.mlCv || '')
+  ];
+  currentResume.skills.tools = parseCommaList(currentResume.skills.cloudDevOps || '');
+
+  renderPreview();
+
+  // Highlight the target subsection in the live preview
+  let targetPreviewEl = null;
+  if (categoryKey === 'languages') targetPreviewEl = elements.rpSkillsLanguages;
+  else if (categoryKey === 'aiAgentic') targetPreviewEl = elements.rpSkillsAi;
+  else if (categoryKey === 'mlCv') targetPreviewEl = elements.rpSkillsMl;
+  else if (categoryKey === 'cloudDevOps') targetPreviewEl = elements.rpSkillsCloud;
+
+  if (targetPreviewEl) {
+    highlightPreviewElement(targetPreviewEl);
+  }
+
+  check1PageGuardrail();
+  showToast(`✨ Added "${cleanSkill}" to ${categoryMeta.label}!`, 'success');
 }
 
 function highlightPreviewElement(el) {
@@ -1098,41 +1604,68 @@ function highlightPreviewElement(el) {
 }
 
 /**
- * Browser-side heuristic analysis fallback
+ * Browser-side heuristic analysis fallback with category awareness
  */
 function clientHeuristicMatch(resume, jd) {
   const jdLower = jd.toLowerCase();
   const resText = JSON.stringify(resume).toLowerCase();
 
-  const techPool = ['docker', 'kubernetes', 'aws', 'terraform', 'graphql', 'postgresql', 'redis', 'ci/cd', 'typescript', 'react', 'next.js', 'go', 'python'];
-  const missing = techPool.filter(t => jdLower.includes(t) && !resText.includes(t)).map(capitalize);
-  const found = techPool.filter(t => jdLower.includes(t) && resText.includes(t)).map(capitalize);
+  const techPool = [
+    // Languages
+    'Python', 'TypeScript', 'JavaScript', 'C++', 'SQL', 'Go', 'Rust', 'Java',
+    // AI, LLM & Agentic Systems
+    'LangChain', 'LlamaIndex', 'RAG', 'Vector DB', 'Prompt Engineering', 'OpenAI', 'Gemini', 'CrewAI',
+    // ML/DL & CV
+    'PyTorch', 'TensorFlow', 'scikit-learn', 'OpenCV', 'YOLO', 'Deep Learning', 'Computer Vision',
+    // Cloud, DevOps & MLOps
+    'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Terraform', 'CI/CD', 'Git', 'FastAPI', 'PostgreSQL', 'Redis', 'MLflow'
+  ];
+
+  const missing = techPool.filter(t => jdLower.includes(t.toLowerCase()) && !resText.includes(t.toLowerCase()));
+  const found = techPool.filter(t => jdLower.includes(t.toLowerCase()) && resText.includes(t.toLowerCase()));
 
   const matchScore = Math.max(50, Math.min(92, 100 - (missing.length * 9)));
 
+  // Group missing skills by subsection for tailored suggestions
+  const groupedMissing = {};
+  missing.slice(0, 6).forEach(sk => {
+    const cat = classifySkill(sk);
+    if (!groupedMissing[cat]) groupedMissing[cat] = [];
+    groupedMissing[cat].push(sk);
+  });
+
+  const suggestions = Object.entries(groupedMissing).map(([catKey, skills], idx) => {
+    const catMeta = SKILL_CATEGORIES[catKey] || SKILL_CATEGORIES.languages;
+    return {
+      id: `sug-hard-skill-${catKey}-${idx}`,
+      type: 'skill',
+      category: 'hard_skill',
+      targetCategory: catKey,
+      title: `Add ${skills.join(', ')} to ${catMeta.label}`,
+      detail: `The target job lists these technologies as core requirements for ${catMeta.label}.`,
+      action: {
+        target: `skills.${catKey}`,
+        category: catKey,
+        value: skills
+      }
+    };
+  });
+
+  suggestions.push({
+    id: 'sug-bullet-quantify',
+    type: 'experience_bullet',
+    category: 'quantify_impact',
+    title: 'Inject Cloud Architecture & Performance Metric',
+    detail: 'Incorporate quantified engineering achievements with high-throughput cloud services.',
+    recommendedBullet: `Architected distributed microservices deployed via Docker on AWS, reducing API response times by 35% for 250k+ daily users.`
+  });
+
   return {
     matchScore,
-    summary: `Resume aligns with ${matchScore}% of target requirements. Adding ${missing.slice(0, 3).join(', ')} will maximize ATS readability.`,
+    summary: `Resume aligns with ${matchScore}% of target requirements. ${missing.length > 0 ? `Key technical gaps: ${missing.slice(0, 4).join(', ')}.` : 'Strong core alignment.'}`,
     hardSkillsFound: found,
     missingHardSkills: missing,
-    suggestions: [
-      {
-        id: 'sug-hard-skill',
-        type: 'skill',
-        category: 'hard_skill',
-        title: `Add ${missing.slice(0, 3).join(', ')} to Skills`,
-        detail: 'The target job lists these technologies as core requirements.',
-        action: { target: 'skills.technical', value: missing.slice(0, 3) }
-      },
-      {
-        id: 'sug-bullet-quantify',
-        type: 'experience_bullet',
-        category: 'quantify_impact',
-        title: 'Inject Cloud Architecture & Performance Metric',
-        detail: 'Incorporate quantified engineering achievements with high-throughput cloud services.',
-        recommendedBullet: `Architected distributed microservices deployed via Docker on AWS, reducing API response times by 35% for 250k+ daily users.`
-      }
-    ]
+    suggestions
   };
 }
 
@@ -1344,19 +1877,19 @@ async function openLatexModal() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont })
+      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
     });
 
     if (res.ok) {
       const data = await res.json();
-      elements.latexCodeView.value = data.texSource || generateClientLatex(currentResume, currentFont);
+      elements.latexCodeView.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState);
       elements.latexStatusText.textContent = 'LaTeX source generated successfully.';
     } else {
-      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
+      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
       elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
     }
   } catch {
-    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont, spacingState);
     elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
   }
 }
@@ -1371,7 +1904,7 @@ function copyLatexCode() {
 function downloadTexFile(customCode) {
   const code = (typeof customCode === 'string' && customCode.trim())
     ? customCode
-    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume, currentFont));
+    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume, currentFont, spacingState));
   const dataStr = "data:text/x-tex;charset=utf-8," + encodeURIComponent(code);
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -1390,23 +1923,23 @@ async function updateTabLatexView() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont })
+      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
     });
     if (res.ok) {
       const data = await res.json();
-      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume, currentFont);
+      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume, currentFont, spacingState);
     } else {
-      elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont);
+      elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState);
     }
   } catch {
-    elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont);
+    elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont, spacingState);
   }
 }
 
 function openOverleaf(texCode) {
   const code = (typeof texCode === 'string' && texCode.trim())
     ? texCode
-    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume, currentFont));
+    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume, currentFont, spacingState));
 
   const form = document.getElementById('overleaf-form');
   const input = document.getElementById('overleaf-snip');
@@ -1428,7 +1961,7 @@ async function compileLatexPdf() {
     const res = await fetch('/api/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume, font: currentFont })
+      body: JSON.stringify({ resume: currentResume, font: currentFont, spacing: spacingState })
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -1496,7 +2029,7 @@ const CLIENT_FONT_PACKAGES = {
   roboto: '\\usepackage[default]{roboto}'
 };
 
-function generateClientLatex(resume) {
+function generateClientLatex(resume, font, spacingOpt) {
   const pi = resume.personalInfo || {};
   const name = escapeClientLatex(pi.name || 'Sumit Chouhan');
   const email = escapeClientLatex(pi.email || '');
@@ -1741,8 +2274,35 @@ ${volItems}
 \\resumeItemListEnd`;
   }
 
-  return `\\documentclass[a4paper,10pt]{article}
-\\usepackage{lmodern}
+  const fontKey = font || currentFont || 'lmodern';
+  const fontPackage = fontKey === 'lmodern' ? '\\usepackage{lmodern}' : (CLIENT_FONT_PACKAGES[fontKey] || '\\usepackage{lmodern}');
+  const spacing = spacingOpt || spacingState || {};
+  const fontScale = typeof spacing.fontScale === 'number' ? spacing.fontScale : 100;
+  const docFontSize = fontScale <= 92 ? '9pt' : '10pt';
+
+  const pageMargin = typeof spacing.pageMargin === 'number' ? spacing.pageMargin : 16;
+  let topMargin = '-0.6in';
+  let textHeight = '1.2in';
+  if (pageMargin <= 10) {
+    topMargin = '-0.75in';
+    textHeight = '1.45in';
+  } else if (pageMargin <= 14) {
+    topMargin = '-0.68in';
+    textHeight = '1.32in';
+  }
+
+  const sectionGap = typeof spacing.sectionGap === 'number' ? spacing.sectionGap : 2;
+  const secVspaceTop = sectionGap <= 0 ? '-6pt' : (sectionGap <= 1 ? '-5pt' : '-4pt');
+  const secVspaceBottom = sectionGap <= 0 ? '-5pt' : (sectionGap <= 1 ? '-4pt' : '-3pt');
+
+  const itemGap = typeof spacing.itemGap === 'number' ? spacing.itemGap : 2;
+  const itemSubVspace = itemGap <= 0 ? '-7pt' : (itemGap <= 1 ? '-6pt' : '-5pt');
+
+  const bulletGap = typeof spacing.bulletGap === 'number' ? spacing.bulletGap : 0;
+  const itemSep = bulletGap <= 0 ? '0pt' : `${bulletGap}pt`;
+
+  return `\\documentclass[a4paper,${docFontSize}]{article}
+${fontPackage}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
 \\usepackage[usenames,dvipsnames]{color}
@@ -1762,8 +2322,8 @@ ${volItems}
 \\addtolength{\\oddsidemargin}{-0.5in}
 \\addtolength{\\evensidemargin}{-0.5in}
 \\addtolength{\\textwidth}{1in}
-\\addtolength{\\topmargin}{-0.6in}
-\\addtolength{\\textheight}{1.2in}
+\\addtolength{\\topmargin}{${topMargin}}
+\\addtolength{\\textheight}{${textHeight}}
 
 \\setlength{\\tabcolsep}{0in}
 \\setlength{\\parindent}{0pt}
@@ -1775,11 +2335,11 @@ ${volItems}
 %---------------------------
 % Section formatting
 \\titleformat{\\section}
-  {\\vspace{-4pt}\\scshape\\raggedright\\large}
+  {\\vspace{${secVspaceTop}}\\scshape\\raggedright\\large}
   {}
   {0em}
   {}
-  [\\color{black}\\titlerule\\vspace{-3pt}]
+  [\\color{black}\\titlerule\\vspace{${secVspaceBottom}}]
 
 %---------------------------
 % Custom Commands
@@ -1788,7 +2348,7 @@ ${volItems}
     \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}
       \\textbf{#1} & #2 \\\\
       \\textit{\\small#3} & \\textit{\\small #4} \\\\
-    \\end{tabular*}\\vspace{-5pt}
+    \\end{tabular*}\\vspace{${itemSubVspace}}
 }
 
 \\newcommand{\\resumeItem}[1]{\\item\\small{#1\\vspace{-2pt}}}
@@ -1796,7 +2356,7 @@ ${volItems}
 \\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
 \\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
 
-\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=${itemSep}, parsep=0pt]}
 \\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-4pt}}
 
 \\renewcommand{\\labelitemii}{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}

@@ -206,16 +206,20 @@
             <span>Skills & Technologies</span>
           </div>
           <div class="form-group">
-            <label class="form-label">Technical Skills (Comma separated)</label>
-            <input type="text" class="form-input" id="skills-tech-input" placeholder="JavaScript, React, Node.js, Docker, AWS">
+            <label class="form-label">Languages</label>
+            <input type="text" class="form-input" id="skills-languages-input" placeholder="Python, C++, SQL, JavaScript, TypeScript">
           </div>
           <div class="form-group">
-            <label class="form-label">Frameworks & Libraries</label>
-            <input type="text" class="form-input" id="skills-frameworks-input" placeholder="Next.js, Express, Tailwind CSS">
+            <label class="form-label">AI, LLM & Agentic Systems</label>
+            <input type="text" class="form-input" id="skills-ai-input" placeholder="LangChain, RAG Pipelines, Multi-Agent Coordination, Prompt Engineering, Vector DBs">
           </div>
           <div class="form-group">
-            <label class="form-label">Tools & Cloud</label>
-            <input type="text" class="form-input" id="skills-tools-input" placeholder="Git, Docker, PostgreSQL, Jest">
+            <label class="form-label">ML/DL & Computer Vision</label>
+            <input type="text" class="form-input" id="skills-ml-input" placeholder="PyTorch, TensorFlow, scikit-learn, OpenCV, YOLO, PINNs">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cloud, DevOps & MLOps</label>
+            <input type="text" class="form-input" id="skills-cloud-input" placeholder="AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability">
           </div>
         </div>
 
@@ -319,6 +323,109 @@
               <button class="density-btn" data-density="relaxed">Relaxed</button>
             </div>
           </div>
+
+          <!-- Spacing & Compactness Action Buttons -->
+          <div class="spacing-toolbar-actions">
+            <button class="btn-autofit" id="btn-autofit-toolbar" title="Automatically optimize spacing and font scale to fit on 1 page">
+              ✨ Auto-Fit 1 Page
+            </button>
+            <button class="spacing-toggle-btn" id="btn-toggle-spacing" title="Open spacing & compactness configuration sliders">
+              <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M6 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM1 10.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm4-6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+              <span>Spacing</span>
+              <span class="spacing-indicator-badge" id="spacing-active-badge">Standard</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsible Spacing & Compactness Configuration Drawer -->
+      <div class="spacing-drawer" id="spacing-drawer">
+        <div class="spacing-drawer-inner">
+          <div class="spacing-drawer-header">
+            <div class="spacing-drawer-title">
+              <svg width="15" height="15" fill="var(--primary)" viewBox="0 0 16 16"><path d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"/></svg>
+              <span>Spacing & Compactness Configuration</span>
+            </div>
+            <div class="spacing-drawer-actions">
+              <button class="btn-drawer-action" id="btn-spacing-reset" title="Reset all sliders to LaTeX default spacing">Reset Defaults</button>
+              <button class="btn-drawer-close" id="btn-spacing-close" title="Close spacing drawer">✕</button>
+            </div>
+          </div>
+
+          <!-- Quick Presets Row -->
+          <div class="spacing-presets-row">
+            <span class="spacing-preset-label">Compactness Presets:</span>
+            <div class="pill-group" id="spacing-preset-group">
+              <button class="pill-btn active" data-spacing-preset="standard">Standard (TeX)</button>
+              <button class="pill-btn" data-spacing-preset="compact">Compact</button>
+              <button class="pill-btn" data-spacing-preset="ultra-compact">Ultra-Compact</button>
+              <button class="pill-btn" data-spacing-preset="relaxed">Relaxed</button>
+              <button class="pill-btn pill-btn-magic" id="btn-preset-autofit" title="Automatically shrink spacing & scale to fit 1 page">✨ Auto-Fit 1 Page</button>
+            </div>
+          </div>
+
+          <!-- Granular Sliders Grid -->
+          <div class="spacing-sliders-grid">
+            <!-- 1. Section Spacing -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-section-gap">Section Spacing</label>
+                <span class="spacing-value-badge" id="val-section-gap">2px</span>
+              </div>
+              <input type="range" id="slider-section-gap" min="0" max="14" step="1" value="2" class="spacing-range">
+              <span class="spacing-hint">Gap between main section headings (Education, Experience, etc.)</span>
+            </div>
+
+            <!-- 2. Item Spacing -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-item-gap">Item Spacing</label>
+                <span class="spacing-value-badge" id="val-item-gap">2px</span>
+              </div>
+              <input type="range" id="slider-item-gap" min="0" max="10" step="1" value="2" class="spacing-range">
+              <span class="spacing-hint">Gap between companies, projects & degrees</span>
+            </div>
+
+            <!-- 3. Line Height / Density -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-line-height">Line Spacing</label>
+                <span class="spacing-value-badge" id="val-line-height">1.28</span>
+              </div>
+              <input type="range" id="slider-line-height" min="1.15" max="1.45" step="0.01" value="1.28" class="spacing-range">
+              <span class="spacing-hint">Vertical text line-height & compactness</span>
+            </div>
+
+            <!-- 4. Bullet Item Gap -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-bullet-gap">Bullet Spacing</label>
+                <span class="spacing-value-badge" id="val-bullet-gap">0px</span>
+              </div>
+              <input type="range" id="slider-bullet-gap" min="0" max="6" step="1" value="0" class="spacing-range">
+              <span class="spacing-hint">Padding between individual bullet point lines</span>
+            </div>
+
+            <!-- 5. Page Margins (Padding) -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-page-margin">Page Margins</label>
+                <span class="spacing-value-badge" id="val-page-margin">16px</span>
+              </div>
+              <input type="range" id="slider-page-margin" min="8" max="36" step="2" value="16" class="spacing-range">
+              <span class="spacing-hint">Top & bottom paper padding</span>
+            </div>
+
+            <!-- 6. Font Size Scale -->
+            <div class="spacing-control-group">
+              <div class="spacing-label-row">
+                <label for="slider-font-scale">Font Scale</label>
+                <span class="spacing-value-badge" id="val-font-scale">100%</span>
+              </div>
+              <input type="range" id="slider-font-scale" min="88" max="112" step="1" value="100" class="spacing-range">
+              <span class="spacing-hint">Base document font scale (e.g. 9.2pt to 11pt)</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -326,9 +433,12 @@
         <!-- Overflow Warning Banner -->
         <div class="overflow-alert-banner" id="overflow-banner">
           <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
-          <div>
-            <strong>1-Page Limit Exceeded!</strong> Content extends past the 1-page visual threshold. Shorten bullet points, switch template, or use <em>Compact</em> density.
+          <div style="flex: 1;">
+            <strong>1-Page Limit Exceeded!</strong> Content extends past the 1-page visual threshold.
           </div>
+          <button class="btn-autofit-banner" id="btn-banner-autofit" title="Automatically shrink spacing & scale to fit 1 page">
+            ✨ Auto-Fit to 1 Page
+          </button>
         </div>
 
         <!-- The Paper Document Container -->
@@ -360,10 +470,11 @@
             <!-- Dynamic Paper Skills -->
             <section class="rp-section" id="rp-section-skills">
               <h3 class="rp-section-title">Skills</h3>
-              <div class="rp-skills-group">
-                <div class="rp-skills-line" id="rp-skills-tech"></div>
-                <div class="rp-skills-line" id="rp-skills-frameworks"></div>
-                <div class="rp-skills-line" id="rp-skills-tools"></div>
+              <div class="rp-skills-group" id="rp-skills-group">
+                <div class="rp-skills-line" id="rp-skills-languages"></div>
+                <div class="rp-skills-line" id="rp-skills-ai"></div>
+                <div class="rp-skills-line" id="rp-skills-ml"></div>
+                <div class="rp-skills-line" id="rp-skills-cloud"></div>
               </div>
             </section>
 

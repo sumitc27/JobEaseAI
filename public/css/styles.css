@@ -478,6 +478,105 @@ body {
   opacity: 0.8;
 }
 
+.skill-cat-pill {
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-dim);
+}
+
+.skill-cat-pill.cat-languages {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.skill-cat-pill.cat-aiAgentic {
+  background: rgba(168, 85, 247, 0.2);
+  color: #D8B4FE;
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
+.skill-cat-pill.cat-mlCv {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.skill-cat-pill.cat-cloudDevOps {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.skill-picker-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  font-size: 0.65rem;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.skill-picker-toggle:hover {
+  opacity: 1;
+}
+
+.skill-picker-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.skill-picker-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 150;
+  background: #0F172A;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  display: none;
+  flex-direction: column;
+  min-width: 175px;
+  padding: 4px;
+}
+
+.skill-picker-menu.active {
+  display: flex;
+}
+
+.skill-picker-option {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  color: var(--text-main);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.skill-picker-option:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: #FFFFFF;
+}
+
+.skill-picker-option .opt-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
 /* Suggestion Card Items */
 .suggestion-list {
   display: flex;
@@ -784,6 +883,276 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Spacing & Compactness Toolbar Controls */
+.spacing-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-autofit {
+  background: linear-gradient(135deg, #4F46E5, #06B6D4);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-autofit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.45);
+}
+
+.spacing-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.spacing-toggle-btn:hover,
+.spacing-toggle-btn.active {
+  background: var(--bg-elevated);
+  border-color: var(--primary);
+  color: #FFFFFF;
+}
+
+.spacing-indicator-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Collapsible Spacing & Compactness Drawer */
+.spacing-drawer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  opacity: 0;
+  background: #0D1322;
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.spacing-drawer.open {
+  max-height: 420px;
+  opacity: 1;
+}
+
+.spacing-drawer-inner {
+  padding: 14px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spacing-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.spacing-drawer-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.spacing-drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-drawer-action {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-drawer-action:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.btn-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.btn-drawer-close:hover {
+  color: var(--text-main);
+}
+
+.spacing-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.spacing-preset-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.pill-btn-magic {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.25)) !important;
+  border: 1px solid var(--primary) !important;
+  color: #A5B4FC !important;
+}
+
+.pill-btn-magic:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(6, 182, 212, 0.4)) !important;
+  color: #FFFFFF !important;
+}
+
+.spacing-sliders-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 16px;
+}
+
+@media (max-width: 1200px) {
+  .spacing-sliders-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .spacing-sliders-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spacing-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.spacing-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.spacing-label-row label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.spacing-value-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--secondary);
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.spacing-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  outline: none;
+  cursor: pointer;
+}
+
+.spacing-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
+  transition: transform 0.1s ease;
+}
+
+.spacing-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.spacing-range::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  border: none;
+}
+
+.spacing-hint {
+  font-size: 0.64rem;
+  color: var(--text-dim);
+}
+
+.btn-autofit-banner {
+  background: linear-gradient(135deg, #EF4444, #F59E0B);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.btn-autofit-banner:hover {
+  transform: scale(1.03);
+}
+
 .preview-scroll-container {
   flex: 1;
   overflow-y: auto;
@@ -833,6 +1202,13 @@ body {
 }
 
 .resume-paper {
+  --sec-gap: 2px;
+  --item-gap: 2px;
+  --line-height: 1.28;
+  --bullet-gap: 0px;
+  --page-pad-v: 16px;
+  --page-pad-h: 28px;
+  --font-scale: 1;
   width: 100%;
   min-height: 932px; /* Standard single-page height ratio */
   background: var(--resume-bg);
@@ -844,7 +1220,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 /* Guardrail Visual Limit Line */
@@ -1211,10 +1587,11 @@ body {
   --resume-text: #000000;
   --resume-text-muted: #1A1A1A;
   --resume-border: #000000;
-  padding: 16px 28px;
-  line-height: 1.25;
+  padding: var(--page-pad-v, 16px) var(--page-pad-h, 28px) !important;
+  line-height: var(--line-height, 1.25);
   color: #000000;
-  gap: 2px !important;
+  gap: var(--sec-gap, 2px) !important;
+  font-size: calc(1rem * var(--font-scale, 1));
 }
 
 .resume-paper.theme-latex * {
@@ -1226,12 +1603,12 @@ body {
   padding-bottom: 0px;
   align-items: center;
   text-align: center;
-  margin-bottom: 1px;
+  margin-bottom: calc(var(--sec-gap, 2px) / 2);
 }
 
 .resume-paper.theme-latex .rp-name {
   font-family: 'LMRomanCaps10', 'LMRoman10', 'Computer Modern Serif', serif;
-  font-size: 1.7rem;
+  font-size: calc(1.7rem * var(--font-scale, 1));
   font-weight: 700;
   font-variant: small-caps;
   color: #000000;
@@ -1249,10 +1626,10 @@ body {
   display: block;
   text-align: center;
   font-family: 'LMRoman10', 'Latin Modern Roman', serif;
-  font-size: 0.76rem;
+  font-size: calc(0.76rem * var(--font-scale, 1));
   font-weight: 400;
   color: #000000;
-  line-height: 1.32;
+  line-height: var(--line-height, 1.32);
   margin-top: 1px;
 }
 
@@ -1263,28 +1640,28 @@ body {
 }
 
 .resume-paper.theme-latex .rp-section {
-  gap: 1px;
+  gap: calc(var(--sec-gap, 2px) / 2);
   margin: 0;
 }
 
 .resume-paper.theme-latex .rp-section-title {
   font-family: 'LMRomanCaps10', 'LMRoman10', 'Computer Modern Serif', serif;
-  font-size: 1.02rem;
+  font-size: calc(1.02rem * var(--font-scale, 1));
   font-weight: 600;
   font-variant: small-caps;
   color: #000000;
   border-bottom: 1px solid #000000;
   padding-bottom: 1px;
-  margin-top: 4px;
-  margin-bottom: 2px;
+  margin-top: calc(var(--sec-gap, 2px) + 2px);
+  margin-bottom: calc(var(--sec-gap, 2px) / 2 + 1px);
   text-transform: none;
   letter-spacing: 0.04em;
 }
 
 .resume-paper.theme-latex .rp-experience-item,
 .resume-paper.theme-latex .rp-project-item {
-  margin-bottom: 2px;
-  gap: 1px;
+  margin-bottom: var(--item-gap, 2px);
+  gap: calc(var(--item-gap, 2px) / 2);
 }
 
 .resume-paper.theme-latex .rp-item-header {
@@ -1296,7 +1673,7 @@ body {
 
 .resume-paper.theme-latex .rp-role {
   font-family: 'LMRoman10', serif;
-  font-size: 0.81rem;
+  font-size: calc(0.81rem * var(--font-scale, 1));
   font-weight: 700;
   font-style: normal;
   color: #000000;
@@ -1304,7 +1681,7 @@ body {
 
 .resume-paper.theme-latex .rp-company {
   font-family: 'LMRoman10', serif;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--font-scale, 1));
   font-style: italic;
   font-weight: 400;
   color: #000000;
@@ -1312,22 +1689,22 @@ body {
 
 .resume-paper.theme-latex .rp-meta {
   font-family: 'LMRoman10', serif;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--font-scale, 1));
   font-style: normal;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-subheading-dates {
   font-family: 'LMRoman10', serif;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--font-scale, 1));
   font-style: italic;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-bullets {
   font-family: 'LMRoman10', serif;
-  font-size: 0.76rem;
-  line-height: 1.28;
+  font-size: calc(0.76rem * var(--font-scale, 1));
+  line-height: var(--line-height, 1.28);
   color: #000000;
   padding-left: 1.15rem;
   margin-top: 0px;
@@ -1336,17 +1713,17 @@ body {
 }
 
 .resume-paper.theme-latex .rp-bullets li {
-  margin-bottom: 0px;
+  margin-bottom: var(--bullet-gap, 0px);
 }
 
 .resume-paper.theme-latex .rp-skills-group {
-  gap: 1px;
+  gap: calc(var(--sec-gap, 2px) / 2);
 }
 
 .resume-paper.theme-latex .rp-skills-line {
   font-family: 'LMRoman10', serif;
-  font-size: 0.78rem;
-  line-height: 1.28;
+  font-size: calc(0.78rem * var(--font-scale, 1));
+  line-height: var(--line-height, 1.28);
   color: #000000;
 }
 
@@ -1358,58 +1735,29 @@ body {
 
 .resume-paper.theme-latex .rp-summary {
   font-family: 'LMRoman10', serif;
-  font-size: 0.78rem;
-  line-height: 1.28;
+  font-size: calc(0.78rem * var(--font-scale, 1));
+  line-height: var(--line-height, 1.28);
   color: #000000;
 }
 
 /* LaTeX Compact Density Variant */
 .resume-paper.theme-latex.density-compact {
-  padding: 12px 22px;
-  gap: 1px !important;
+  --sec-gap: 1px;
+  --item-gap: 1px;
+  --line-height: 1.22;
+  --page-pad-v: 12px;
+  --page-pad-h: 22px;
+  --font-scale: 0.96;
 }
 
-.resume-paper.theme-latex.density-compact .rp-name {
-  font-size: 1.5rem;
-}
-
-.resume-paper.theme-latex.density-compact .rp-contacts {
-  font-size: 0.71rem;
-  line-height: 1.22;
-}
-
-.resume-paper.theme-latex.density-compact .rp-section-title {
-  margin-top: 1px;
-  margin-bottom: 1px;
-  font-size: 0.95rem;
-}
-
-.resume-paper.theme-latex.density-compact .rp-role {
-  font-size: 0.77rem;
-}
-
-.resume-paper.theme-latex.density-compact .rp-company {
-  font-size: 0.75rem;
-}
-
-.resume-paper.theme-latex.density-compact .rp-meta {
-  font-size: 0.72rem;
-}
-
-.resume-paper.theme-latex.density-compact .rp-bullets {
-  font-size: 0.72rem;
-  line-height: 1.18;
-}
-
-.resume-paper.theme-latex.density-compact .rp-skills-line {
-  font-size: 0.72rem;
-  line-height: 1.18;
-}
-
-.resume-paper.theme-latex.density-compact .rp-experience-item,
-.resume-paper.theme-latex.density-compact .rp-project-item {
-  margin-bottom: 1px;
-  gap: 0;
+.resume-paper.theme-latex.density-relaxed {
+  --sec-gap: 6px;
+  --item-gap: 5px;
+  --line-height: 1.36;
+  --bullet-gap: 2px;
+  --page-pad-v: 24px;
+  --page-pad-h: 32px;
+  --font-scale: 1.04;
 }
 
 /* Highlight applied suggestion animation */

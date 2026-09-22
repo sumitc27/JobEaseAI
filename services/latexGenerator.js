@@ -299,8 +299,34 @@ ${volItems}
 \\resumeItemListEnd`;
   }
 
-  return `\\documentclass[a4paper,10pt]{article}
-\\usepackage{lmodern}
+  // Spacing & Compactness Configuration
+  const spacing = options.spacing || {};
+  const fontScale = typeof spacing.fontScale === 'number' ? spacing.fontScale : 100;
+  const docFontSize = fontScale <= 92 ? '9pt' : '10pt';
+
+  const pageMargin = typeof spacing.pageMargin === 'number' ? spacing.pageMargin : 16;
+  let topMargin = '-0.6in';
+  let textHeight = '1.2in';
+  if (pageMargin <= 10) {
+    topMargin = '-0.75in';
+    textHeight = '1.45in';
+  } else if (pageMargin <= 14) {
+    topMargin = '-0.68in';
+    textHeight = '1.32in';
+  }
+
+  const sectionGap = typeof spacing.sectionGap === 'number' ? spacing.sectionGap : 2;
+  const secVspaceTop = sectionGap <= 0 ? '-6pt' : (sectionGap <= 1 ? '-5pt' : '-4pt');
+  const secVspaceBottom = sectionGap <= 0 ? '-5pt' : (sectionGap <= 1 ? '-4pt' : '-3pt');
+
+  const itemGap = typeof spacing.itemGap === 'number' ? spacing.itemGap : 2;
+  const itemSubVspace = itemGap <= 0 ? '-7pt' : (itemGap <= 1 ? '-6pt' : '-5pt');
+
+  const bulletGap = typeof spacing.bulletGap === 'number' ? spacing.bulletGap : 0;
+  const itemSep = bulletGap <= 0 ? '0pt' : `${bulletGap}pt`;
+
+  return `\\documentclass[a4paper,${docFontSize}]{article}
+${fontPackage}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
 \\usepackage[usenames,dvipsnames]{color}
@@ -320,8 +346,8 @@ ${volItems}
 \\addtolength{\\oddsidemargin}{-0.5in}
 \\addtolength{\\evensidemargin}{-0.5in}
 \\addtolength{\\textwidth}{1in}
-\\addtolength{\\topmargin}{-0.6in}
-\\addtolength{\\textheight}{1.2in}
+\\addtolength{\\topmargin}{${topMargin}}
+\\addtolength{\\textheight}{${textHeight}}
 
 \\setlength{\\tabcolsep}{0in}
 \\setlength{\\parindent}{0pt}
@@ -333,11 +359,11 @@ ${volItems}
 %---------------------------
 % Section formatting
 \\titleformat{\\section}
-  {\\vspace{-4pt}\\scshape\\raggedright\\large}
+  {\\vspace{${secVspaceTop}}\\scshape\\raggedright\\large}
   {}
   {0em}
   {}
-  [\\color{black}\\titlerule\\vspace{-3pt}]
+  [\\color{black}\\titlerule\\vspace{${secVspaceBottom}}]
 
 %---------------------------
 % Custom Commands
@@ -346,7 +372,7 @@ ${volItems}
     \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}
       \\textbf{#1} & #2 \\\\
       \\textit{\\small#3} & \\textit{\\small #4} \\\\
-    \\end{tabular*}\\vspace{-5pt}
+    \\end{tabular*}\\vspace{${itemSubVspace}}
 }
 
 \\newcommand{\\resumeItem}[1]{\\item\\small{#1\\vspace{-2pt}}}
@@ -354,7 +380,7 @@ ${volItems}
 \\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
 \\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
 
-\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\\newcommand{\\resumeItemListStart}{\\begin{itemize}[leftmargin=0.15in, itemsep=${itemSep}, parsep=0pt]}
 \\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-4pt}}
 
 \\renewcommand{\\labelitemii}{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}

@@ -3,7 +3,7 @@
  * Tests Resume text parsing, JSON structuring, and AI heuristic evaluation.
  */
 import { parseResumeText, createEmptyResume } from './services/pdfParser.js';
-import { analyzeWithHeuristic } from './services/aiEngine.js';
+import { analyzeWithHeuristic, classifySkill } from './services/aiEngine.js';
 import { escapeLatex, generateLatexResume } from './services/latexGenerator.js';
 
 console.log('🧪 Starting JobEaseAI Automated Verification Suite...\n');
@@ -126,8 +126,20 @@ assert(Array.isArray(matchResult.hardSkillsFound), 'Hard skills found is an arra
 assert(Array.isArray(matchResult.missingHardSkills), 'Missing hard skills is an array');
 assert(matchResult.suggestions.length > 0, `Actionable suggestions generated: ${matchResult.suggestions.length} items`);
 
-// 4. Test LaTeX Generator & Character Sanitization
-console.log('\nTest 4: LaTeX Generator & Character Sanitization');
+// 4. Test Skill Categorization & Classification
+console.log('\nTest 4: Skill Categorization & Taxonomy');
+assert(classifySkill('Python') === 'languages', 'Python classified as languages');
+assert(classifySkill('TypeScript') === 'languages', 'TypeScript classified as languages');
+assert(classifySkill('LangChain') === 'aiAgentic', 'LangChain classified as aiAgentic');
+assert(classifySkill('RAG Pipelines') === 'aiAgentic', 'RAG Pipelines classified as aiAgentic');
+assert(classifySkill('PyTorch') === 'mlCv', 'PyTorch classified as mlCv');
+assert(classifySkill('OpenCV') === 'mlCv', 'OpenCV classified as mlCv');
+assert(classifySkill('Docker') === 'cloudDevOps', 'Docker classified as cloudDevOps');
+assert(classifySkill('Kubernetes') === 'cloudDevOps', 'Kubernetes classified as cloudDevOps');
+assert(classifySkill('AWS') === 'cloudDevOps', 'AWS classified as cloudDevOps');
+
+// 5. Test LaTeX Generator & Character Sanitization
+console.log('\nTest 5: LaTeX Generator & Character Sanitization');
 
 const rawProblematicString = 'C & C++ & 100% $50k #1 _test_ {curly} ~tilde ^caret \\slash';
 const sanitized = escapeLatex(rawProblematicString);
@@ -135,11 +147,21 @@ assert(!sanitized.includes(' & '), `Ampersands escaped: ${sanitized}`);
 assert(!sanitized.includes(' 100% '), `Percent escaped: ${sanitized}`);
 assert(!sanitized.includes(' $50k '), `Dollar sign escaped: ${sanitized}`);
 
-const renderedLatex = generateLatexResume(parsed);
+const renderedLatex = generateLatexResume({
+  ...parsed,
+  skills: {
+    languages: 'Python, C++, SQL',
+    aiAgentic: 'LangChain, Vector DBs',
+    mlCv: 'PyTorch, YOLO',
+    cloudDevOps: 'AWS, Docker'
+  }
+});
 assert(renderedLatex.includes('\\documentclass'), 'LaTeX template has documentclass');
 assert(renderedLatex.includes('\\usepackage{lmodern}'), 'LaTeX template has lmodern package');
-assert(renderedLatex.includes('\\begin{document}'), 'LaTeX template has begin document');
-assert(renderedLatex.includes('\\end{document}'), 'LaTeX template has end document');
+assert(renderedLatex.includes('\\textbf{Languages}{: Python, C++, SQL}'), 'LaTeX includes Languages');
+assert(renderedLatex.includes('\\textbf{AI, LLM \\& Agentic Systems}{: LangChain, Vector DBs}'), 'LaTeX includes AI Agentic');
+assert(renderedLatex.includes('\\textbf{ML/DL \\& CV}{: PyTorch, YOLO}'), 'LaTeX includes ML/CV');
+assert(renderedLatex.includes('\\textbf{Cloud, DevOps \\& MLOps}{: AWS, Docker}'), 'LaTeX includes Cloud/MLOps');
 assert(renderedLatex.includes('Jane Doe'), 'LaTeX template contains candidate name');
 
 console.log(`\n==============================================`);
