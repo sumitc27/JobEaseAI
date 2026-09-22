@@ -11,6 +11,7 @@ let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit || SAMPLE_RES
 let currentJD = SAMPLE_JOB_DESCRIPTIONS.fullstack_cloud;
 let currentDensity = 'standard';
 let currentTemplate = localStorage.getItem('jobease_template') || 'latex';
+let currentFont = localStorage.getItem('jobease_font') || 'charter';
 let activeTab = 'form';
 const PAGE_LIMIT_HEIGHT = 932; // Calibrated 1-page letter height in pixels
 
@@ -113,7 +114,10 @@ const elements = {
   tabLatexTextarea: document.getElementById('tab-latex-textarea'),
   btnTabCopyLatex: document.getElementById('btn-tab-copy-latex'),
   btnTabDownloadLatex: document.getElementById('btn-tab-download-latex'),
-  btnTabOverleaf: document.getElementById('btn-tab-overleaf')
+  btnTabOverleaf: document.getElementById('btn-tab-overleaf'),
+
+  // Font Control
+  fontSelect: document.getElementById('font-select')
 };
 
 /**
@@ -125,6 +129,7 @@ function init() {
   elements.jdInput.value = currentJD;
   updateJdWordCount();
   setTemplate(currentTemplate, false);
+  setFont(currentFont, false);
   renderPreview();
   check1PageGuardrail();
   
@@ -199,6 +204,13 @@ function bindEvents() {
     });
   });
 
+  // Font Controls
+  if (elements.fontSelect) {
+    elements.fontSelect.addEventListener('change', (e) => {
+      setFont(e.target.value, true);
+    });
+  }
+
   // Editor Tabs
   elements.tabForm.addEventListener('click', () => switchTab('form'));
   elements.tabJson.addEventListener('click', () => switchTab('json'));
@@ -255,6 +267,45 @@ function setTemplate(template, notify = true) {
       latex: 'LaTeX Academic (Computer Modern TeX)'
     };
     showToast(`Switched to ${names[template] || template} template!`, 'info');
+  }
+}
+
+/**
+ * Switch Resume Font Family (Charter, Latin Modern, Source Sans Pro, Inter, Palatino, Times, Roboto)
+ */
+function setFont(font, notify = true) {
+  currentFont = font;
+  if (elements.fontSelect) {
+    elements.fontSelect.value = font;
+  }
+  elements.resumePaper.classList.remove(
+    'font-charter', 'font-lmodern', 'font-sourcesanspro',
+    'font-inter', 'font-palatino', 'font-times', 'font-roboto'
+  );
+  elements.resumePaper.classList.add(`font-${font}`);
+  localStorage.setItem('jobease_font', font);
+
+  // Sync LaTeX view if open
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+  if (elements.latexModal && elements.latexModal.style.display === 'flex') {
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
+  }
+
+  check1PageGuardrail();
+
+  if (notify) {
+    const fontNames = {
+      charter: 'Bitstream Charter (Modern Serif)',
+      lmodern: 'Latin Modern (Classic TeX)',
+      sourcesanspro: 'Source Sans Pro (Tech Sans)',
+      inter: 'Inter (Clean UI Sans)',
+      palatino: 'Palatino / Mathpazo (Executive Serif)',
+      times: 'Times New Roman (Academic)',
+      roboto: 'Roboto (Geometric Sans)'
+    };
+    showToast(`Switched font to ${fontNames[font] || font}!`, 'info');
   }
 }
 
@@ -1287,19 +1338,19 @@ async function openLatexModal() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume })
+      body: JSON.stringify({ resume: currentResume, font: currentFont })
     });
 
     if (res.ok) {
       const data = await res.json();
-      elements.latexCodeView.value = data.texSource || '';
+      elements.latexCodeView.value = data.texSource || generateClientLatex(currentResume, currentFont);
       elements.latexStatusText.textContent = 'LaTeX source generated successfully.';
     } else {
-      elements.latexCodeView.value = generateClientLatex(currentResume);
+      elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
       elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
     }
   } catch {
-    elements.latexCodeView.value = generateClientLatex(currentResume);
+    elements.latexCodeView.value = generateClientLatex(currentResume, currentFont);
     elements.latexStatusText.textContent = 'Rendered via client-side LaTeX engine.';
   }
 }
@@ -1314,7 +1365,7 @@ function copyLatexCode() {
 function downloadTexFile(customCode) {
   const code = (typeof customCode === 'string' && customCode.trim())
     ? customCode
-    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume));
+    : (elements.latexCodeView.value || elements.tabLatexTextarea?.value || generateClientLatex(currentResume, currentFont));
   const dataStr = "data:text/x-tex;charset=utf-8," + encodeURIComponent(code);
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -1333,23 +1384,23 @@ async function updateTabLatexView() {
     const res = await fetch('/api/export-latex', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume })
+      body: JSON.stringify({ resume: currentResume, font: currentFont })
     });
     if (res.ok) {
       const data = await res.json();
-      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume);
+      elements.tabLatexTextarea.value = data.texSource || generateClientLatex(currentResume, currentFont);
     } else {
-      elements.tabLatexTextarea.value = generateClientLatex(currentResume);
+      elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont);
     }
   } catch {
-    elements.tabLatexTextarea.value = generateClientLatex(currentResume);
+    elements.tabLatexTextarea.value = generateClientLatex(currentResume, currentFont);
   }
 }
 
 function openOverleaf(texCode) {
   const code = (typeof texCode === 'string' && texCode.trim())
     ? texCode
-    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume));
+    : (elements.tabLatexTextarea?.value || elements.latexCodeView?.value || generateClientLatex(currentResume, currentFont));
 
   const form = document.getElementById('overleaf-form');
   const input = document.getElementById('overleaf-snip');
@@ -1371,7 +1422,7 @@ async function compileLatexPdf() {
     const res = await fetch('/api/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: currentResume })
+      body: JSON.stringify({ resume: currentResume, font: currentFont })
     });
 
     const contentType = res.headers.get('content-type') || '';
@@ -1429,9 +1480,19 @@ function escapeClientLatex(text) {
   return text.replace(/[\\&%$#_{}~^]/g, match => conversions[match] || match);
 }
 
+const CLIENT_FONT_PACKAGES = {
+  charter: '\\usepackage{charter}',
+  lmodern: '\\usepackage{lmodern}',
+  sourcesanspro: '\\usepackage[default]{sourcesanspro}',
+  inter: '\\usepackage[default]{inter}',
+  palatino: '\\usepackage{mathpazo}',
+  times: '\\usepackage{newtxtext}',
+  roboto: '\\usepackage[default]{roboto}'
+};
+
 function generateClientLatex(resume) {
   const pi = resume.personalInfo || {};
-  const name = escapeClientLatex(pi.name || 'Candidate Name');
+  const name = escapeClientLatex(pi.name || 'Sumit Chouhan');
   const email = escapeClientLatex(pi.email || '');
   const phone = escapeClientLatex(pi.phone || '');
   const location = escapeClientLatex(pi.location || '');
@@ -1443,19 +1504,20 @@ function generateClientLatex(resume) {
   // Contacts line 1: Phone | Email (with optional location)
   const row1 = [];
   if (phone) row1.push(phone);
-  if (email) row1.push(`\\href{mailto:${email}}{${email}}`);
+  if (email) row1.push(`\\href{mailto: ${email}}{${email} }`);
   if (location && !row1.length) row1.push(location);
   const row1Str = row1.join(' $|$ ');
 
   // Contacts line 2: LinkedIn | Github | Leetcode | Website
   const row2 = [];
-  if (linkedin) row2.push(`\\href{${escapeClientLatex(linkedin)}}{LinkedIn}`);
-  if (github) row2.push(`\\href{${escapeClientLatex(github)}}{Github}`);
-  if (leetcode) row2.push(`\\href{${escapeClientLatex(leetcode)}}{Leetcode}`);
-  if (portfolio) row2.push(`\\href{${escapeClientLatex(portfolio)}}{Website}`);
-  const row2Str = row2.join(' $|$ ');
+  if (linkedin) row2.push(`\\href{${escapeClientLatex(linkedin)}}{LinkedIn }`);
+  if (github) row2.push(`\\href{${escapeClientLatex(github)}}{Github }`);
+  if (leetcode) row2.push(`\\href{${escapeClientLatex(leetcode)}}{Leetcode }`);
+  if (portfolio) row2.push(`\\href{${escapeClientLatex(portfolio)}}{Website }`);
+  const row2Str = row2.join(' $|$ \n  ');
 
-  let headerBlock = `\\begin{center}
+  let headerBlock = `% Header
+\\begin{center}
   \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
   if (row1Str) {
     headerBlock += `\n  \\small ${row1Str} \\\\`;
@@ -1490,7 +1552,8 @@ function generateClientLatex(resume) {
       return itemBlock;
     }).join('\n');
 
-    educationSection = `\\section{Education}
+    educationSection = `%--------------------------- 
+\\section{Education}
 \\resumeSubHeadingListStart
 ${eduItems}
 \\resumeSubHeadingListEnd`;
@@ -1528,7 +1591,8 @@ ${eduItems}
   }
 
   if (skillLines.length > 0) {
-    skillsSection = `\\section{Skills}
+    skillsSection = `% ----------- SKILLS -----------
+\\section{Skills}
 \\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
   \\item \\small{
 ${skillLines.join(' \\\\\n')}
@@ -1559,7 +1623,8 @@ ${bullets}
 \\resumeItemListEnd`;
     }).join('\n  \\vspace{2pt}\n');
 
-    experienceSection = `\\section{Experience}
+    experienceSection = `%---------------------------
+\\section{Experience}
 \\resumeSubHeadingListStart
 ${jobs}
 \\resumeSubHeadingListEnd`;
@@ -1574,14 +1639,14 @@ ${jobs}
 
       const links = [];
       if (proj.githubUrl) {
-        links.push(`\\href{${escapeClientLatex(proj.githubUrl)}}{GitHub}`);
+        links.push(`\\href{${escapeClientLatex(proj.githubUrl)}}{GitHub }`);
       } else if (proj.link && proj.link.includes('github')) {
-        links.push(`\\href{${escapeClientLatex(proj.link)}}{GitHub}`);
+        links.push(`\\href{${escapeClientLatex(proj.link)}}{GitHub }`);
       }
       if (proj.websiteUrl) {
-        links.push(`\\href{${escapeClientLatex(proj.websiteUrl)}}{Website}`);
+        links.push(`\\href{${escapeClientLatex(proj.websiteUrl)}}{Website }`);
       } else if (proj.link && !proj.link.includes('github')) {
-        links.push(`\\href{${escapeClientLatex(proj.link)}}{Website}`);
+        links.push(`\\href{${escapeClientLatex(proj.link)}}{Website }`);
       }
 
       let titleHeading = `\\textbf{${projName}}`;
@@ -1593,22 +1658,25 @@ ${jobs}
       }
 
       const bullets = (proj.bullets || [])
-        .map(b => `    \\resumeItem{${escapeClientLatex(b)}}`)
+        .map(b => `        \\resumeItem{${escapeClientLatex(b)}}`)
         .join('\n');
 
-      return `  \\resumeSubheading
-    {${titleHeading}}
-    {}
-    {\\textit{${roleOrTech}}}
-    {}
-  \\resumeItemListStart
+      return `    \\resumeSubheading
+      {${titleHeading}}
+      {}
+      {\\textit{${roleOrTech}}}
+      {}
+    \\resumeItemListStart
 ${bullets}
-  \\resumeItemListEnd`;
-    }).join('\n  \\vspace{2pt}\n');
+    \\resumeItemListEnd`;
+    }).join('\n    \\vspace{2pt}\n\n');
 
-    projectsSection = `\\section{Projects}
+    projectsSection = `%---------------------------
+\\section{Projects}
 \\resumeSubHeadingListStart
+    
 ${projs}
+
 \\resumeSubHeadingListEnd`;
   }
 
@@ -1633,10 +1701,11 @@ ${projs}
       return `    \\resumeItem{${text}}`;
     }).join('\n');
 
-    achievementsSection = `\\section{Achievements \\& Certifications}
-\\resumeSubHeadingListStart
+    achievementsSection = `%---------------------------
+\\section{Achievements \\& Certifications}
+\\resumeItemListStart
 ${achItems}
-\\resumeSubHeadingListEnd`;
+\\resumeItemListEnd`;
   }
 
   // Volunteer Experience Section
@@ -1649,7 +1718,8 @@ ${achItems}
       return `    \\resumeItem{\\textbf{${escapeClientLatex(vol.role || vol.title)}} -- ${escapeClientLatex(vol.details)}}`;
     }).join('\n');
 
-    volunteerSection = `\\section{Volunteer Experience}
+    volunteerSection = `%---------------------------
+\\section{Volunteer Experience}
 \\resumeSubHeadingListStart
 ${volItems}
 \\resumeSubHeadingListEnd`;
@@ -1658,7 +1728,8 @@ ${volItems}
   // Summary Section (if present)
   let summarySection = '';
   if (resume.summary && resume.summary.trim()) {
-    summarySection = `\\section{Summary}
+    summarySection = `%---------------------------
+\\section{Summary}
 \\resumeItemListStart
   \\resumeItem{${escapeClientLatex(resume.summary)}}
 \\resumeItemListEnd`;
@@ -1670,7 +1741,7 @@ ${volItems}
 \\usepackage{titlesec}
 \\usepackage[usenames,dvipsnames]{color}
 \\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
+\\usepackage[pdftex]{hyperref}
 \\usepackage{fancyhdr}
 \\usepackage{graphicx}
 
@@ -1729,12 +1800,16 @@ ${volItems}
 
 ${headerBlock}
 
-${summarySection}
-${educationSection}
+${summarySection ? `${summarySection}\n\n` : ''}${educationSection}
+
 ${skillsSection}
+
 ${experienceSection}
+
 ${projectsSection}
+
 ${achievementsSection}
+
 ${volunteerSection}
 
 \\end{document}

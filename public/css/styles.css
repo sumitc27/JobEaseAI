@@ -2,7 +2,7 @@
    JobEaseAI - Premium Design System & Stylesheet
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Roboto:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/dreampulse/computer-modern-web-font@master/fonts.css');
 
 :root {
@@ -678,10 +678,30 @@ body {
 }
 
 .template-toggle,
+.font-toggle,
 .density-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.font-dropdown {
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.font-dropdown:hover,
+.font-dropdown:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-elevated);
 }
 
 .pill-group {
@@ -1103,36 +1123,76 @@ body {
   color: var(--resume-primary);
 }
 
+/* Dynamic Resume Font Families */
+.resume-paper.font-charter,
+.font-charter {
+  --resume-font-family: 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+}
+
+.resume-paper.font-lmodern,
+.font-lmodern {
+  --resume-font-family: 'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', 'Times New Roman', serif;
+}
+
+.resume-paper.font-sourcesanspro,
+.font-sourcesanspro {
+  --resume-font-family: 'Source Sans 3', 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.resume-paper.font-inter,
+.font-inter {
+  --resume-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.resume-paper.font-palatino,
+.font-palatino {
+  --resume-font-family: 'Palatino Linotype', 'Palatino', 'Book Antiqua', Georgia, serif;
+}
+
+.resume-paper.font-times,
+.font-times {
+  --resume-font-family: 'Times New Roman', Times, 'Nimbus Roman No9 L', serif;
+}
+
+.resume-paper.font-roboto,
+.font-roboto {
+  --resume-font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 /* 4. Theme: LaTeX Academic / Computer Modern (TeX Style) */
 .resume-paper.theme-latex {
-  font-family: 'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', 'Times New Roman', Times, serif;
+  font-family: var(--resume-font-family, 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif);
   --resume-bg: #FFFFFF;
   --resume-primary: #000000;
   --resume-text: #000000;
-  --resume-text-muted: #222222;
+  --resume-text-muted: #1A1A1A;
   --resume-border: #000000;
-  padding: 24px 34px;
-  line-height: 1.28;
+  padding: 16px 28px;
+  line-height: 1.25;
   color: #000000;
-  gap: 6px;
+  gap: 2px !important;
+}
+
+.resume-paper.theme-latex * {
+  font-family: inherit;
 }
 
 .resume-paper.theme-latex .rp-header {
   border-bottom: none;
-  padding-bottom: 2px;
+  padding-bottom: 0px;
   align-items: center;
   text-align: center;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .resume-paper.theme-latex .rp-name {
-  font-family: 'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', serif;
-  font-size: 1.85rem;
+  font-size: 1.65rem;
   font-weight: 700;
   font-variant: small-caps;
   color: #000000;
-  letter-spacing: 0.04em;
-  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+  margin-bottom: 1px;
+  line-height: 1.1;
 }
 
 .resume-paper.theme-latex .rp-title {
@@ -1142,10 +1202,10 @@ body {
 .resume-paper.theme-latex .rp-contacts {
   display: block;
   text-align: center;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: #000000;
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  line-height: 1.4;
+  line-height: 1.32;
+  margin-top: 1px;
 }
 
 .resume-paper.theme-latex .rp-contacts a {
@@ -1154,73 +1214,75 @@ body {
 }
 
 .resume-paper.theme-latex .rp-section {
-  gap: 2px;
+  gap: 1px;
+  margin: 0;
 }
 
 .resume-paper.theme-latex .rp-section-title {
-  font-family: 'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', serif;
-  font-size: 1.02rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   font-variant: small-caps;
   color: #000000;
   border-bottom: 1px solid #000000;
   padding-bottom: 1px;
-  margin-top: 4px;
-  margin-bottom: 3px;
+  margin-top: 3px;
+  margin-bottom: 2px;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.resume-paper.theme-latex .rp-experience-item,
+.resume-paper.theme-latex .rp-project-item {
+  margin-bottom: 2px;
+  gap: 1px;
 }
 
 .resume-paper.theme-latex .rp-item-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 1px;
+  margin-bottom: 0px;
 }
 
 .resume-paper.theme-latex .rp-role {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.82rem;
+  font-size: 0.81rem;
   font-weight: 700;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-company {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.8rem;
+  font-size: 0.79rem;
   font-style: italic;
   font-weight: 400;
   color: #111111;
 }
 
 .resume-paper.theme-latex .rp-meta {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-bullets {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.76rem;
-  line-height: 1.28;
+  font-size: 0.75rem;
+  line-height: 1.25;
   color: #000000;
-  padding-left: 1.15rem;
-  margin-top: 1px;
-  margin-bottom: 1px;
+  padding-left: 1.1rem;
+  margin-top: 0px;
+  margin-bottom: 0px;
   list-style-type: disc;
 }
 
 .resume-paper.theme-latex .rp-bullets li {
-  margin-bottom: 1px;
+  margin-bottom: 0px;
 }
 
 .resume-paper.theme-latex .rp-skills-group {
-  gap: 2px;
+  gap: 1px;
 }
 
 .resume-paper.theme-latex .rp-skills-line {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.77rem;
-  line-height: 1.28;
+  font-size: 0.76rem;
+  line-height: 1.26;
   color: #000000;
 }
 
@@ -1230,10 +1292,58 @@ body {
 }
 
 .resume-paper.theme-latex .rp-summary {
-  font-family: 'Computer Modern Serif', 'CMU Serif', serif;
-  font-size: 0.77rem;
-  line-height: 1.28;
+  font-size: 0.76rem;
+  line-height: 1.26;
   color: #000000;
+}
+
+/* LaTeX Compact Density Variant */
+.resume-paper.theme-latex.density-compact {
+  padding: 12px 22px;
+  gap: 1px !important;
+}
+
+.resume-paper.theme-latex.density-compact .rp-name {
+  font-size: 1.5rem;
+}
+
+.resume-paper.theme-latex.density-compact .rp-contacts {
+  font-size: 0.71rem;
+  line-height: 1.22;
+}
+
+.resume-paper.theme-latex.density-compact .rp-section-title {
+  margin-top: 1px;
+  margin-bottom: 1px;
+  font-size: 0.9rem;
+}
+
+.resume-paper.theme-latex.density-compact .rp-role {
+  font-size: 0.77rem;
+}
+
+.resume-paper.theme-latex.density-compact .rp-company {
+  font-size: 0.75rem;
+}
+
+.resume-paper.theme-latex.density-compact .rp-meta {
+  font-size: 0.72rem;
+}
+
+.resume-paper.theme-latex.density-compact .rp-bullets {
+  font-size: 0.72rem;
+  line-height: 1.18;
+}
+
+.resume-paper.theme-latex.density-compact .rp-skills-line {
+  font-size: 0.72rem;
+  line-height: 1.18;
+}
+
+.resume-paper.theme-latex.density-compact .rp-experience-item,
+.resume-paper.theme-latex.density-compact .rp-project-item {
+  margin-bottom: 1px;
+  gap: 0;
 }
 
 /* Highlight applied suggestion animation */

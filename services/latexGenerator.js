@@ -34,15 +34,29 @@ export function escapeLatex(text) {
   return text.replace(/[\\&%$#_{}~^]/g, match => conversions[match] || match);
 }
 
+export const FONT_PACKAGES = {
+  charter: '\\usepackage{charter}',
+  lmodern: '\\usepackage{lmodern}',
+  sourcesanspro: '\\usepackage[default]{sourcesanspro}',
+  inter: '\\usepackage[default]{inter}',
+  palatino: '\\usepackage{mathpazo}',
+  times: '\\usepackage{newtxtext}',
+  roboto: '\\usepackage[default]{roboto}'
+};
+
 /**
  * Renders normalized Resume JSON into a complete .tex document.
  * Matches user's exact default LaTeX resume template with custom macros.
  * @param {Object} resumeData - Structured Resume JSON
+ * @param {Object} [options] - Options including { font: 'charter' | 'lmodern' | ... }
  * @returns {string} - Formatted LaTeX source code
  */
-export function generateLatexResume(resumeData) {
+export function generateLatexResume(resumeData, options = {}) {
+  const fontKey = (options && options.font) || 'lmodern';
+  const fontPackage = fontKey === 'lmodern' ? '\\usepackage{lmodern}' : (FONT_PACKAGES[fontKey] || '\\usepackage{lmodern}');
+
   const pi = resumeData.personalInfo || {};
-  const name = escapeLatex(pi.name || 'Candidate Name');
+  const name = escapeLatex(pi.name || 'Sumit Chouhan');
   const email = escapeLatex(pi.email || '');
   const phone = escapeLatex(pi.phone || '');
   const location = escapeLatex(pi.location || '');
@@ -54,19 +68,20 @@ export function generateLatexResume(resumeData) {
   // Contacts line 1: Phone | Email (with optional location)
   const row1 = [];
   if (phone) row1.push(phone);
-  if (email) row1.push(`\\href{mailto:${email}}{${email}}`);
+  if (email) row1.push(`\\href{mailto: ${email}}{${email} }`);
   if (location && !row1.length) row1.push(location);
   const row1Str = row1.join(' $|$ ');
 
   // Contacts line 2: LinkedIn | Github | Leetcode | Website
   const row2 = [];
-  if (linkedin) row2.push(`\\href{${escapeLatex(linkedin)}}{LinkedIn}`);
-  if (github) row2.push(`\\href{${escapeLatex(github)}}{Github}`);
-  if (leetcode) row2.push(`\\href{${escapeLatex(leetcode)}}{Leetcode}`);
-  if (portfolio) row2.push(`\\href{${escapeLatex(portfolio)}}{Website}`);
-  const row2Str = row2.join(' $|$ ');
+  if (linkedin) row2.push(`\\href{${escapeLatex(linkedin)}}{LinkedIn }`);
+  if (github) row2.push(`\\href{${escapeLatex(github)}}{Github }`);
+  if (leetcode) row2.push(`\\href{${escapeLatex(leetcode)}}{Leetcode }`);
+  if (portfolio) row2.push(`\\href{${escapeLatex(portfolio)}}{Website }`);
+  const row2Str = row2.join(' $|$ \n  ');
 
-  let headerBlock = `\\begin{center}
+  let headerBlock = `% Header
+\\begin{center}
   \\textbf{\\Huge \\scshape ${name}} \\\\ \\vspace{2pt}`;
   if (row1Str) {
     headerBlock += `\n  \\small ${row1Str} \\\\`;
@@ -101,7 +116,8 @@ export function generateLatexResume(resumeData) {
       return itemBlock;
     }).join('\n');
 
-    educationSection = `\\section{Education}
+    educationSection = `%--------------------------- 
+\\section{Education}
 \\resumeSubHeadingListStart
 ${eduItems}
 \\resumeSubHeadingListEnd`;
@@ -139,7 +155,8 @@ ${eduItems}
   }
 
   if (skillLines.length > 0) {
-    skillsSection = `\\section{Skills}
+    skillsSection = `% ----------- SKILLS -----------
+\\section{Skills}
 \\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
   \\item \\small{
 ${skillLines.join(' \\\\\n')}
@@ -170,7 +187,8 @@ ${bullets}
 \\resumeItemListEnd`;
     }).join('\n  \\vspace{2pt}\n');
 
-    experienceSection = `\\section{Experience}
+    experienceSection = `%---------------------------
+\\section{Experience}
 \\resumeSubHeadingListStart
 ${jobs}
 \\resumeSubHeadingListEnd`;
@@ -185,14 +203,14 @@ ${jobs}
       
       const links = [];
       if (proj.githubUrl) {
-        links.push(`\\href{${escapeLatex(proj.githubUrl)}}{GitHub}`);
+        links.push(`\\href{${escapeLatex(proj.githubUrl)}}{GitHub }`);
       } else if (proj.link && proj.link.includes('github')) {
-        links.push(`\\href{${escapeLatex(proj.link)}}{GitHub}`);
+        links.push(`\\href{${escapeLatex(proj.link)}}{GitHub }`);
       }
       if (proj.websiteUrl) {
-        links.push(`\\href{${escapeLatex(proj.websiteUrl)}}{Website}`);
+        links.push(`\\href{${escapeLatex(proj.websiteUrl)}}{Website }`);
       } else if (proj.link && !proj.link.includes('github')) {
-        links.push(`\\href{${escapeLatex(proj.link)}}{Website}`);
+        links.push(`\\href{${escapeLatex(proj.link)}}{Website }`);
       }
 
       let titleHeading = `\\textbf{${projName}}`;
@@ -204,22 +222,25 @@ ${jobs}
       }
 
       const bullets = (proj.bullets || [])
-        .map(b => `    \\resumeItem{${escapeLatex(b)}}`)
+        .map(b => `        \\resumeItem{${escapeLatex(b)}}`)
         .join('\n');
 
-      return `  \\resumeSubheading
-    {${titleHeading}}
-    {}
-    {\\textit{${roleOrTech}}}
-    {}
-  \\resumeItemListStart
+      return `    \\resumeSubheading
+      {${titleHeading}}
+      {}
+      {\\textit{${roleOrTech}}}
+      {}
+    \\resumeItemListStart
 ${bullets}
-  \\resumeItemListEnd`;
-    }).join('\n  \\vspace{2pt}\n');
+    \\resumeItemListEnd`;
+    }).join('\n    \\vspace{2pt}\n\n');
 
-    projectsSection = `\\section{Projects}
+    projectsSection = `%---------------------------
+\\section{Projects}
 \\resumeSubHeadingListStart
+    
 ${projs}
+
 \\resumeSubHeadingListEnd`;
   }
 
@@ -244,7 +265,8 @@ ${projs}
       return `    \\resumeItem{${text}}`;
     }).join('\n');
 
-    achievementsSection = `\\section{Achievements \\& Certifications}
+    achievementsSection = `%---------------------------
+\\section{Achievements \\& Certifications}
 \\resumeItemListStart
 ${achItems}
 \\resumeItemListEnd`;
@@ -260,7 +282,8 @@ ${achItems}
       return `    \\resumeItem{\\textbf{${escapeLatex(vol.role || vol.title)}} -- ${escapeLatex(vol.details)}}`;
     }).join('\n');
 
-    volunteerSection = `\\section{Volunteer Experience}
+    volunteerSection = `%---------------------------
+\\section{Volunteer Experience}
 \\resumeItemListStart
 ${volItems}
 \\resumeItemListEnd`;
@@ -269,7 +292,8 @@ ${volItems}
   // Summary Section (if present)
   let summarySection = '';
   if (resumeData.summary && resumeData.summary.trim()) {
-    summarySection = `\\section{Summary}
+    summarySection = `%---------------------------
+\\section{Summary}
 \\resumeItemListStart
   \\resumeItem{${escapeLatex(resumeData.summary)}}
 \\resumeItemListEnd`;
@@ -281,7 +305,7 @@ ${volItems}
 \\usepackage{titlesec}
 \\usepackage[usenames,dvipsnames]{color}
 \\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
+\\usepackage[pdftex]{hyperref}
 \\usepackage{fancyhdr}
 \\usepackage{graphicx}
 
@@ -340,12 +364,16 @@ ${volItems}
 
 ${headerBlock}
 
-${summarySection}
-${educationSection}
+${summarySection ? `${summarySection}\n\n` : ''}${educationSection}
+
 ${skillsSection}
+
 ${experienceSection}
+
 ${projectsSection}
+
 ${achievementsSection}
+
 ${volunteerSection}
 
 \\end{document}

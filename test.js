@@ -136,7 +136,8 @@ assert(!sanitized.includes(' 100% '), `Percent escaped: ${sanitized}`);
 assert(!sanitized.includes(' $50k '), `Dollar sign escaped: ${sanitized}`);
 
 const renderedLatex = generateLatexResume(parsed);
-assert(renderedLatex.includes('\\documentclass[letterpaper'), 'LaTeX template has documentclass');
+assert(renderedLatex.includes('\\documentclass'), 'LaTeX template has documentclass');
+assert(renderedLatex.includes('\\usepackage{lmodern}'), 'LaTeX template has lmodern package');
 assert(renderedLatex.includes('\\begin{document}'), 'LaTeX template has begin document');
 assert(renderedLatex.includes('\\end{document}'), 'LaTeX template has end document');
 assert(renderedLatex.includes('Jane Doe'), 'LaTeX template contains candidate name');

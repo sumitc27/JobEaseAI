@@ -1,0 +1,179 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage{lmodern}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[pdftex]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+
+%---------------------------
+% Page Setup
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.6in}
+\addtolength{\textheight}{1.2in}
+
+\setlength{\tabcolsep}{0in}
+\setlength{\parindent}{0pt}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+
+%---------------------------
+% Section formatting
+\titleformat{\section}
+  {\vspace{-4pt}\scshape\raggedright\large}
+  {}
+  {0em}
+  {}
+  [\color{black}\titlerule\vspace{-3pt}]
+
+%---------------------------
+% Custom Commands
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeItem}[1]{\item\small{#1\vspace{-2pt}}}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}, itemsep=0pt, parsep=0pt]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, itemsep=1pt, parsep=0pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-4pt}}
+
+\renewcommand{\labelitemii}{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+%---------------------------
+\begin{document}
+
+% Header
+\begin{center}
+  \textbf{\Huge \scshape Sumit Chouhan} \\ \vspace{2pt}
+  \small +91-7400603978 $|$ \href{mailto: 27th.sumit@gmail.com}{27th.sumit@gmail.com } \\
+  \href{https://linkedin.com/in/sumitc27}{LinkedIn } $|$ 
+  \href{https://github.com/sumitc27}{Github } $|$ 
+  \href{https://leetcode.com/u/sumitc27}{Leetcode } $| $ 
+  \href{https://sumitc27.vercel.app/} {Website }
+\end{center}
+
+
+%--------------------------- 
+\section{Education}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {Indian Institute of Information Technology, Design and Manufacturing}{Jabalpur, India}
+    {Bachelor of Technology - Mechanical Engineering}{Aug 2023 -- May 2027}
+  \resumeItemListStart
+    \resumeItem{\textbf{Courses}: Data Structures and Algorithms, Cloud Computing, Computer Networks, AI/ML Fundamentals}
+  \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+% ----------- SKILLS -----------
+\section{Skills}
+\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt]
+  \item \small{
+   \textbf{Languages}{: Python, C++, SQL, JavaScript, TypeScript} \\
+   \textbf{AI, LLM \& Agentic Systems}{: LangChain, RAG Pipelines, Multi-Agent Coordination, Prompt Engineering, Vector DBs} \\
+   \textbf{ML/DL \& CV}{: PyTorch, TensorFlow, scikit-learn, OpenCV, YOLO, Physics-Informed Neural Networks (PINNs)} \\
+   \textbf{Cloud, DevOps \& MLOps}{: AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability}
+  }
+\end{itemize}
+
+%---------------------------
+\section{Experience}
+\resumeSubHeadingListStart
+  %--INSYS India -- %
+  \resumeSubheading
+  {Insys India Solutions - AI/ML Developer Intern}{Hybrid}
+  {React, Python, FastAPI, YOLO}{Jun 2026 - Aug 2026}
+\resumeItemListStart
+  \resumeItem{Built an end-to-end computer vision pipeline for real-time Wagon Bulge Detection in adverse environments, owning the full ML lifecycle from data curation to production deployment.}
+  \resumeItem{Engineered a real-time React dashboard to monitor 100+ IoT sensors, optimizing distributed message broadcasting to drastically reduce FastAPI backend load and latency.}
+    \resumeItem{Implemented an OCR pipeline to extract wagon IDs in real-time, syncing historical health and inspection data to the cloud for seamless enterprise monitoring.}
+    \resumeItemListEnd
+  \vspace{2pt}
+  %--Hypeon Intern--%
+  \resumeSubheading
+  {HypeOn - AI Engineer Intern}{Remote}
+  {Python, n8n, React, TypeScript, LLM APIs, Docker}{May 2026 - Jun 2026}
+\resumeItemListStart
+  \resumeItem{Engineered AI-native workflows using n8n and Midjourney, automating end-to-end content generation to seamlessly produce 2,000+ assets at scale.}
+  \resumeItem{Developed Python data collection pipelines and web scrapers, reducing manual acquisition effort and cutting workflow execution time by 50\%.}
+  \resumeItem{Integrated enterprise systems (Klaviyo) and REST APIs with backend pods, ensuring reliable data exchange across scalable AI services.}
+\resumeItemListEnd
+    \vspace{2pt}
+
+  %--AFC--%
+ \resumeSubheading
+  {ML Team Lead -- Aero Fabrication Club}{IIITDM Jabalpur}
+  {OpenCV, TensorFlow, PyTorch, YOLO}{Mar 2024 - Apr 2026}
+\resumeItemListStart
+  \resumeItem{Optimized YOLOv4-Tiny for edge inference via quantization, achieving a 70\% latency reduction to optimize model execution and operational speed.}
+  \resumeItem{Architected multi-threaded OpenCV pipelines and curated a 1,800+ image dataset, ensuring zero-latency visual data delivery under strict hardware constraints.}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+%---------------------------
+\section{Projects}
+\resumeSubHeadingListStart
+    
+    % --- Project 1: ContextCraft ---
+    \resumeSubheading
+      {\textbf{ContextCraft}: RAG Document Intelligence Platform $|$ \href{https://github.com/sumitc27/ContextCraft}{GitHub }$|$ \href{https://contextcraft-frontend.vercel.app/}{Website }}
+      {}
+      {\textit{Python, React, FastAPI, RAG, BM25, LLM Router, Docker}}
+      {}
+    \resumeItemListStart
+        \resumeItem{Engineered a Retrieval-Augmented Generation (RAG) backend encompassing document ingestion, chunking, and dual-strategy retrieval pipelines combining BM25 and dense embeddings with dynamic reranking.}
+        \resumeItem{Built prompt-driven query rewriting and answer generation modules, exposing AI reasoning to users via a custom Retrieval Inspector and Citation Chips in the React frontend.}
+        \resumeItem{Implemented an LLMOps observability layer using a shared LLM router and tracing compatibility utilities to monitor model latency, quality, and operational health.}
+    \resumeItemListEnd
+    \vspace{2pt}
+
+    % --- Project 2: HireSense ---
+    \resumeSubheading
+      {\textbf{HireSense}: Real-Time Voice AI Interview Coach $|$ \href{https://github.com/sumitc27/HireSense}{GitHub }
+      $|$ \href{https://hiresense-27th.vercel.app/}{Website }}
+      {}
+      {\textit{React, Python, WebSockets, LLMs, STT/TTS, LLM Router}}
+      {}
+    \resumeItemListStart
+        \resumeItem{Developed an AI-native voice application using a custom "Turn Machine" over WebSockets to seamlessly orchestrate low-latency Speech-to-Text (STT) and Text-to-Speech (TTS) interactions for human-AI collaboration.}
+        \resumeItem{Designed an LLM-powered "Brain" and Rubric engine using structured prompt engineering to dynamically validate and score candidate responses against strict quality guardrails.}
+        \resumeItem{Deployed a full-stack containerized architecture, building a React frontend featuring live captions, microphone controls, and waveform visualizations integrated with a Python backend.}
+    \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+%---------------------------
+\section{Achievements \& Certifications}
+\resumeItemListStart
+    \resumeItem{\textbf{Winner, Best Autonomous Mission} -- SAEINDIA Aerothon 2024, awarded for designing a fully autonomous UAV pipeline }
+    \resumeItem{\textbf{Runner-Up, Duality AI Track -- HackByte 3.0} -- Trained AI vision models using synthetic and manipulated data to achieve top performance metrics. $|$ \href{https://drive.google.com/file/d/1w5Fsf1m4dh-8LA_GSQxE-r9_5MfpJdoI/view?usp=sharing}{Certificate }}
+    \resumeItem{``\textit{Design and Development of an Automated Part Removal and Queuing System for FFF 3D Printing}'' $|$ \href{https://asmedigitalcollection.asme.org/imece-india/proceedings-abstract/IMECE-INDIA2025/89138/V001T01A039/1228667}{ASME IMECE 2025}}
+    \resumeItem{Certification: \textbf{Machine Learning Specialization} - Stanford University Online (Coursera) $|$ \href{https://www.coursera.org/account/accomplishments/specialization/J4R2XP9WQPCG}{Credentials }}
+
+\resumeItemListEnd
+
+%---------------------------
+\section{Volunteer Experience}
+\resumeItemListStart
+    \resumeItem{\textbf{Training \& Placement Cell Representative -- IIITDMJ} -- Helped in managing campus recruitment operations}
+    \resumeItem{\textbf{Co-coordinator - Athletics Club IIITDMJ} -- Organizing campus-wide training schedules and events for 50+ athletes, and actively representing the institute at national-level sports fests.}
+\resumeItemListEnd
+
+\end{document}

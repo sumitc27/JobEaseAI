@@ -110,7 +110,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/export-latex') {
       const body = await readJsonBody(req);
       const resume = body.resume || body;
-      const texSource = generateLatexResume(resume);
+      const font = body.font || (body.options && body.options.font) || 'charter';
+      const texSource = generateLatexResume(resume, { font });
       sendJson(res, 200, { success: true, texSource });
       return;
     }
@@ -119,7 +120,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/compile') {
       const body = await readJsonBody(req);
       const resume = body.resume || body;
-      const texSource = generateLatexResume(resume);
+      const font = body.font || (body.options && body.options.font) || 'charter';
+      const texSource = generateLatexResume(resume, { font });
       const result = await compileLatexToPdf(texSource);
 
       if (result.success && result.pdfBuffer) {
