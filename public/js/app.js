@@ -11,7 +11,10 @@ let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit || SAMPLE_RES
 let currentJD = SAMPLE_JOB_DESCRIPTIONS.fullstack_cloud;
 let currentDensity = 'standard';
 let currentTemplate = localStorage.getItem('jobease_template') || 'latex';
-let currentFont = localStorage.getItem('jobease_font') || 'charter';
+let currentFont = localStorage.getItem('jobease_font') || 'lmodern';
+if (currentFont === 'charter' && !localStorage.getItem('jobease_font_user_explicit')) {
+  currentFont = 'lmodern';
+}
 let activeTab = 'form';
 const PAGE_LIMIT_HEIGHT = 932; // Calibrated 1-page letter height in pixels
 
@@ -284,6 +287,9 @@ function setFont(font, notify = true) {
   );
   elements.resumePaper.classList.add(`font-${font}`);
   localStorage.setItem('jobease_font', font);
+  if (notify) {
+    localStorage.setItem('jobease_font_user_explicit', 'true');
+  }
 
   // Sync LaTeX view if open
   if (activeTab === 'latex') {

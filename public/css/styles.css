@@ -3,7 +3,51 @@
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Roboto:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-@import url('https://cdn.jsdelivr.net/gh/dreampulse/computer-modern-web-font@master/fonts.css');
+@import url('https://fonts.cdnfonts.com/css/latin-modern-roman');
+
+/* Authentic Latin Modern Roman (TeX \usepackage{lmodern}) Font Faces */
+@font-face {
+  font-family: 'LMRoman10';
+  font-style: normal;
+  font-weight: 400;
+  src: local('LMRoman10'), url('https://fonts.cdnfonts.com/s/266/lmroman10-regular.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'LMRoman10';
+  font-style: italic;
+  font-weight: 400;
+  src: local('LMRoman10'), url('https://fonts.cdnfonts.com/s/266/lmroman10-italic.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'LMRoman10';
+  font-style: normal;
+  font-weight: 700;
+  src: local('LMRoman10'), url('https://fonts.cdnfonts.com/s/266/lmroman10-bold.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'LMRoman10';
+  font-style: italic;
+  font-weight: 700;
+  src: local('LMRoman10'), url('https://fonts.cdnfonts.com/s/266/lmroman10-bolditalic.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'LMRomanCaps10';
+  font-style: normal;
+  font-weight: 400;
+  src: local('LMRomanCaps10'), url('https://fonts.cdnfonts.com/s/266/lmromancaps10-regular.woff') format('woff');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'LMRomanCaps10';
+  font-style: normal;
+  font-weight: 700;
+  src: local('LMRomanCaps10'), url('https://fonts.cdnfonts.com/s/266/lmromancaps10-regular.woff') format('woff');
+  font-display: swap;
+}
 
 :root {
   /* Color Palette - Modern Dark Cyber Slate */
@@ -1131,7 +1175,7 @@ body {
 
 .resume-paper.font-lmodern,
 .font-lmodern {
-  --resume-font-family: 'Computer Modern Serif', 'CMU Serif', 'Latin Modern Roman', 'Times New Roman', serif;
+  --resume-font-family: 'LMRoman10', 'Latin Modern Roman', 'Computer Modern Serif', 'CMU Serif', 'Times New Roman', serif;
 }
 
 .resume-paper.font-sourcesanspro,
@@ -1161,7 +1205,7 @@ body {
 
 /* 4. Theme: LaTeX Academic / Computer Modern (TeX Style) */
 .resume-paper.theme-latex {
-  font-family: var(--resume-font-family, 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif);
+  font-family: var(--resume-font-family, 'LMRoman10', 'Latin Modern Roman', 'Computer Modern Serif', serif);
   --resume-bg: #FFFFFF;
   --resume-primary: #000000;
   --resume-text: #000000;
@@ -1186,13 +1230,15 @@ body {
 }
 
 .resume-paper.theme-latex .rp-name {
-  font-size: 1.65rem;
+  font-family: 'LMRomanCaps10', 'LMRoman10', 'Computer Modern Serif', serif;
+  font-size: 1.7rem;
   font-weight: 700;
   font-variant: small-caps;
   color: #000000;
-  letter-spacing: 0.02em;
-  margin-bottom: 1px;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
   line-height: 1.1;
+  text-transform: none;
 }
 
 .resume-paper.theme-latex .rp-title {
@@ -1202,7 +1248,9 @@ body {
 .resume-paper.theme-latex .rp-contacts {
   display: block;
   text-align: center;
-  font-size: 0.74rem;
+  font-family: 'LMRoman10', 'Latin Modern Roman', serif;
+  font-size: 0.76rem;
+  font-weight: 400;
   color: #000000;
   line-height: 1.32;
   margin-top: 1px;
@@ -1211,6 +1259,7 @@ body {
 .resume-paper.theme-latex .rp-contacts a {
   color: #000000;
   text-decoration: underline;
+  font-family: 'LMRoman10', 'Latin Modern Roman', serif;
 }
 
 .resume-paper.theme-latex .rp-section {
@@ -1219,16 +1268,17 @@ body {
 }
 
 .resume-paper.theme-latex .rp-section-title {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-family: 'LMRomanCaps10', 'LMRoman10', 'Computer Modern Serif', serif;
+  font-size: 1.02rem;
+  font-weight: 600;
   font-variant: small-caps;
   color: #000000;
   border-bottom: 1px solid #000000;
   padding-bottom: 1px;
-  margin-top: 3px;
+  margin-top: 4px;
   margin-bottom: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  text-transform: none;
+  letter-spacing: 0.04em;
 }
 
 .resume-paper.theme-latex .rp-experience-item,
@@ -1245,28 +1295,41 @@ body {
 }
 
 .resume-paper.theme-latex .rp-role {
+  font-family: 'LMRoman10', serif;
   font-size: 0.81rem;
   font-weight: 700;
+  font-style: normal;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-company {
-  font-size: 0.79rem;
+  font-family: 'LMRoman10', serif;
+  font-size: 0.78rem;
   font-style: italic;
   font-weight: 400;
-  color: #111111;
+  color: #000000;
 }
 
 .resume-paper.theme-latex .rp-meta {
-  font-size: 0.76rem;
+  font-family: 'LMRoman10', serif;
+  font-size: 0.78rem;
+  font-style: normal;
+  color: #000000;
+}
+
+.resume-paper.theme-latex .rp-subheading-dates {
+  font-family: 'LMRoman10', serif;
+  font-size: 0.78rem;
+  font-style: italic;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-bullets {
-  font-size: 0.75rem;
-  line-height: 1.25;
+  font-family: 'LMRoman10', serif;
+  font-size: 0.76rem;
+  line-height: 1.28;
   color: #000000;
-  padding-left: 1.1rem;
+  padding-left: 1.15rem;
   margin-top: 0px;
   margin-bottom: 0px;
   list-style-type: disc;
@@ -1281,19 +1344,22 @@ body {
 }
 
 .resume-paper.theme-latex .rp-skills-line {
-  font-size: 0.76rem;
-  line-height: 1.26;
+  font-family: 'LMRoman10', serif;
+  font-size: 0.78rem;
+  line-height: 1.28;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-skills-line strong {
+  font-family: 'LMRoman10', serif;
   font-weight: 700;
   color: #000000;
 }
 
 .resume-paper.theme-latex .rp-summary {
-  font-size: 0.76rem;
-  line-height: 1.26;
+  font-family: 'LMRoman10', serif;
+  font-size: 0.78rem;
+  line-height: 1.28;
   color: #000000;
 }
 
@@ -1315,7 +1381,7 @@ body {
 .resume-paper.theme-latex.density-compact .rp-section-title {
   margin-top: 1px;
   margin-bottom: 1px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .resume-paper.theme-latex.density-compact .rp-role {
