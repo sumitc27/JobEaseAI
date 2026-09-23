@@ -252,7 +252,7 @@
 
           <div class="flex items-center gap-4 my-1">
             <!-- Conic Score Ring -->
-            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: conic-gradient(#10B981 0% 75%, #2e3545 75% 100%);">
+            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: conic-gradient(#10B981 0% 75%, var(--score-ring-track, #2e3545) 75% 100%);">
               <div class="w-16 h-16 rounded-full bg-bg-elevated flex flex-col items-center justify-center">
                 <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tighter score-value" id="score-text">75%</span>
                 <span class="font-label-sm text-label-sm text-text-dim text-[9px] -mt-1">SCORE</span>
@@ -330,7 +330,7 @@
     <section class="panel flex-1 h-full flex flex-col bg-bg-canvas relative overflow-hidden z-10 border-r border-border-subtle" id="center-panel">
       
       <!-- Subheader & Quick-toggle Tabs -->
-      <div class="h-14 px-space-lg flex items-center justify-between bg-surface/80 backdrop-blur-md border-b border-border-subtle shadow-sm shrink-0 z-20">
+      <div class="center-subheader h-14 px-space-lg flex items-center justify-between bg-surface/80 backdrop-blur-md border-b border-border-subtle shadow-sm shrink-0 z-20" id="center-subheader">
         <div class="flex items-center gap-2">
           <div class="bg-surface-container-high p-1 rounded-xl flex items-center gap-1 border border-border-subtle tabs-header" id="editor-tabs-group">
             <button class="tab-btn px-3 py-1.5 rounded-lg font-body-sm text-body-sm font-medium transition-all border-0 cursor-pointer active" id="tab-form" type="button">Form Editor</button>
@@ -665,7 +665,7 @@
         <div id="custom-sections-container" class="flex flex-col gap-space-lg"></div>
 
         <!-- Add Custom Section Dashed Button -->
-        <button class="w-full py-4 rounded-2xl border border-dashed border-border-subtle hover:border-primary/50 bg-surface-container-lowest/50 hover:bg-surface-container-low text-text-dim hover:text-text-main font-body-md text-body-md flex items-center justify-center gap-2 transition-all cursor-pointer mb-8" id="btn-add-new-section" type="button">
+        <button class="btn-add-new-section w-full py-4 rounded-2xl border border-dashed border-border-subtle hover:border-primary/50 bg-surface-container-lowest/50 hover:bg-surface-container-low text-text-dim hover:text-text-main font-body-md text-body-md flex items-center justify-center gap-2 transition-all cursor-pointer mb-8" id="btn-add-new-section" type="button">
           <span class="material-symbols-outlined text-[20px] text-primary">add_circle_outline</span>
           <span>+ Add Custom Section (Patents, Publications, Certifications, Leadership)</span>
         </button>
@@ -698,7 +698,7 @@
     <section class="panel preview-panel w-[620px] shrink-0 h-full flex flex-col bg-bg-canvas border-l-0 shadow-2xl relative z-20 overflow-hidden" id="right-panel">
       
       <!-- Preview Double-Decker Toolbar -->
-      <div class="flex flex-col bg-surface/90 backdrop-blur-md shadow-md shrink-0 z-20 border-b border-border-subtle">
+      <div class="preview-toolbar flex flex-col bg-surface/90 backdrop-blur-md shadow-md shrink-0 z-20 border-b border-border-subtle" id="preview-toolbar">
         
         <!-- Top Toolbar Row -->
         <div class="min-h-12 py-1 px-space-md flex items-center justify-between border-b border-border-subtle/50 flex-wrap gap-1.5">
@@ -731,7 +731,7 @@
         </div>
 
         <!-- Bottom Toolbar Row -->
-        <div class="min-h-[42px] py-1.5 px-space-md flex items-center justify-between bg-surface-container-lowest/60 flex-wrap gap-2">
+        <div class="preview-toolbar-secondary min-h-[42px] py-1.5 px-space-md flex items-center justify-between bg-surface-container-lowest/60 flex-wrap gap-2" id="preview-toolbar-secondary">
           <div class="flex items-center gap-1.5 shrink-0">
             <span class="font-label-sm text-label-sm text-text-dim">Font:</span>
             <select class="font-dropdown bg-surface-container text-on-surface font-label-sm text-label-sm px-2 py-1 rounded border border-border-subtle focus:outline-none max-w-[145px] truncate cursor-pointer" id="font-select" aria-label="Select Resume Font">
