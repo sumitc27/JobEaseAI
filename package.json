@@ -1,9 +1,12 @@
 {
   "name": "jobease-ai",
   "version": "1.0.0",
-  "description": "AI-Powered Resume Tailoring Tool with strict 1-page formatting guardrails and targeted JD suggestions",
+  "description": "AI-Powered Resume Tailoring Tool with strict 1-page formatting guardrails, real-time ATS match scoring, Master Profile Vault, and LaTeX/Tectonic compilation",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
@@ -16,7 +19,9 @@
     "gemini-ai",
     "job-description-matcher",
     "pdf-parser",
-    "1-page-rule"
+    "1-page-rule",
+    "latex-resume",
+    "tectonic-compiler"
   ],
   "author": "JobEaseAI Team",
   "license": "MIT"

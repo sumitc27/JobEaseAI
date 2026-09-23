@@ -1,103 +1,91 @@
-# JobEaseAI - AI Resume Tailor & 1-Page Guardrail Studio
+# JobEaseAI — AI Resume Tailor & 1-Page Guardrail Studio
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933?logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Dependencies-0%20(Pure%20Native)-success" alt="Zero Dependencies">
-  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
-  <img src="https://img.shields.io/badge/ATS%20Engine-Gemini%20%7C%20Heuristic-6366F1" alt="ATS Match Engine">
+  <img src="https://img.shields.io/badge/Runtime%20Dependencies-0%20(Pure%20Native)-success" alt="Zero Dependencies">
+  <img src="https://img.shields.io/badge/ATS%20Engine-Gemini%20%7C%20Heuristic%20NLP-6366F1" alt="ATS Match Engine">
+  <img src="https://img.shields.io/badge/LaTeX%20Engine-Tectonic%20%7C%20Overleaf-teal" alt="LaTeX Engine">
   <img src="https://img.shields.io/badge/Guardrail-1--Page%20Enforced-10B981" alt="1-Page Guardrail">
+  <img src="https://img.shields.io/badge/Themes-Cyber%20Dark%20%7C%20Clean%20Light-orange" alt="Theme Support">
 </p>
 
-> **Intelligent Resume Tailoring with AI Job Description Alignment, Multiple Professional Templates, and Strict 1-Page Formatting Guardrails.**
+> **Developer-first resume engineering studio featuring real-time ATS match scoring, strict single-page geometry guardrails, a Master Profile Vault, and instant LaTeX/PDF compilation.**
 
-JobEaseAI is a full-stack, developer-first resume optimization studio designed to solve two major friction points in modern job hunting:
-1. **ATS Screening Rejections**: Resumes failing automated filters because they lack critical keywords, technologies, and quantified achievements emphasized in target Job Descriptions (JDs).
-2. **Formatting Spillover (The 1-Page Rule)**: Manual edits causing resumes to awkwardly spill onto an unnecessary second page with broken section breaks and inconsistent margins.
+JobEaseAI solves two universal friction points in technical hiring:
+1. **ATS Algorithmic Rejection**: Resumes failing automated parsers due to non-standard layout hierarchies, missing keyword density, or absence of quantified technical metrics.
+2. **Formatting Spillover (The 1-Page Rule)**: Manual resume tweaks causing bullet points to spill awkwardly onto a second page with broken margins and orphaned sections.
 
-JobEaseAI decouples raw resume content (**JSON data model**) from visual presentation (**CSS rendering engine**), providing real-time 1-page boundary alerts, live template swapping, and 1-click AI suggestions.
+JobEaseAI enforces strict separation between the **raw data model (JSON)** and the **typographic layout (CSS/LaTeX)**, giving you automated 1-page bounds calculation, instant AI keyword alignment, and ATS-optimized document generation.
 
 ---
 
-## ✨ Core Features (Version 1 MVP)
+## ✨ Features Breakdown
 
-### 1. Resume Ingestion & Section Parser
-- **PDF Upload**: Drag-and-drop any PDF resume to extract contact info, summary, skills, experience, projects, and education.
-- **Normalized JSON Schema**: Converts unstructured resumes into a clean, portable JSON format.
-- **Pre-Loaded Profiles**: Includes built-in sample resumes (Full-Stack Engineer, Machine Learning/Data Engineer) for immediate evaluation without needing a PDF.
+### 1. 🛡️ 1-Page Formatting Guardrail (Core USP)
+* **Real-Time Visual Boundary Line**: An interactive threshold marker drawn across the virtual paper canvas.
+* **Dynamic Page Budget Meter**: Continuously calculates document height percentage against calibrated A4/Letter dimensions.
+* **Intelligent Spacing Presets**: Switch instantly between **Compact**, **Standard**, and **Relaxed** line-heights and margins to reclaim vertical real estate.
+* **1-Click Auto-Fit Algorithm**: Programmatically selects the optimum spacing and section densities to fit extensive content onto exactly one page without manual line trimming.
 
-### 2. AI Match Engine & ATS Scoring
-- **Target JD Analysis**: Paste any Job Description to run comparative analysis.
-- **ATS Match Score**: Dynamic alignment gauge measuring technical keyword overlap.
-- **Gap Detection**: Identifies **Missing Hard Skills**, **Missing Soft Skills**, and **Keyword Gaps**.
-- **Actionable Suggestions**: Generates metric-driven bullet point rewrites and targeted skill additions with **1-Click "Apply to Resume"** functionality.
-- **Dual-Mode AI Service**: Connects to **Google Gemini** or **OpenAI**, with an **intelligent built-in heuristic NLP engine** that runs instantly with zero configuration.
+### 2. 🤖 AI-Powered Job Description Matcher
+* **Dual-Engine Architecture**: Connects to **Google Gemini API** (or OpenAI) with an intelligent, zero-dependency **Heuristic NLP engine** fallback that runs offline out of the box.
+* **Target JD Keyword Analysis**: Extracts and scores hard skills, frameworks, cloud tooling, and domain concepts.
+* **Actionable Bullet Point Suggestions**: Delivers metric-driven bullet point enhancements with **1-Click "Apply to Resume"** integration.
+* **Dynamic ATS Gauge**: Real-time radial score visualization (0–100%) showing alignment depth.
 
-### 3. Interactive 3-Panel Studio
-- **Left Panel**: Target Job Description input, ATS score gauge, missing skill badges, and actionable suggestion cards.
-- **Center Panel**: Form editor for live editing of sections and bullet points, plus a raw JSON editor for power users.
-- **Right Panel**: Real-time visual paper document preview mimicking standard Letter/A4 paper.
+### 3. 🗄️ Master Profile Vault
+* **Complete Experience Repository**: Securely stores all your career history, projects, skills, education, patents, publications, honors, and volunteer work in your browser's private storage.
+* **Selective Cherry-Pick Import**: Choose exactly which projects and bullet points to include for a specific job application without losing your master records.
+* **JSON Backup & Restore**: Export your vault as a single timestamped JSON file to migrate between machines.
 
-### 4. Multiple Professional Resume Templates (New)
-- **Modern Tech**: Crisp sans-serif typography (`Inter` + `Outfit`), modern accents, left-aligned header with subtle contact separators.
-- **Classic Ivy / Harvard**: Traditional executive serif typography (`Merriweather` + `Georgia`), centered header, full-width horizontal rule dividers, favored by enterprise and finance recruiters.
-- **Minimalist Clean**: Ultra-compact Scandinavian layout with discrete tag pills and high data-density spacing to pack extensive experience onto a single page.
-- **Instant Live Switching**: Toggle between templates in real time with instant Page Budget re-calculation and zero data loss.
+### 4. 📄 ATS-Compliant LaTeX & Tectonic Compiler
+* **TeX Source Generation**: Generates clean, standard Computer Modern / Latin Modern TeX code designed to pass 100% of enterprise ATS parsers.
+* **Local Tectonic Engine Support**: Spawns the self-contained `tectonic` binary to compile pixel-perfect PDFs in an isolated sandbox.
+* **1-Click Overleaf Cloud Sync**: Instant pre-filled redirect to compile directly in Overleaf without local TeX dependencies.
+* **Font Customization**: Supports Latin Modern Roman, Bitstream Charter, Source Sans Pro, and Times.
 
-### 5. The 1-Page Formatting Guardrail (Core USP)
-- **Live Height Budget Gauge**: Measures preview document height against calibrated single-page letter proportions.
-- **Real-Time Visual Boundary Line**: Displays an explicit 1-page limit marker across the document.
-- **Overflow Warning Banner**: Instantly alerts users if their bullet points cause the resume to spill into page 2.
-- **Density Controls**: Switch between **Compact**, **Standard**, and **Relaxed** spacing presets to reclaim vertical space without sacrificing readability.
-
-### 6. High-Fidelity PDF & JSON Export
-- **1-Page Print-to-PDF**: Dedicated `@media print` stylesheet removing navigation, sidebars, and headers, preserving chosen template styling and single-page constraints.
-- **Export/Import JSON**: Download and reload your structured resume state anytime.
+### 5. 🎨 Cyber Dark & High-Contrast Light Modes
+* **Bioluminescent Dark Theme**: Sleek glassmorphism canvas tailored for long late-night editing sessions.
+* **High-Contrast Light Theme**: Crisp, accessible layout with strong contrast ratios across all input fields, badges, and modals.
 
 ---
 
 ## 🏗️ System Architecture
 
 ```
-                       +-----------------------------------+
-                       |         User Web Browser          |
-                       |  (3-Panel Studio & Live Preview)  |
-                       +-----------------+-----------------+
-                                         |
-                +------------------------+------------------------+
-                |                                                 |
-                v                                                 v
-     [POST /api/upload-resume]                         [POST /api/analyze-match]
-                |                                                 |
-                v                                                 v
-  +---------------------------+                     +---------------------------+
-  |    services/pdfParser     |                     |     services/aiEngine     |
-  |  - pdf-parse buffer       |                     |  - Gemini API (Primary)   |
-  |  - Regex section split    |                     |  - OpenAI API (Fallback)  |
-  |  - Structured Resume JSON |                     |  - Heuristic NLP Engine   |
-  +-------------+-------------+                     +-------------+-------------+
-                |                                                 |
-                +------------------------+------------------------+
-                                         |
-                                         v
-                         +-------------------------------+
-                         |      Normalized JSON Model    |
-                         |  (Skills, Exp, Projects, Edu) |
-                         +---------------+---------------+
-                                         |
-                                         v
-                         +-------------------------------+
-                         |      Live 1-Page Guardrail    |
-                         |  - ScrollHeight vs Threshold  |
-                         |  - Page Budget % Meter        |
-                         |  - Dynamic Density Presets    |
-                         +---------------+---------------+
-                                         |
-                                         v
-                         +-------------------------------+
-                         |     Single-Page PDF Export    |
-                         |     (@media print CSS Rules)  |
-                         +-------------------------------+
+                                  +---------------------------------------+
+                                  |            JobEaseAI Client           |
+                                  |  (3-Column Studio & Real-time Canvas) |
+                                  +-------------------+-------------------+
+                                                      |
+                    +---------------------------------+---------------------------------+
+                    |                                 |                                 |
+                    v                                 v                                 v
+        [POST /api/upload-resume]          [POST /api/analyze-match]          [POST /api/compile-latex]
+                    |                                 |                                 |
+                    v                                 v                                 v
+        +-----------------------+         +-----------------------+         +-----------------------+
+        |  services/pdfParser   |         |   services/aiEngine   |         | services/latexGenerator|
+        | - zlib stream parser  |         | - Google Gemini API   |         | - TeX sanitization    |
+        | - Text classifier     |         | - Heuristic NLP engine|         | - Tectonic execution  |
+        | - Normalized JSON     |         | - ATS scoring & gaps  |         | - PDF compilation     |
+        +-----------+-----------+         +-----------+-----------+         +-----------+-----------+
+                    |                                 |                                 |
+                    +---------------------------------+---------------------------------+
+                                                      |
+                                                      v
+                                        +---------------------------+
+                                        |   Normalized JSON Model   |
+                                        | (Skills, Exp, Projects)   |
+                                        +-------------+-------------+
+                                                      |
+                                                      v
+                                        +---------------------------+
+                                        |   1-Page Height Engine    |
+                                        | - Virtual scroll budget   |
+                                        | - Overflow detection      |
+                                        +---------------------------+
 ```
 
 ---
@@ -106,25 +94,33 @@ JobEaseAI decouples raw resume content (**JSON data model**) from visual present
 
 ```
 JobEaseAI/
-├── public/                     # Frontend Client & Assets
+├── public/                     # Client Frontend Application
 │   ├── css/
-│   │   └── styles.css          # Design system, glassmorphism, 3 templates & @media print
+│   │   └── styles.css          # Design system, glassmorphism, themes & @media print
 │   ├── js/
-│   │   ├── app.js              # State manager, 1-page guardrail engine & AI hooks
-│   │   └── samples.js          # Preloaded engineer profiles & sample Job Descriptions
-│   └── index.html              # 3-Panel studio interface with real-time paper preview
-├── services/
-│   ├── aiEngine.js             # Gemini API, OpenAI & zero-dependency heuristic NLP engine
-│   └── pdfParser.js            # PDF text extractor (zlib stream parsing) & section classifier
-├── server.js                   # Pure Node.js zero-dependency HTTP server & REST APIs
-├── test.js                     # Automated verification test suite
-├── git_setup.bat               # 1-Click Windows Batch Git Initializer & Committer
-├── git_setup.ps1               # 1-Click PowerShell Git Initializer & Committer
-├── GITHUB_GUIDE.md             # Step-by-step walkthrough for pushing to GitHub
-├── ARCHITECTURE.md             # Data schemas, 1-page geometry algorithm & design specs
-├── CONTRIBUTING.md             # Open source contribution guidelines
+│   │   ├── app.js              # Core state management, 1-page guardrail & event hooks
+│   │   └── samples.js          # Generic pre-loaded developer profiles & sample JDs
+│   ├── fonts/                  # Bundled TeX & Latin Modern web fonts
+│   └── index.html              # 3-Panel Studio with live virtual paper preview
+├── services/                   # Backend Business Logic
+│   ├── aiEngine.js             # Gemini AI API integration + native heuristic NLP engine
+│   ├── latexGenerator.js       # ATS LaTeX generator, font packages & Tectonic compiler
+│   └── pdfParser.js            # Zero-dependency PDF text stream parser & classifier
+├── python_backend/             # Optional Python microservice (Flask + Jinja2 + Tectonic)
+│   ├── services/
+│   ├── templates/
+│   └── main.py
+├── server.js                   # High-performance native Node.js HTTP server (Zero npm dependencies)
+├── test.js                     # Comprehensive automated test suite
+├── Dockerfile                  # Production container with Node.js LTS + Linux Tectonic engine
+├── .dockerignore               # Docker build exclusions
+├── .gitignore                  # Production git ignore configuration
+├── .env.example                # Sample environment variables
+├── ARCHITECTURE.md             # Deep-dive architectural specification
+├── DEPLOYMENT_GUIDE.md         # Comprehensive cloud deployment manual
+├── CONTRIBUTING.md             # Open-source contribution guidelines
 ├── LICENSE                     # MIT Open Source License
-└── package.json                # Project scripts (start, dev, test) & metadata
+└── package.json                # Project scripts and engines manifest
 ```
 
 ---
@@ -132,120 +128,151 @@ JobEaseAI/
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (Version 18.0.0 or higher recommended)
-- [Git](https://git-scm.com/)
+* [Node.js](https://nodejs.org/) (Version **18.0.0** or higher)
+* [Git](https://git-scm.com/)
 
-### 1. Install Dependencies
+### 1. Clone the Repository
 ```bash
-npm install
+git clone https://github.com/sumitc27/JobEaseAI.git
+cd JobEaseAI
 ```
 
 ### 2. Configure Environment Variables (Optional)
-Create a `.env` file from the provided `.env.example`:
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Edit `.env` if you want to use Google Gemini or OpenAI:
+Add your Google Gemini API key if you want generative AI suggestions:
 ```env
 PORT=3000
 GEMINI_API_KEY=your_gemini_api_key_here
-# OPENAI_API_KEY=your_openai_key_here
 ```
-> *Note: If no API key is provided, JobEaseAI automatically uses its built-in heuristic NLP engine. The application is 100% functional out of the box!*
+> **Note**: If `GEMINI_API_KEY` is not provided, JobEaseAI automatically operates using its built-in **heuristic NLP match engine**. The application is 100% functional immediately with zero setup!
 
-### 3. Run the Application
+### 3. Start the Server
+JobEaseAI uses the Node.js native standard library with **zero required external runtime packages**:
 ```bash
 npm start
 ```
-Or for auto-reload during development:
+For hot-reloading during development:
 ```bash
 npm run dev
 ```
 
-Open your browser and navigate to:
+Navigate to:
 ```
 http://localhost:3000
 ```
 
-### 4. Run Automated Verification Tests
+### 4. Run Automated Tests
 ```bash
 npm test
 ```
 
 ---
 
-## 📦 Committing to GitHub
+## 🐳 Docker Deployment
 
-To initialize your repository and commit all files to GitHub:
+The included [`Dockerfile`](Dockerfile) builds a self-contained Debian Linux container featuring **Node.js 20 LTS** and the official **Tectonic LaTeX compiler engine**.
 
-### Option A: Using the Automated Windows Script
-- Double-click **`git_setup.bat`** (or run `powershell -ExecutionPolicy Bypass -File ./git_setup.ps1`).
-
-### Option B: Manual Git Commands
+### 1. Build the Docker Image
 ```bash
-# 1. Initialize Git repository
-git init -b main
-
-# 2. Stage all project files
-git add .
-
-# 3. Create initial commit
-git commit -m "feat: initial implementation of JobEaseAI (Resume Tailor V1) with 1-page guardrails and AI JD match engine"
-
-# 4. Link to your GitHub repository
-git remote add origin https://github.com/<YOUR_USERNAME>/JobEaseAI.git
-
-# 5. Push to GitHub
-git push -u origin main
+docker build -t jobease-ai .
 ```
+
+### 2. Run the Container
+```bash
+docker run -d -p 3000:3000 --name jobease-container jobease-ai
+```
+
+Access the studio at `http://localhost:3000`.
+
+---
+
+## ☁️ Cloud Deployment Options
+
+For a step-by-step walkthrough of cloud deployment options, refer to the [**Deployment Guide**](DEPLOYMENT_GUIDE.md).
+
+| Platform | Deployment Type | Tectonic LaTeX Compiler | Recommended For |
+|---|---|---|---|
+| **[Railway.app](https://railway.app)** | Docker Container | ✅ Native in container | **#1 Recommended** (Easiest full-feature deploy) |
+| **[Render.com](https://render.com)** | Web Service (Docker) | ✅ Native in container | Excellent alternative with automated GitHub deploys |
+| **[Fly.io](https://fly.io)** | `flyctl launch` (Docker) | ✅ Native in container | Global edge deployment with high speed |
+| **Self-Hosted VPS** | Docker / systemd | ✅ Native | Full infrastructure control |
 
 ---
 
 ## 🔌 API Reference
 
 ### `POST /api/upload-resume`
-Uploads and parses a PDF resume into structured JSON.
-- **Request**: `multipart/form-data` with field `resume` (PDF file).
-- **Response**:
+Extracts structured resume JSON from an uploaded PDF.
+* **Content-Type**: `multipart/form-data`
+* **Field**: `resume` (PDF binary)
+* **Response**:
   ```json
   {
     "success": true,
-    "filename": "my_resume.pdf",
-    "resume": { "personalInfo": {}, "summary": "", "skills": {}, "experience": [], "projects": [], "education": [] }
-  }
-  ```
-
-### `POST /api/analyze-match`
-Compares structured Resume JSON against target Job Description.
-- **Request**: `application/json`
-  ```json
-  {
-    "resume": { ... },
-    "jobDescription": "Full job description text..."
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "analysis": {
-      "matchScore": 78,
-      "summary": "Strong backend alignment; missing containerization keywords.",
-      "hardSkillsFound": ["React", "TypeScript", "Node.js"],
-      "missingHardSkills": ["Docker", "Kubernetes", "AWS"],
-      "keywordGaps": ["CI/CD", "Microservices"],
-      "suggestions": [ ... ]
+    "filename": "resume.pdf",
+    "resume": {
+      "personalInfo": { "name": "Alex Rivera", "email": "alex.rivera@example.com" },
+      "skills": { "technical": ["JavaScript", "Python"], "frameworks": ["React"] },
+      "experience": [ ... ],
+      "projects": [ ... ],
+      "education": [ ... ]
     }
   }
   ```
 
+### `POST /api/analyze-match`
+Compares a structured resume against a target job description.
+* **Content-Type**: `application/json`
+* **Body**:
+  ```json
+  {
+    "resume": { ... },
+    "jobDescription": "Full Job Description text..."
+  }
+  ```
+* **Response**:
+  ```json
+  {
+    "success": true,
+    "analysis": {
+      "matchScore": 84,
+      "summary": "Strong alignment with cloud technologies; suggest adding Docker and CI/CD.",
+      "hardSkillsFound": ["TypeScript", "React", "Node.js"],
+      "missingHardSkills": ["Docker", "Kubernetes"],
+      "keywordGaps": ["Microservices", "TDD"],
+      "suggestions": [
+        {
+          "type": "add_skill",
+          "title": "Add Docker to Technical Skills",
+          "details": "Mention containerization experience in your skills section."
+        }
+      ]
+    }
+  }
+  ```
+
+### `POST /api/compile-latex`
+Compiles TeX code into an authentic single-page PDF via the server's Tectonic engine.
+* **Content-Type**: `application/json`
+* **Body**:
+  ```json
+  {
+    "resume": { ... },
+    "options": { "font": "lmodern", "paperSize": "a4" }
+  }
+  ```
+* **Response**: Binary PDF stream (`application/pdf`) or JSON error with fallback instructions.
+
 ---
 
-## 🗺️ Roadmap (Version 2)
-- [ ] **AI-Powered Inline Re-writing**: One-click tone switcher (Executive, Technical, Impact-driven).
-- [ ] **Master Profile Repository**: Store multiple versions of experiences and selectively toggle items to fit 1 page.
-- [ ] **Multiple Resume Themes**: Clean Modern, Classic Ivy, Tech Minimalist.
-- [ ] **Direct Puppeteer Headless PDF Rendering**: Server-side pixel-perfect PDF binary download.
+## 🧹 Repository Cleanliness & Maintenance
+
+To keep your repository completely free of temporary files or legacy scaffold remnants:
+* Run **`cleanup_unwanted_files.bat`** (Windows) or **`cleanup_unwanted_files.ps1`** (PowerShell).
+* It removes unused Next.js/TypeScript configuration files and automatically commits the clean tree to Git.
 
 ---
 

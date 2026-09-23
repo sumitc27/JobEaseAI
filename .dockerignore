@@ -1,8 +1,45 @@
+# ==============================================================================
+# JobEaseAI .dockerignore
+# ==============================================================================
+
+# Dependencies
 node_modules
+package-lock.json
+
+# Version Control & Config
 .git
 .gitignore
+.dockerignore
+
+# Environment Files
 .env
+.env.*
+
+# Logs & Temporary Files
 *.log
+*.tmp
+uploads/
+
+# Local Compilers
 tectonic.exe
+*.exe
+
+# Next.js / TypeScript Scaffold Remnants
+next-env.d.ts
+next.config.*
+tsconfig.json
+postcss.config.*
+eslint.config.*
+src/
+
+# Documentation & Scratch Files (Not needed in container runtime)
+*.md
+Latest (1).tex
+git_setup.*
+cleanup_unwanted_files.*
+
+# IDE & Agents
 .agents
 .gemini
+.vscode
+.idea
