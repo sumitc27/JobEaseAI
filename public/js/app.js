@@ -729,13 +729,55 @@ const elements = {
   scoreBadgeHeadline: document.getElementById('score-badge-headline'),
   guardrailBadgeContainer: document.getElementById('guardrail-badge-container'),
   guardrailBadgeText: document.getElementById('guardrail-badge-text'),
-  paperStatusDot: document.getElementById('paper-status-dot')
+  paperStatusDot: document.getElementById('paper-status-dot'),
+
+  // Theme Toggle
+  btnThemeToggle: document.getElementById('btn-theme-toggle'),
+  themeToggleIcon: document.getElementById('theme-toggle-icon')
 };
+
+/**
+ * Theme Management (Light / Dark Mode)
+ */
+function setTheme(theme, save = true) {
+  const isLight = theme === 'light';
+  if (isLight) {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    document.documentElement.classList.add('theme-light');
+    document.body.classList.add('theme-light');
+    if (elements.themeToggleIcon) elements.themeToggleIcon.textContent = 'dark_mode';
+    if (elements.btnThemeToggle) elements.btnThemeToggle.setAttribute('title', 'Switch to Dark Mode');
+  } else {
+    document.documentElement.classList.remove('light');
+    document.documentElement.classList.remove('theme-light');
+    document.documentElement.classList.add('dark');
+    document.body.classList.remove('theme-light');
+    if (elements.themeToggleIcon) elements.themeToggleIcon.textContent = 'light_mode';
+    if (elements.btnThemeToggle) elements.btnThemeToggle.setAttribute('title', 'Switch to Light Mode');
+  }
+  if (save) {
+    try {
+      localStorage.setItem('jobease_theme', theme);
+    } catch (e) {}
+  }
+}
+
+function toggleTheme() {
+  const isCurrentlyLight = document.body.classList.contains('theme-light') || document.documentElement.classList.contains('theme-light');
+  const targetTheme = isCurrentlyLight ? 'dark' : 'light';
+  setTheme(targetTheme, true);
+  showToast(`Switched to ${targetTheme === 'light' ? 'Light' : 'Dark'} Mode`, 'info');
+}
 
 /**
  * Initialize Application
  */
 function init() {
+  // Restore user theme preference (default to dark)
+  const savedTheme = localStorage.getItem('jobease_theme') || 'dark';
+  setTheme(savedTheme, false);
+
   loadMasterProfileFromStorage();
   bindEvents();
   loadResumeIntoForm(currentResume);
@@ -760,6 +802,11 @@ function init() {
  * Event Listeners Registration
  */
 function bindEvents() {
+  // Theme Toggle Action
+  if (elements.btnThemeToggle) {
+    elements.btnThemeToggle.addEventListener('click', toggleTheme);
+  }
+
   // Navigation Actions
   elements.btnLoadSample.addEventListener('click', toggleSampleProfile);
   elements.btnOpenUpload.addEventListener('click', () => openModal(elements.uploadModal));
@@ -2427,13 +2474,16 @@ function renderEducationFormList() {
           <span>Remove</span>
         </button>
       </div>
-      <div class="form-row-3">
-        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Institution" value="${escapeHtml(edu.institution || '')}" data-edu-field="institution" data-idx="${eIdx}">
-        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Degree" value="${escapeHtml(edu.degree || '')}" data-edu-field="degree" data-idx="${eIdx}">
-        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Year" value="${escapeHtml(edu.year || '')}" data-edu-field="year" data-idx="${eIdx}">
+      <div class="form-row-2">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="Institution / University" value="${escapeHtml(edu.institution || '')}" data-edu-field="institution" data-idx="${eIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="Degree / Major" value="${escapeHtml(edu.degree || '')}" data-edu-field="degree" data-idx="${eIdx}">
+      </div>
+      <div class="form-row-2" style="margin-top: 2px;">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="Graduation Year / Dates (e.g. 2023 - 2027)" value="${escapeHtml(edu.year || '')}" data-edu-field="year" data-idx="${eIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="GPA / Academic Honors (optional)" value="${escapeHtml(edu.gpa || '')}" data-edu-field="gpa" data-idx="${eIdx}">
       </div>
       <div class="form-row-1" style="margin-top: 2px;">
-        <input type="text" class="form-input w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Courses (e.g. Data Structures, Algorithms, Distributed Systems)" value="${escapeHtml(edu.courses || '')}" data-edu-field="courses" data-idx="${eIdx}">
+        <input type="text" class="form-input w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="Relevant Coursework (e.g. Data Structures, Cloud Computing, AI/ML)" value="${escapeHtml(edu.courses || '')}" data-edu-field="courses" data-idx="${eIdx}">
       </div>
     `;
     elements.educationListContainer.appendChild(item);
@@ -3805,11 +3855,51 @@ function renderAnalysisResults(analysis) {
 
     sortedSuggestions.forEach(sug => {
       const card = document.createElement('div');
-      card.className = 'p-3 rounded-xl bg-bg-card shadow-sm flex flex-col gap-1.5 hover:bg-surface-container transition-colors border border-border-subtle suggestion-item';
+      card.className = `p-3 rounded-xl bg-bg-card shadow-sm flex flex-col gap-2 hover:bg-surface-container transition-colors border border-border-subtle suggestion-item ${sug.applied ? 'is-applied' : ''}`;
+      card.dataset.sugCardId = sug.id;
 
       const rawImpact = (sug.impact || 'Medium').toLowerCase();
-      const impactLabel = rawImpact === 'high' ? 'High Impact' : (rawImpact === 'low' ? 'Low Impact' : 'Medium Impact');
-      const impactClass = `impact-${rawImpact === 'high' ? 'high' : (rawImpact === 'low' ? 'low' : 'medium')}`;
+      const impactLabel = sug.applied 
+        ? 'Applied ✓' 
+        : (rawImpact === 'high' ? 'High Impact' : (rawImpact === 'low' ? 'Low Impact' : 'Medium Impact'));
+      const impactClass = sug.applied 
+        ? 'impact-applied' 
+        : `impact-${rawImpact === 'high' ? 'high' : (rawImpact === 'low' ? 'low' : 'medium')}`;
+
+      // Default Preview Text
+      const previewText = sug.recommendedBullet || sug.recommendedSummary || (Array.isArray(sug.action?.value) ? sug.action.value.join(', ') : (sug.action?.value || sug.title));
+
+      // Build target options if experience or project
+      let targetSelectHtml = '';
+      if (sug.type === 'experience_bullet' && Array.isArray(currentResume.experience) && currentResume.experience.length > 0) {
+        const expOptions = currentResume.experience.map((exp, i) => `
+          <option value="${i}" ${i === (sug.targetIndex || 0) ? 'selected' : ''}>
+            ${escapeHtml(exp.title || 'Role')} at ${escapeHtml(exp.company || 'Company')}
+          </option>
+        `).join('');
+        targetSelectHtml = `
+          <div class="flex items-center gap-1.5 pt-1">
+            <span class="text-[11px] text-text-dim whitespace-nowrap">Target Role:</span>
+            <select class="suggestion-select flex-1" data-sug-target-exp="${sug.id}">
+              ${expOptions}
+            </select>
+          </div>
+        `;
+      } else if (sug.type === 'project_bullet' && Array.isArray(currentResume.projects) && currentResume.projects.length > 0) {
+        const projOptions = currentResume.projects.map((proj, i) => `
+          <option value="${i}" ${i === (sug.targetIndex || 0) ? 'selected' : ''}>
+            ${escapeHtml(proj.title || 'Project')}
+          </option>
+        `).join('');
+        targetSelectHtml = `
+          <div class="flex items-center gap-1.5 pt-1">
+            <span class="text-[11px] text-text-dim whitespace-nowrap">Target Project:</span>
+            <select class="suggestion-select flex-1" data-sug-target-proj="${sug.id}">
+              ${projOptions}
+            </select>
+          </div>
+        `;
+      }
 
       card.innerHTML = `
         <div class="flex items-center justify-between text-secondary-cyan-light font-label-sm text-label-sm font-semibold gap-2">
@@ -3817,23 +3907,89 @@ function renderAnalysisResults(analysis) {
           <span class="impact-badge ${impactClass} flex-shrink-0">${impactLabel}</span>
         </div>
         <p class="font-body-sm text-body-sm text-text-muted leading-relaxed">${escapeHtml(sug.detail)}</p>
-        ${sug.recommendedBullet ? `<div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface">"${escapeHtml(sug.recommendedBullet)}"</div>` : ''}
-        ${sug.recommendedSummary ? `<div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface">"${escapeHtml(sug.recommendedSummary)}"</div>` : ''}
-        <div class="flex items-center justify-between pt-1">
-          <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer" data-copy-sug="${escapeHtml(sug.recommendedBullet || sug.recommendedSummary || sug.title)}">Copy</button>
-          <button class="text-[11px] font-label-sm text-primary hover:text-white flex items-center gap-1 border-0 bg-transparent cursor-pointer font-medium" data-apply-sug="${sug.id}">
-            <span class="material-symbols-outlined text-[13px]">bolt</span> Auto-Apply Suggestion
-          </button>
+        
+        <!-- Standard View Container -->
+        <div class="sug-view-container flex flex-col gap-1.5">
+          <div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface leading-relaxed">
+            "${escapeHtml(previewText)}"
+          </div>
+          <div class="flex items-center justify-between pt-1 sug-action-row">
+            <div class="flex items-center gap-1">
+              <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer flex items-center gap-1" data-copy-sug="${escapeHtml(previewText)}" title="Copy recommendation text">
+                <span class="material-symbols-outlined text-[13px]">content_copy</span> Copy
+              </button>
+              <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-secondary-cyan-light border border-border-subtle cursor-pointer flex items-center gap-1" data-edit-sug="${sug.id}" title="Edit this insight before applying to resume">
+                <span class="material-symbols-outlined text-[13px]">edit_note</span> Edit
+              </button>
+            </div>
+            <button class="text-[11px] font-label-sm text-primary hover:text-white flex items-center gap-1 border-0 bg-transparent cursor-pointer font-medium" data-apply-sug="${sug.id}">
+              <span class="material-symbols-outlined text-[13px]">bolt</span> Auto-Apply Suggestion
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline Edit Container (Hidden by default) -->
+        <div class="sug-edit-container suggestion-edit-container" style="display: none;">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-secondary-cyan-light flex items-center gap-1">
+              <span class="material-symbols-outlined text-[13px]">edit</span> Edit insight before applying:
+            </span>
+            <button class="text-[11px] text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-cancel-edit="${sug.id}" title="Cancel editing">✕</button>
+          </div>
+          <textarea class="suggestion-textarea" data-sug-textarea="${sug.id}" rows="3" placeholder="Customize this recommendation...">${escapeHtml(previewText)}</textarea>
+          ${targetSelectHtml}
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button class="btn btn-outline text-[11px] px-2.5 py-1 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer" data-cancel-edit="${sug.id}">Cancel</button>
+            <button class="btn text-[11px] px-3 py-1 rounded bg-primary text-white font-medium hover:bg-primary/80 cursor-pointer flex items-center gap-1 shadow-sm" data-apply-custom-sug="${sug.id}">
+              <span class="material-symbols-outlined text-[13px]">done</span> Apply Customized Fix
+            </button>
+          </div>
         </div>
       `;
 
-      card.querySelector('[data-copy-sug]').addEventListener('click', (e) => {
-        navigator.clipboard.writeText(e.target.dataset.copySug);
+      const viewContainer = card.querySelector('.sug-view-container');
+      const editContainer = card.querySelector('.sug-edit-container');
+
+      // 1. Copy
+      card.querySelector('[data-copy-sug]')?.addEventListener('click', (e) => {
+        navigator.clipboard.writeText(e.target.dataset.copySug || previewText);
         showToast('Copied recommendation to clipboard!', 'success');
       });
 
-      card.querySelector('[data-apply-sug]').addEventListener('click', () => {
+      // 2. Open Edit Mode
+      card.querySelector('[data-edit-sug]')?.addEventListener('click', () => {
+        viewContainer.style.display = 'none';
+        editContainer.style.display = 'flex';
+        const ta = editContainer.querySelector('[data-sug-textarea]');
+        if (ta) {
+          ta.focus();
+          ta.setSelectionRange(ta.value.length, ta.value.length);
+        }
+      });
+
+      // 3. Cancel Edit Mode
+      card.querySelectorAll('[data-cancel-edit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editContainer.style.display = 'none';
+          viewContainer.style.display = 'flex';
+        });
+      });
+
+      // 4. Auto-Apply
+      card.querySelector('[data-apply-sug]')?.addEventListener('click', () => {
         applyAiSuggestion(sug);
+      });
+
+      // 5. Apply Customized
+      card.querySelector('[data-apply-custom-sug]')?.addEventListener('click', () => {
+        const customText = editContainer.querySelector('[data-sug-textarea]')?.value || '';
+        let targetOverride = null;
+        const expSelect = editContainer.querySelector(`[data-sug-target-exp="${sug.id}"]`);
+        if (expSelect) targetOverride = parseInt(expSelect.value, 10);
+        const projSelect = editContainer.querySelector(`[data-sug-target-proj="${sug.id}"]`);
+        if (projSelect) targetOverride = parseInt(projSelect.value, 10);
+
+        applyAiSuggestion(sug, customText, targetOverride);
       });
 
       elements.suggestionsContainer.appendChild(card);
@@ -3905,83 +4061,240 @@ function findOrMatchSkillCategory(skill, targetCategoryHint = null) {
 }
 
 /**
- * 1-Click Suggestion Applicator
+ * Dynamic Multi-Factor ATS Score Recalculator
  */
-function applyAiSuggestion(sug) {
-  if (sug.type === 'skill' && sug.action?.value) {
+function recalcAnalysisScore() {
+  if (!currentAnalysis) return;
+  const hCoverage = typeof currentAnalysis.hardSkillsCoverage === 'number' ? currentAnalysis.hardSkillsCoverage : 50;
+  const expDepth = typeof currentAnalysis.experienceDepthScore === 'number' ? currentAnalysis.experienceDepthScore : 50;
+  const quantKpi = typeof currentAnalysis.quantifiableImpactScore === 'number' ? currentAnalysis.quantifiableImpactScore : 50;
+  const domainKw = typeof currentAnalysis.domainKeywordsScore === 'number' ? currentAnalysis.domainKeywordsScore : 50;
+
+  currentAnalysis.matchScore = Math.max(15, Math.min(98, Math.round(
+    (hCoverage * 0.45) +
+    (expDepth * 0.25) +
+    (quantKpi * 0.15) +
+    (domainKw * 0.15)
+  )));
+
+  // Update Score Circle & Sub-metrics in real-time
+  const score = currentAnalysis.matchScore;
+  if (elements.scoreCircle) {
+    elements.scoreCircle.style.setProperty('--score', score);
+    elements.scoreCircle.style.background = `conic-gradient(#10B981 0% ${score}%, #2e3545 ${score}% 100%)`;
+  }
+  if (elements.scoreText) elements.scoreText.textContent = `${score}%`;
+  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${hCoverage}%`;
+  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${expDepth}%`;
+  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${quantKpi}%`;
+
+  if (elements.scoreStatus) {
+    if (score >= 80) {
+      elements.scoreStatus.textContent = 'Strong Alignment';
+      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium';
+      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Ready for Top Tech ATS';
+    } else if (score >= 65) {
+      elements.scoreStatus.textContent = 'Moderate Match';
+      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-secondary-cyan-light/10 text-secondary-cyan-light px-2 py-0.5 rounded-full font-medium';
+      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Competitive Alignment';
+    } else {
+      elements.scoreStatus.textContent = 'Keyword Gap Detected';
+      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded-full font-medium';
+      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Keywords Need Refinement';
+    }
+  }
+}
+
+/**
+ * Dismisses an applied or unwanted suggestion card with smooth animation
+ */
+function dismissSuggestionCard(sugId) {
+  const cardEl = document.querySelector(`[data-sug-card-id="${sugId}"]`);
+  if (cardEl) {
+    cardEl.classList.add('fading-out');
+    setTimeout(() => {
+      cardEl.remove();
+      if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
+        currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sugId);
+        if (currentAnalysis.suggestions.length === 0 && elements.suggestionsContainer) {
+          elements.suggestionsContainer.innerHTML = `
+            <div class="p-4 rounded-xl bg-accent-emerald/10 border border-accent-emerald/30 text-center flex flex-col items-center gap-1.5 my-2">
+              <span class="material-symbols-outlined text-[24px] text-accent-emerald">verified</span>
+              <span class="font-label-md text-label-md text-accent-emerald font-bold">All Gap Fixes Applied!</span>
+              <p class="font-body-sm text-body-sm text-text-muted">Your resume now comprehensively addresses target JD requirements.</p>
+            </div>
+          `;
+        }
+      }
+    }, 450);
+  } else {
+    if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
+      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sugId);
+    }
+  }
+}
+
+/**
+ * 1-Click Suggestion Applicator with Custom Content Support & Live ATS Recalculation
+ */
+function applyAiSuggestion(sug, customContent = null, targetIndexOverride = null) {
+  if (!sug) return;
+  const isCustom = typeof customContent === 'string' && customContent.trim().length > 0;
+
+  if (sug.type === 'skill') {
     ensureSectionEnabled('skills');
-    const targetCat = sug.targetCategory || sug.action.category || null;
-    const skillsList = Array.isArray(sug.action.value) ? sug.action.value : [sug.action.value];
+    const targetCat = sug.targetCategory || sug.action?.category || null;
+    let skillsList = [];
+    if (isCustom) {
+      skillsList = parseCommaList(customContent);
+    } else if (Array.isArray(sug.action?.value)) {
+      skillsList = sug.action.value;
+    } else if (sug.action?.value) {
+      skillsList = [sug.action.value];
+    } else if (Array.isArray(sug.skills)) {
+      skillsList = sug.skills;
+    }
     skillsList.forEach(sk => addSkillToResume(sk, targetCat));
     const secTitle = getSectionTitle('skills');
-    showToast(`Added ${skillsList.join(', ')} to ${secTitle}!`, 'success');
-  } else if (sug.type === 'experience_bullet' && sug.recommendedBullet) {
+    showToast(`✨ Added ${skillsList.join(', ')} to ${secTitle}!`, 'success');
+  } else if (sug.type === 'experience_bullet') {
     ensureSectionEnabled('experience');
     if (!currentResume.experience) currentResume.experience = [];
-    const expIdx = (typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.experience.length)
-      ? sug.targetIndex
-      : 0;
+    const bulletToApply = isCustom ? customContent.trim() : (sug.recommendedBullet || sug.detail);
+    const expIdx = (typeof targetIndexOverride === 'number') 
+      ? targetIndexOverride 
+      : ((typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.experience.length) ? sug.targetIndex : 0);
 
     const secTitle = getSectionTitle('experience');
     if (currentResume.experience.length > 0) {
       if (!Array.isArray(currentResume.experience[expIdx].bullets)) {
         currentResume.experience[expIdx].bullets = [];
       }
-      currentResume.experience[expIdx].bullets.unshift(sug.recommendedBullet);
+      currentResume.experience[expIdx].bullets.unshift(bulletToApply);
       loadResumeIntoForm(currentResume);
       highlightPreviewElement(elements.rpExperienceContainer);
       const roleName = currentResume.experience[expIdx].title || 'experience';
-      showToast(`Applied recommended bullet to ${roleName} in ${secTitle}!`, 'success');
+      showToast(`✨ Applied bullet to ${roleName} in ${secTitle}!`, 'success');
     } else {
       currentResume.experience.push({
         title: sug.targetTitle || 'Software Engineer',
         company: 'Technology Corp',
         location: 'Remote',
         period: '2022 - Present',
-        bullets: [sug.recommendedBullet]
+        bullets: [bulletToApply]
       });
       loadResumeIntoForm(currentResume);
       highlightPreviewElement(elements.rpExperienceContainer);
-      showToast(`Created role with recommended bullet in ${secTitle}!`, 'success');
+      showToast(`✨ Created role with bullet in ${secTitle}!`, 'success');
     }
-  } else if (sug.type === 'project_bullet' && sug.recommendedBullet) {
+
+    // Boost experience depth and quantifiable impact in ATS evaluation
+    if (currentAnalysis) {
+      currentAnalysis.experienceDepthScore = Math.min(98, (currentAnalysis.experienceDepthScore || 45) + 12);
+      currentAnalysis.quantifiableImpactScore = Math.min(98, (currentAnalysis.quantifiableImpactScore || 40) + 15);
+      recalcAnalysisScore();
+    }
+  } else if (sug.type === 'project_bullet') {
     ensureSectionEnabled('projects');
     if (!currentResume.projects) currentResume.projects = [];
-    const projIdx = (typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.projects.length)
-      ? sug.targetIndex
-      : 0;
+    const bulletToApply = isCustom ? customContent.trim() : (sug.recommendedBullet || sug.detail);
+    const projIdx = (typeof targetIndexOverride === 'number')
+      ? targetIndexOverride
+      : ((typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.projects.length) ? sug.targetIndex : 0);
 
     const secTitle = getSectionTitle('projects');
     if (currentResume.projects.length > 0) {
       if (!Array.isArray(currentResume.projects[projIdx].bullets)) {
         currentResume.projects[projIdx].bullets = [];
       }
-      currentResume.projects[projIdx].bullets.unshift(sug.recommendedBullet);
+      currentResume.projects[projIdx].bullets.unshift(bulletToApply);
       loadResumeIntoForm(currentResume);
       highlightPreviewElement(elements.rpProjectsContainer);
       const projName = currentResume.projects[projIdx].title || 'project';
-      showToast(`Applied recommended bullet to ${projName} in ${secTitle}!`, 'success');
+      showToast(`✨ Applied bullet to ${projName} in ${secTitle}!`, 'success');
     } else {
       currentResume.projects.push({
         title: sug.targetTitle || 'Featured Technical Project',
         tech: 'Python, Docker, Kubernetes, AWS',
         link: 'https://github.com/example/project',
-        bullets: [sug.recommendedBullet]
+        bullets: [bulletToApply]
       });
       loadResumeIntoForm(currentResume);
       highlightPreviewElement(elements.rpProjectsContainer);
-      showToast(`Added project with recommended bullet to ${secTitle}!`, 'success');
+      showToast(`✨ Added project with bullet to ${secTitle}!`, 'success');
     }
-  } else if (sug.type === 'summary' && sug.recommendedSummary) {
+
+    // Boost experience depth and domain keywords in ATS evaluation
+    if (currentAnalysis) {
+      currentAnalysis.experienceDepthScore = Math.min(98, (currentAnalysis.experienceDepthScore || 45) + 10);
+      currentAnalysis.domainKeywordsScore = Math.min(98, (currentAnalysis.domainKeywordsScore || 45) + 8);
+      recalcAnalysisScore();
+    }
+  } else if (sug.type === 'summary') {
     ensureSectionEnabled('summary');
-    currentResume.summary = sug.recommendedSummary;
-    elements.resumeSummaryInput.value = sug.recommendedSummary;
+    const summaryToApply = isCustom ? customContent.trim() : (sug.recommendedSummary || sug.detail);
+    currentResume.summary = summaryToApply;
+    if (elements.resumeSummaryInput) elements.resumeSummaryInput.value = summaryToApply;
     renderPreview();
-    highlightPreviewElement(elements.rpSummaryText);
+    if (elements.rpSummaryText) highlightPreviewElement(elements.rpSummaryText);
     const secTitle = getSectionTitle('summary');
-    showToast(`Updated ${secTitle} with keyword alignment!`, 'success');
+    showToast(`✨ Updated ${secTitle} with tailored keywords!`, 'success');
+
+    // Boost domain keywords in ATS evaluation
+    if (currentAnalysis) {
+      currentAnalysis.domainKeywordsScore = Math.min(98, (currentAnalysis.domainKeywordsScore || 45) + 12);
+      recalcAnalysisScore();
+    }
   }
+
+  // Mark suggestion as applied
+  sug.applied = true;
+
+  // Visual card transition: Tick applied and remove smoothly
+  const cardEl = document.querySelector(`[data-sug-card-id="${sug.id}"]`);
+  if (cardEl) {
+    cardEl.classList.add('is-applied');
+    const impactEl = cardEl.querySelector('.impact-badge');
+    if (impactEl) {
+      impactEl.className = 'impact-badge impact-applied flex-shrink-0';
+      impactEl.innerHTML = '<span class="material-symbols-outlined text-[12px]">check_circle</span> Applied ✓';
+    }
+
+    const editContainer = cardEl.querySelector('.sug-edit-container');
+    if (editContainer) editContainer.style.display = 'none';
+
+    const viewContainer = cardEl.querySelector('.sug-view-container');
+    if (viewContainer) viewContainer.style.display = 'flex';
+
+    const actionRow = cardEl.querySelector('.sug-action-row');
+    if (actionRow) {
+      actionRow.innerHTML = `
+        <span class="text-accent-emerald text-[11px] font-semibold flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">check</span> Applied to Resume (+Score Updated)
+        </span>
+        <button class="text-[11px] text-text-dim hover:text-accent-rose flex items-center gap-0.5 border-0 bg-transparent cursor-pointer" data-dismiss-sug="${sug.id}" title="Remove from list">
+          <span class="material-symbols-outlined text-[13px]">delete</span> Dismiss
+        </button>
+      `;
+      actionRow.querySelector('[data-dismiss-sug]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dismissSuggestionCard(sug.id);
+      });
+    }
+
+    // Auto-fade-out after brief celebration so user sees it tick applied then cleanly removed
+    setTimeout(() => {
+      dismissSuggestionCard(sug.id);
+    }, 1200);
+  } else {
+    // If no DOM element, filter immediately
+    if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
+      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sug.id);
+    }
+  }
+
   check1PageGuardrail();
+  triggerAutoSave();
 }
 
 /**

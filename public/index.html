@@ -199,8 +199,11 @@
         </button>
       </div>
 
-      <!-- Right Navigation & Avatar -->
-      <div class="flex items-center gap-space-md shrink-0">
+      <!-- Right Navigation: Theme Toggle & Avatar -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface flex items-center justify-center border border-border-subtle cursor-pointer transition-colors shadow-sm" id="btn-theme-toggle" title="Toggle Light / Dark Mode">
+          <span class="material-symbols-outlined text-[18px]" id="theme-toggle-icon">light_mode</span>
+        </button>
         <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0 border border-primary/40 shadow-sm" title="User Profile">
           <span class="material-symbols-outlined text-white text-[18px]">person</span>
         </div>
@@ -360,42 +363,42 @@
             </span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
-            <div class="flex flex-col gap-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">Full Name</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-name" type="text" placeholder="John Doe">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-name" type="text" placeholder="John Doe">
             </div>
-            <div class="flex flex-col gap-1 md:col-span-2">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">Professional Title</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-title" type="text" placeholder="Senior AI & Systems Engineer">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-title" type="text" placeholder="Senior AI & Systems Engineer">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">Email</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-email" type="email" placeholder="john@example.com">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-email" type="email" placeholder="john@example.com">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">Phone Number</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-phone" type="text" placeholder="+1 (555) 000-0000">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-phone" type="text" placeholder="+1 (555) 000-0000">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">Location</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-location" type="text" placeholder="San Francisco, CA">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-location" type="text" placeholder="San Francisco, CA">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">LinkedIn URL</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-linkedin" type="text" placeholder="linkedin.com/in/username">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-linkedin" type="text" placeholder="linkedin.com/in/username">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">GitHub URL</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-github" type="text" placeholder="github.com/username">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-github" type="text" placeholder="github.com/username">
             </div>
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 min-w-0">
               <label class="font-label-sm text-label-sm text-text-muted">LeetCode / Codeforces</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-leetcode" type="text" placeholder="leetcode.com/u/username">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-leetcode" type="text" placeholder="leetcode.com/u/username">
             </div>
-            <div class="flex flex-col gap-1 md:col-span-3">
+            <div class="flex flex-col gap-1 min-w-0 sm:col-span-2">
               <label class="font-label-sm text-label-sm text-text-muted">Portfolio / Personal Website</label>
-              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-portfolio" type="text" placeholder="https://yourportfolio.dev">
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0 w-full" id="pi-portfolio" type="text" placeholder="https://yourportfolio.dev">
             </div>
           </div>
         </div>
