@@ -7,13 +7,17 @@
 import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 
 // Application State
-let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit || SAMPLE_RESUMES.fullstack));
+let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.fullstack));
 try {
   const savedUserResume = localStorage.getItem('jobease_user_resume');
   if (savedUserResume) {
-    const parsedResume = JSON.parse(savedUserResume);
-    if (parsedResume && typeof parsedResume === 'object' && parsedResume.personalInfo) {
-      currentResume = parsedResume;
+    if (savedUserResume.includes('Sumit') || savedUserResume.includes('27th.sumit@gmail.com')) {
+      localStorage.removeItem('jobease_user_resume');
+    } else {
+      const parsedResume = JSON.parse(savedUserResume);
+      if (parsedResume && typeof parsedResume === 'object' && parsedResume.personalInfo) {
+        currentResume = parsedResume;
+      }
     }
   }
 } catch (e) {
@@ -73,11 +77,7 @@ export const DEFAULT_SECTION_TITLES = {
 
 // Ensure achievements array is preserved for Honors & Awards section
 if (!Array.isArray(currentResume.achievements)) {
-  if (SAMPLE_RESUMES.sumit?.achievements && currentResume.personalInfo?.name?.includes('Sumit')) {
-    currentResume.achievements = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit.achievements));
-  } else {
-    currentResume.achievements = [];
-  }
+  currentResume.achievements = [];
 }
 
 if (!Array.isArray(currentResume.customSections)) {
@@ -4733,16 +4733,8 @@ function exportResumeJson() {
  * Sample Profile Toggle
  */
 function toggleSampleProfile() {
-  const isSumit = currentResume.personalInfo?.name?.includes('Sumit');
-  const isFullstack = currentResume.personalInfo?.title?.includes('Full Stack');
-  let nextProfile;
-  if (isSumit) {
-    nextProfile = SAMPLE_RESUMES.fullstack;
-  } else if (isFullstack) {
-    nextProfile = SAMPLE_RESUMES.data_ai;
-  } else {
-    nextProfile = SAMPLE_RESUMES.sumit;
-  }
+  const isFullstack = currentResume.personalInfo?.name?.includes('Alex') || currentResume.personalInfo?.title?.includes('Full Stack');
+  let nextProfile = isFullstack ? SAMPLE_RESUMES.data_ai : SAMPLE_RESUMES.fullstack;
   currentResume = JSON.parse(JSON.stringify(nextProfile));
   loadResumeIntoForm(currentResume);
   showToast(`Loaded ${currentResume.personalInfo.name} sample profile!`, 'info');
@@ -4988,7 +4980,7 @@ function generateClientLatex(resume, font, spacingOpt, paperOpt, sectionOrderOpt
   }
 
   const pi = resume.personalInfo || {};
-  const name = escapeClientLatex(pi.name || 'Sumit Chouhan');
+  const name = escapeClientLatex(pi.name || 'Alex Rivera');
   const email = escapeClientLatex(pi.email || '');
   const phone = escapeClientLatex(pi.phone || '');
   const location = escapeClientLatex(pi.location || '');
@@ -5448,9 +5440,14 @@ function loadMasterProfileFromStorage() {
   try {
     const saved = localStorage.getItem('jobease_master_profile');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === 'object') {
-        masterProfile = parsed;
+      if (saved.includes('Sumit') || saved.includes('27th.sumit@gmail.com')) {
+        localStorage.removeItem('jobease_master_profile');
+        masterProfile = null;
+      } else {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          masterProfile = parsed;
+        }
       }
     }
   } catch (e) {

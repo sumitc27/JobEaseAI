@@ -59,7 +59,7 @@ export function generateLatexResume(resumeData, options = {}) {
   const getSecTitle = (id, fallback) => secTitles[id] || fallback;
 
   const pi = resumeData.personalInfo || {};
-  const name = escapeLatex(pi.name || 'Sumit Chouhan');
+  const name = escapeLatex(pi.name || 'Alex Rivera');
   const email = escapeLatex(pi.email || '');
   const phone = escapeLatex(pi.phone || '');
   const location = escapeLatex(pi.location || '');

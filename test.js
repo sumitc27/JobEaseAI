@@ -59,15 +59,15 @@ assert(parsed.skills.technical.length > 0, `Technical skills extracted: ${parsed
 assert(parsed.experience.length > 0, `Experience records extracted: ${parsed.experience.length} found`);
 assert(parsed.education.length > 0, `Education extracted: ${parsed.education.length} found`);
 
-// 2b. Test Sumit Chouhan's LaTeX Resume Format
-console.log('\nTest 2b: LaTeX Resume Format Parsing (Sumit Chouhan)');
-const sumitRawText = `Sumit Chouhan
-+91-7400603978 | 27th.sumit@gmail.com
+// 2b. Test LaTeX Resume Format Parsing (Sample Profile)
+console.log('\nTest 2b: LaTeX Resume Format Parsing (Sample Profile)');
+const sampleRawText = `Alex Rivera
++1 (555) 234-5678 | alex.rivera@example.com
 LinkedIn | Github | Leetcode | Website
 
 EDUCATION
-Indian Institute of Information Technology, Design and Manufacturing Jabalpur, India
-Bachelor of Technology - Mechanical Engineering Aug 2023 – May 2027
+University of California, Berkeley Berkeley, CA
+Bachelor of Science - Computer Science Aug 2016 – May 2020
 • Courses: Data Structures and Algorithms, Cloud Computing, Computer Networks, AI/ML Fundamentals
 
 SKILLS
@@ -77,37 +77,37 @@ ML/DL & CV: PyTorch, TensorFlow, scikit-learn, OpenCV, YOLO, Physics-Informed Ne
 Cloud, DevOps & MLOps: AWS, Azure, Git, Docker, CI/CD, FastAPI, AI Observability
 
 EXPERIENCE
-Insys India Solutions - AI/ML Developer Intern Hybrid
-React, Python, FastAPI, YOLO Jun 2026 - Aug 2026
+Vanguard Cloud Technologies - Senior Software Engineer Hybrid
+React, Python, FastAPI, YOLO Jun 2022 - Present
 • Built an end-to-end computer vision pipeline for real-time Wagon Bulge Detection in adverse environments, owning the full
 ML lifecycle from data curation to production deployment.
 • Engineered a real-time React dashboard to monitor 100+ IoT sensors, optimizing distributed message broadcasting to
 drastically reduce FastAPI backend load and latency.
 • Implemented an OCR pipeline to extract wagon IDs in real-time.
 
-HypeOn - AI Engineer Intern Remote
-Python, n8n, React, TypeScript, LLM APIs, Docker May 2026 - Jun 2026
+Apex Digital Solutions - Software Engineer Remote
+Python, n8n, React, TypeScript, LLM APIs, Docker May 2020 - Jun 2022
 • Engineered AI-native workflows using n8n and Midjourney.
 • Developed Python data collection pipelines and web scrapers.
 
 PROJECTS
-ContextCraft: RAG Document Intelligence Platform | GitHub | Website
+DevMetrics Engine: Open Source Observability Platform | GitHub | Website
 Python, React, FastAPI, RAG, BM25, LLM Router, Docker
 • Engineered a Retrieval-Augmented Generation (RAG) backend.
 • Built prompt-driven query rewriting and answer generation modules.`;
 
-const sumitParsed = parseResumeText(sumitRawText);
-assert(sumitParsed.personalInfo.name === 'Sumit Chouhan', `Name extracted exactly: ${sumitParsed.personalInfo.name}`);
-assert(sumitParsed.personalInfo.email === '27th.sumit@gmail.com', `Email extracted exactly: ${sumitParsed.personalInfo.email}`);
-assert(sumitParsed.personalInfo.phone.includes('7400603978'), `Phone extracted: ${sumitParsed.personalInfo.phone}`);
-assert(sumitParsed.skills.technical.length > 0, `Technical skills extracted: ${sumitParsed.skills.technical.join(', ')}`);
-assert(sumitParsed.skills.frameworks.length > 0, `Frameworks/AI extracted: ${sumitParsed.skills.frameworks.join(', ')}`);
-assert(sumitParsed.skills.tools.length > 0, `Tools/DevOps extracted: ${sumitParsed.skills.tools.join(', ')}`);
-assert(sumitParsed.experience.length >= 2, `Experience extracted: ${sumitParsed.experience.length} jobs found`);
-assert(sumitParsed.education.length >= 1, `Education extracted: ${sumitParsed.education.length} found`);
-assert(sumitParsed.projects.length >= 1, `Projects extracted: ${sumitParsed.projects.length} found`);
-assert(sumitParsed.experience[0].bullets.length === 3, `Wrapped bullets merged into 3 total bullets: got ${sumitParsed.experience[0].bullets.length}`);
-assert(sumitParsed.experience[0].bullets[0].includes('production deployment'), `Wrapped line successfully extracted into one: "${sumitParsed.experience[0].bullets[0]}"`);
+const sampleParsed = parseResumeText(sampleRawText);
+assert(sampleParsed.personalInfo.name === 'Alex Rivera', `Name extracted exactly: ${sampleParsed.personalInfo.name}`);
+assert(sampleParsed.personalInfo.email === 'alex.rivera@example.com', `Email extracted exactly: ${sampleParsed.personalInfo.email}`);
+assert(sampleParsed.personalInfo.phone.includes('234-5678'), `Phone extracted: ${sampleParsed.personalInfo.phone}`);
+assert(sampleParsed.skills.technical.length > 0, `Technical skills extracted: ${sampleParsed.skills.technical.join(', ')}`);
+assert(sampleParsed.skills.frameworks.length > 0, `Frameworks/AI extracted: ${sampleParsed.skills.frameworks.join(', ')}`);
+assert(sampleParsed.skills.tools.length > 0, `Tools/DevOps extracted: ${sampleParsed.skills.tools.join(', ')}`);
+assert(sampleParsed.experience.length >= 2, `Experience extracted: ${sampleParsed.experience.length} jobs found`);
+assert(sampleParsed.education.length >= 1, `Education extracted: ${sampleParsed.education.length} found`);
+assert(sampleParsed.projects.length >= 1, `Projects extracted: ${sampleParsed.projects.length} found`);
+assert(sampleParsed.experience[0].bullets.length === 3, `Wrapped bullets merged into 3 total bullets: got ${sampleParsed.experience[0].bullets.length}`);
+assert(sampleParsed.experience[0].bullets[0].includes('production deployment'), `Wrapped line successfully extracted into one: "${sampleParsed.experience[0].bullets[0]}"`);
 
 // 3. Test AI Heuristic Match Engine
 console.log('\nTest 3: AI Heuristic Match Engine & Suggestion Generation');
@@ -234,38 +234,38 @@ assert(certPubLatex.includes('Autonomous Aerial Robotics System'), 'Publication 
 console.log('\nTest 9: Header Location & Experience Subheading in LaTeX Output');
 const accuracyLatex = generateLatexResume({
   personalInfo: {
-    name: 'Sumit Chouhan',
-    email: '27th.sumit@gmail.com',
-    phone: '+91-7400603978',
-    location: 'Jabalpur, India',
-    linkedin: 'https://linkedin.com/in/sumitc27',
-    github: 'https://github.com/sumitc27'
+    name: 'Alex Rivera',
+    email: 'alex.rivera@example.com',
+    phone: '+1 (555) 234-5678',
+    location: 'San Francisco, CA',
+    linkedin: 'https://linkedin.com/in/alex-rivera-dev',
+    github: 'https://github.com/alexrivera-code'
   },
   experience: [
     {
-      company: 'Insys India Solutions',
-      role: 'AI/ML Developer Intern',
-      technologies: 'React, Python, FastAPI, YOLO',
-      location: 'Hybrid',
-      startDate: 'Jun 2026',
-      endDate: 'Aug 2026',
-      bullets: ['Built computer vision pipeline']
+      company: 'Vanguard Cloud Technologies',
+      role: 'Senior Software Engineer',
+      technologies: 'React, TypeScript, Node.js',
+      location: 'San Francisco, CA',
+      startDate: 'Jun 2022',
+      endDate: 'Present',
+      bullets: ['Built microservices platform']
     }
   ],
   projects: [
     {
-      name: 'ContextCraft',
-      description: 'RAG Document Intelligence Platform',
-      githubUrl: 'https://github.com/sumitc27/ContextCraft',
-      roleOrTech: 'Python, React, FastAPI',
-      bullets: ['Built RAG pipeline']
+      name: 'DevMetrics Engine',
+      description: 'Observability Platform',
+      githubUrl: 'https://github.com/alexrivera-code/devmetrics',
+      roleOrTech: 'React, Node.js, GraphQL',
+      bullets: ['Built metrics pipeline']
     }
   ]
 });
 
-assert(accuracyLatex.includes('Jabalpur, India'), 'Location is included in LaTeX header row 1 alongside phone and email');
-assert(accuracyLatex.includes('Insys India Solutions - AI/ML Developer Intern'), 'Both Company and Role are preserved in experience subheading');
-assert(accuracyLatex.includes('ContextCraft') && accuracyLatex.includes('RAG Document Intelligence Platform'), 'Project name and description are preserved in project subheading');
+assert(accuracyLatex.includes('San Francisco, CA'), 'Location is included in LaTeX header row 1 alongside phone and email');
+assert(accuracyLatex.includes('Vanguard Cloud Technologies - Senior Software Engineer'), 'Both Company and Role are preserved in experience subheading');
+assert(accuracyLatex.includes('DevMetrics Engine') && accuracyLatex.includes('Observability Platform'), 'Project name and description are preserved in project subheading');
 
 // 10. Test Dynamic Section Renaming in LaTeX Generator
 console.log('\nTest 10: Dynamic Section Renaming in LaTeX');
