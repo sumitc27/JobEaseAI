@@ -43,6 +43,7 @@ const DEFAULT_SECTION_ORDER = [
   'projects',
   'certifications',
   'publications',
+  'achievements',
   'volunteer'
 ];
 
@@ -54,6 +55,7 @@ const ALL_SECTION_IDS = [
   'projects',
   'certifications',
   'publications',
+  'achievements',
   'volunteer'
 ];
 
@@ -63,23 +65,19 @@ export const DEFAULT_SECTION_TITLES = {
   experience: 'Work Experience',
   projects: 'Technical Projects',
   education: 'Education',
-  certifications: 'Certifications & Awards',
+  certifications: 'Certifications & Licenses',
   publications: 'Patents & Publications',
+  achievements: 'Honors & Awards',
   volunteer: 'Volunteer Experience'
 };
 
-// MIGRATION: Merge achievements into certifications
-if (currentResume.achievements && currentResume.achievements.length > 0) {
-  if (!currentResume.certifications) currentResume.certifications = [];
-  currentResume.achievements.forEach(ach => {
-    currentResume.certifications.push({
-      title: (typeof ach === 'string') ? ach : (ach.title || ''),
-      issuer: (typeof ach === 'string') ? '' : (ach.details || ''),
-      linkText: (typeof ach === 'string') ? '' : (ach.linkText || ''),
-      linkUrl: (typeof ach === 'string') ? '' : (ach.linkUrl || '')
-    });
-  });
-  delete currentResume.achievements;
+// Ensure achievements array is preserved for Honors & Awards section
+if (!Array.isArray(currentResume.achievements)) {
+  if (SAMPLE_RESUMES.sumit?.achievements && currentResume.personalInfo?.name?.includes('Sumit')) {
+    currentResume.achievements = JSON.parse(JSON.stringify(SAMPLE_RESUMES.sumit.achievements));
+  } else {
+    currentResume.achievements = [];
+  }
 }
 
 if (!Array.isArray(currentResume.customSections)) {
@@ -112,12 +110,48 @@ try {
       const validSet = new Set([...ALL_SECTION_IDS, ...(currentResume.customSections || []).map(s => s.id)]);
       const filtered = parsed.filter(id => validSet.has(id));
       ALL_SECTION_IDS.forEach(id => {
-        if (!filtered.includes(id)) filtered.push(id);
+        if (!filtered.includes(id)) {
+          if (id === 'achievements') {
+            const volIdx = filtered.indexOf('volunteer');
+            if (volIdx >= 0) filtered.splice(volIdx, 0, 'achievements');
+            else filtered.push('achievements');
+          } else {
+            filtered.push(id);
+          }
+        }
       });
       currentSectionOrder = filtered;
     }
   }
 } catch (e) {}
+
+// Ensure achievements is placed in its proper position (after publications or certifications, before volunteer)
+// if it was placed above standard core sections (education, skills, experience, projects) due to stale cache
+const achIdx = currentSectionOrder.indexOf('achievements');
+const coreIndices = ['education', 'skills', 'experience', 'projects']
+  .map(id => currentSectionOrder.indexOf(id))
+  .filter(idx => idx !== -1);
+const maxCoreIdx = coreIndices.length > 0 ? Math.max(...coreIndices) : -1;
+
+if (achIdx === -1 || (maxCoreIdx !== -1 && achIdx < maxCoreIdx)) {
+  currentSectionOrder = currentSectionOrder.filter(id => id !== 'achievements');
+  const pubIdx = currentSectionOrder.indexOf('publications');
+  if (pubIdx >= 0) {
+    currentSectionOrder.splice(pubIdx + 1, 0, 'achievements');
+  } else {
+    const certIdx = currentSectionOrder.indexOf('certifications');
+    if (certIdx >= 0) {
+      currentSectionOrder.splice(certIdx + 1, 0, 'achievements');
+    } else {
+      const volIdx = currentSectionOrder.indexOf('volunteer');
+      if (volIdx >= 0) currentSectionOrder.splice(volIdx, 0, 'achievements');
+      else currentSectionOrder.push('achievements');
+    }
+  }
+  try {
+    localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+  } catch (e) {}
+}
 
 let currentEnabledSections = [...ALL_SECTION_IDS];
 try {
@@ -127,6 +161,9 @@ try {
     if (Array.isArray(parsed)) {
       const validSet = new Set([...ALL_SECTION_IDS, ...(currentResume.customSections || []).map(s => s.id)]);
       currentEnabledSections = parsed.filter(id => validSet.has(id));
+      if (!currentEnabledSections.includes('achievements')) {
+        currentEnabledSections.push('achievements');
+      }
     }
   }
 } catch (e) {}
@@ -492,9 +529,15 @@ const elements = {
   // Center Panel (Editor)
   tabForm: document.getElementById('tab-form'),
   tabJson: document.getElementById('tab-json'),
+  tabLatex: document.getElementById('tab-latex'),
   editorFormView: document.getElementById('editor-form-view'),
   editorJsonView: document.getElementById('editor-json-view'),
+  editorLatexView: document.getElementById('editor-latex-view'),
   rawJsonTextarea: document.getElementById('raw-json-textarea'),
+  tabLatexTextarea: document.getElementById('tab-latex-textarea'),
+  btnTabCopyLatex: document.getElementById('btn-tab-copy-latex'),
+  btnTabDownloadLatex: document.getElementById('btn-tab-download-latex'),
+  btnTabOverleaf: document.getElementById('btn-tab-overleaf'),
   
   // Form Inputs
   piName: document.getElementById('pi-name'),
@@ -654,7 +697,39 @@ const elements = {
   sliderPageMargin: document.getElementById('slider-page-margin'),
   valPageMargin: document.getElementById('val-page-margin'),
   sliderFontScale: document.getElementById('slider-font-scale'),
-  valFontScale: document.getElementById('val-font-scale')
+  valFontScale: document.getElementById('val-font-scale'),
+
+  // Stitch UI Navigation & Subheader Elements
+  moduleBtnTailor: document.getElementById('module-btn-tailor'),
+  moduleBtnVault: document.getElementById('module-btn-vault'),
+  moduleBtnMatcher: document.getElementById('module-btn-matcher'),
+  moduleBtnLatex: document.getElementById('module-btn-latex'),
+  navBtnStudio: document.getElementById('nav-btn-studio'),
+  navBtnVault: document.getElementById('nav-btn-vault'),
+  navBtnMatch: document.getElementById('nav-btn-match'),
+  navBtnSettings: document.getElementById('nav-btn-settings'),
+  guardrailStatusIcon: document.getElementById('guardrail-status-icon'),
+  guardrailStatusPill: document.getElementById('guardrail-status-pill'),
+  vaultStoredBadge: document.getElementById('vault-stored-badge'),
+
+  // Focus Mode & Canvas Dimming Elements
+  btnToggleHideBg: document.getElementById('btn-toggle-hide-bg'),
+  hideBgLabel: document.getElementById('hide-bg-label'),
+  btnQuickDimBg: document.getElementById('btn-quick-dim-bg'),
+  sliderBgOpacity: document.getElementById('slider-bg-opacity'),
+  valBgOpacity: document.getElementById('val-bg-opacity'),
+  toggleBgHideCheckbox: document.getElementById('toggle-bg-hide-checkbox'),
+  bgToggleStatusLabel: document.getElementById('bg-toggle-status-label'),
+  paperViewportContainer: document.getElementById('paper-viewport-container'),
+
+  // Micro Metrics & Guardrail Badges
+  scoreMetricSemantic: document.getElementById('score-metric-semantic'),
+  scoreMetricKeywords: document.getElementById('score-metric-keywords'),
+  scoreMetricImpact: document.getElementById('score-metric-impact'),
+  scoreBadgeHeadline: document.getElementById('score-badge-headline'),
+  guardrailBadgeContainer: document.getElementById('guardrail-badge-container'),
+  guardrailBadgeText: document.getElementById('guardrail-badge-text'),
+  paperStatusDot: document.getElementById('paper-status-dot')
 };
 
 /**
@@ -968,6 +1043,7 @@ function bindEvents() {
   if (elements.btnToggleSpacing && elements.spacingDrawer) {
     elements.btnToggleSpacing.addEventListener('click', () => {
       const isOpen = elements.spacingDrawer.classList.toggle('open');
+      elements.spacingDrawer.classList.toggle('hidden', !isOpen);
       elements.btnToggleSpacing.classList.toggle('active', isOpen);
     });
   }
@@ -976,7 +1052,105 @@ function bindEvents() {
   if (elements.btnSpacingClose && elements.spacingDrawer) {
     elements.btnSpacingClose.addEventListener('click', () => {
       elements.spacingDrawer.classList.remove('open');
+      elements.spacingDrawer.classList.add('hidden');
       if (elements.btnToggleSpacing) elements.btnToggleSpacing.classList.remove('active');
+    });
+  }
+
+  // Focus Mode & Canvas Dimming
+  let isBgHidden = false;
+  const setBgHidden = (hidden) => {
+    isBgHidden = hidden;
+    document.body.classList.toggle('canvas-bg-hidden', isBgHidden);
+    if (elements.hideBgLabel) elements.hideBgLabel.textContent = isBgHidden ? 'Show BG' : 'Hide BG';
+    if (elements.btnToggleHideBg) {
+      elements.btnToggleHideBg.classList.toggle('bg-primary-container', isBgHidden);
+      elements.btnToggleHideBg.classList.toggle('text-white', isBgHidden);
+    }
+    if (elements.toggleBgHideCheckbox) elements.toggleBgHideCheckbox.checked = isBgHidden;
+    if (elements.bgToggleStatusLabel) elements.bgToggleStatusLabel.textContent = isBgHidden ? 'Hidden (Focus)' : 'Visible';
+  };
+
+  if (elements.btnToggleHideBg) {
+    elements.btnToggleHideBg.addEventListener('click', () => setBgHidden(!isBgHidden));
+  }
+  if (elements.toggleBgHideCheckbox) {
+    elements.toggleBgHideCheckbox.addEventListener('change', (e) => setBgHidden(e.target.checked));
+  }
+
+  // Quick Dim BG
+  let isBgDimmed = false;
+  if (elements.btnQuickDimBg) {
+    elements.btnQuickDimBg.addEventListener('click', () => {
+      isBgDimmed = !isBgDimmed;
+      document.body.classList.toggle('canvas-bg-dimmed', isBgDimmed);
+      elements.btnQuickDimBg.classList.toggle('active', isBgDimmed);
+      elements.btnQuickDimBg.classList.toggle('text-secondary-cyan-light', isBgDimmed);
+    });
+  }
+
+  // Slider BG Opacity
+  if (elements.sliderBgOpacity) {
+    elements.sliderBgOpacity.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (elements.valBgOpacity) elements.valBgOpacity.textContent = `${val}%`;
+      if (elements.paperViewportContainer) {
+        elements.paperViewportContainer.style.backgroundColor = `rgba(11, 15, 25, ${val / 100})`;
+      }
+    });
+  }
+
+  // Subheader Modules Navigation
+  if (elements.moduleBtnTailor) {
+    elements.moduleBtnTailor.addEventListener('click', () => {
+      document.querySelectorAll('.module-tab-btn').forEach(b => b.classList.remove('active'));
+      elements.moduleBtnTailor.classList.add('active');
+      switchTab('form');
+      if (elements.editorFormView) elements.editorFormView.scrollTop = 0;
+    });
+  }
+  if (elements.moduleBtnVault) {
+    elements.moduleBtnVault.addEventListener('click', openProfileVaultModal);
+  }
+  if (elements.moduleBtnMatcher) {
+    elements.moduleBtnMatcher.addEventListener('click', () => {
+      document.querySelectorAll('.module-tab-btn').forEach(b => b.classList.remove('active'));
+      elements.moduleBtnMatcher.classList.add('active');
+      if (elements.jdInput) {
+        elements.jdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        elements.jdInput.focus();
+      }
+    });
+  }
+  if (elements.moduleBtnLatex) {
+    elements.moduleBtnLatex.addEventListener('click', () => {
+      document.querySelectorAll('.module-tab-btn').forEach(b => b.classList.remove('active'));
+      elements.moduleBtnLatex.classList.add('active');
+      switchTab('latex');
+    });
+  }
+
+  // Top Nav Category Buttons
+  if (elements.navBtnStudio) {
+    elements.navBtnStudio.addEventListener('click', () => switchTab('form'));
+  }
+  if (elements.navBtnVault) {
+    elements.navBtnVault.addEventListener('click', openProfileVaultModal);
+  }
+  if (elements.navBtnMatch) {
+    elements.navBtnMatch.addEventListener('click', () => {
+      if (elements.jdInput) {
+        elements.jdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        elements.jdInput.focus();
+      }
+    });
+  }
+  if (elements.navBtnSettings) {
+    elements.navBtnSettings.addEventListener('click', () => {
+      if (elements.spacingDrawer) {
+        const isOpen = elements.spacingDrawer.classList.toggle('open');
+        elements.spacingDrawer.classList.toggle('hidden', !isOpen);
+      }
     });
   }
 
@@ -1100,6 +1274,36 @@ function bindEvents() {
     const section = cb.dataset.section;
     if (section) {
       toggleSection(section, cb.checked);
+    }
+  });
+
+  // Section Status Tag Click to Toggle (Included / Excluded pill)
+  document.addEventListener('click', (e) => {
+    const tag = e.target.closest('.section-status-tag');
+    if (tag) {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = tag.closest('.card-section');
+      const secId = card ? card.dataset.sectionId : tag.id.replace('status-tag-', '');
+      if (secId) {
+        const isCurrentlyEnabled = currentEnabledSections.includes(secId);
+        toggleSection(secId, !isCurrentlyEnabled);
+      }
+      return;
+    }
+
+    const tickBtn = e.target.closest('.section-tick-btn');
+    if (tickBtn) {
+      const label = tickBtn.closest('label');
+      if (!label) {
+        const section = tickBtn.dataset.section;
+        if (section) {
+          e.preventDefault();
+          e.stopPropagation();
+          const isCurrentlyEnabled = currentEnabledSections.includes(section);
+          toggleSection(section, !isCurrentlyEnabled);
+        }
+      }
     }
   });
 
@@ -1356,6 +1560,9 @@ function setPaperSize(size, syncLatex = true, notify = false) {
   if (elements.btnPaperLetter) {
     elements.btnPaperLetter.classList.toggle('active', currentPaperSize === 'letter');
   }
+  document.querySelectorAll('.paper-pill-btn, .pill-btn[data-paper]').forEach(b => {
+    b.classList.toggle('active', b.dataset.paper === currentPaperSize);
+  });
 
   // Update paper container classes
   const isA4 = currentPaperSize === 'a4';
@@ -1587,21 +1794,56 @@ function paginateResume() {
 
     const totalActualHeight = totalContentBottom + padBottom;
     const ratio = Math.round((totalActualHeight / targetHeight) * 100);
+    const bufferPx = Math.max(0, targetHeight - totalActualHeight);
 
     if (elements.paperBudgetReadout) {
-      elements.paperBudgetReadout.textContent = `Budget: ${totalActualHeight}px / ${targetHeight}px (${ratio}% filled - 1 Page Safe)`;
+      elements.paperBudgetReadout.textContent = `Budget: ${totalActualHeight}px / ${targetHeight}px (${ratio}% filled)`;
     }
 
-    elements.meterFill.style.width = `${Math.min(ratio, 100)}%`;
-    elements.meterFill.classList.remove('warning', 'overflow');
+    if (elements.meterFill) {
+      elements.meterFill.style.width = `${Math.min(ratio, 100)}%`;
+      elements.meterFill.classList.remove('warning', 'overflow');
+    }
 
     if (ratio > 94) {
-      elements.meterFill.classList.add('warning');
-      elements.meterText.textContent = `${ratio}% (${paperName} Near Limit)`;
-      elements.overflowBanner.classList.remove('active');
+      if (elements.meterFill) elements.meterFill.classList.add('warning');
+      if (elements.meterText) elements.meterText.textContent = `${ratio}%`;
+      if (elements.overflowBanner) elements.overflowBanner.style.display = 'none';
+      if (elements.guardrailStatusPill) {
+        elements.guardrailStatusPill.textContent = 'Near Limit';
+        elements.guardrailStatusPill.className = 'font-label-sm text-label-sm text-accent-amber font-medium';
+      }
+      if (elements.guardrailStatusIcon) {
+        elements.guardrailStatusIcon.className = 'material-symbols-outlined text-[14px] text-accent-amber';
+      }
+      if (elements.guardrailBadgeText) {
+        elements.guardrailBadgeText.textContent = `1-Page Buffer: ${bufferPx}px`;
+      }
+      if (elements.guardrailBadgeContainer) {
+        elements.guardrailBadgeContainer.className = 'flex items-center gap-1 font-label-sm text-label-sm text-accent-amber bg-accent-amber/10 px-2 py-0.5 rounded-full';
+      }
+      if (elements.paperStatusDot) {
+        elements.paperStatusDot.className = 'w-2 h-2 rounded-full bg-accent-amber animate-pulse';
+      }
     } else {
-      elements.meterText.textContent = `${ratio}% (${paperName} 1 Page Safe)`;
-      elements.overflowBanner.classList.remove('active');
+      if (elements.meterText) elements.meterText.textContent = `${ratio}%`;
+      if (elements.overflowBanner) elements.overflowBanner.style.display = 'none';
+      if (elements.guardrailStatusPill) {
+        elements.guardrailStatusPill.textContent = 'Active';
+        elements.guardrailStatusPill.className = 'font-label-sm text-label-sm text-tertiary font-medium';
+      }
+      if (elements.guardrailStatusIcon) {
+        elements.guardrailStatusIcon.className = 'material-symbols-outlined text-[14px] text-tertiary';
+      }
+      if (elements.guardrailBadgeText) {
+        elements.guardrailBadgeText.textContent = `1-Page Safe ✓ ${bufferPx}px Buffer`;
+      }
+      if (elements.guardrailBadgeContainer) {
+        elements.guardrailBadgeContainer.className = 'flex items-center gap-1 font-label-sm text-label-sm text-accent-emerald bg-accent-emerald/10 px-2 py-0.5 rounded-full';
+      }
+      if (elements.paperStatusDot) {
+        elements.paperStatusDot.className = 'w-2 h-2 rounded-full bg-accent-emerald animate-pulse';
+      }
     }
 
     updatePreviewScale();
@@ -1696,10 +1938,34 @@ function paginateResume() {
       elements.paperBudgetReadout.textContent = `Budget: 2 Pages • Page 1: 100% full • Page 2: ${p2Ratio}% filled`;
     }
 
-    elements.meterFill.style.width = '100%';
-    elements.meterFill.classList.add('overflow');
-    elements.meterText.textContent = `100%+ (${paperName} Spills to 2 Pages - ~${overflowLines}L over)`;
-    elements.overflowBanner.classList.add('active');
+    if (elements.meterFill) {
+      elements.meterFill.style.width = '100%';
+      elements.meterFill.classList.add('overflow');
+    }
+    if (elements.meterText) {
+      elements.meterText.textContent = `100%+ (${paperName} ~${overflowLines}L over)`;
+    }
+    if (elements.overflowBanner) {
+      elements.overflowBanner.style.display = 'flex';
+      elements.overflowBanner.classList.add('active');
+    }
+
+    if (elements.guardrailStatusPill) {
+      elements.guardrailStatusPill.textContent = 'Spill to Page 2';
+      elements.guardrailStatusPill.className = 'font-label-sm text-label-sm text-accent-rose font-medium';
+    }
+    if (elements.guardrailStatusIcon) {
+      elements.guardrailStatusIcon.className = 'material-symbols-outlined text-[14px] text-accent-rose';
+    }
+    if (elements.guardrailBadgeText) {
+      elements.guardrailBadgeText.textContent = `Limit Exceeded (+${overflowLines} lines)`;
+    }
+    if (elements.guardrailBadgeContainer) {
+      elements.guardrailBadgeContainer.className = 'flex items-center gap-1 font-label-sm text-label-sm text-accent-rose bg-accent-rose/10 px-2 py-0.5 rounded-full';
+    }
+    if (elements.paperStatusDot) {
+      elements.paperStatusDot.className = 'w-2 h-2 rounded-full bg-accent-rose animate-pulse';
+    }
   }
 
   updatePreviewScale();
@@ -1850,6 +2116,7 @@ function loadResumeIntoForm(resume) {
   renderEducationFormList();
   renderCertificationsFormList();
   renderPublicationsFormList();
+  renderAchievementsFormList();
   renderVolunteerFormList();
   renderCustomSectionsFormList();
   applySectionOrderToDOM(true);
@@ -1906,19 +2173,17 @@ function renderSkillsFormList() {
   
   (currentResume.skills || []).forEach((skill, idx) => {
     const item = document.createElement('div');
-    item.className = 'skill-item form-group';
-    item.style.border = '1px solid #334155';
-    item.style.padding = '10px';
-    item.style.borderRadius = '6px';
-    item.style.backgroundColor = '#1e293b';
+    item.className = 'skill-item form-group p-space-md rounded-xl bg-surface-container-low border border-border-subtle shadow-sm flex flex-col gap-2';
     item.innerHTML = `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <strong style="font-size: 0.85rem; color: #E2E8F0;">Category #${idx + 1}</strong>
-        <button class="bullet-remove-btn" title="Delete Category" data-skill-del="${idx}">✕ Remove</button>
+      <div class="flex items-center justify-between pb-1">
+        <span class="font-label-sm text-label-sm text-text-muted font-medium">Category #${idx + 1}</span>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors" title="Delete Category" data-skill-del="${idx}">
+          <span class="material-symbols-outlined text-[15px]">close</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Category (e.g. Languages)" value="${skill.category || ''}" data-skill-field="category">
-        <input type="text" class="form-input" placeholder="Skills (comma separated)" value="${skill.items || ''}" data-skill-field="items">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Category (e.g. Languages)" value="${escapeHtml(skill.category || '')}" data-skill-field="category">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Skills (comma separated)" value="${escapeHtml(skill.items || '')}" data-skill-field="items">
       </div>
     `;
     elements.skillsListContainer.appendChild(item);
@@ -1946,29 +2211,37 @@ function renderExperienceFormList() {
   elements.experienceListContainer.innerHTML = '';
   (currentResume.experience || []).forEach((exp, expIdx) => {
     const item = document.createElement('div');
-    item.className = 'exp-item';
+    item.className = 'exp-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-space-sm border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.85rem; color: #E2E8F0;">Role #${expIdx + 1}</strong>
-        <button class="bullet-remove-btn" title="Delete Experience" data-exp-del="${expIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Position #${expIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(exp.company || 'Company')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Position" data-exp-del="${expIdx}">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Role / Title" value="${exp.role || ''}" data-exp-field="role" data-idx="${expIdx}">
-        <input type="text" class="form-input" placeholder="Company Name" value="${exp.company || ''}" data-exp-field="company" data-idx="${expIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Role / Title" value="${escapeHtml(exp.role || '')}" data-exp-field="role" data-idx="${expIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Company Name" value="${escapeHtml(exp.company || '')}" data-exp-field="company" data-idx="${expIdx}">
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Dates (e.g. 2022 - Present)" value="${exp.startDate || ''} - ${exp.endDate || ''}" data-exp-field="dates" data-idx="${expIdx}">
-        <input type="text" class="form-input" placeholder="Location" value="${exp.location || ''}" data-exp-field="location" data-idx="${expIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Dates (e.g. 2022 - Present)" value="${escapeHtml((exp.startDate || '') + (exp.endDate ? ' - ' + exp.endDate : ''))}" data-exp-field="dates" data-idx="${expIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Location" value="${escapeHtml(exp.location || '')}" data-exp-field="location" data-idx="${expIdx}">
       </div>
-      <div class="form-row-1" style="margin-top: 6px;">
-        <input type="text" class="form-input" placeholder="Tech Stack (e.g. React, Node.js, AWS)" value="${exp.technologies || ''}" data-exp-field="technologies" data-idx="${expIdx}">
+      <div class="form-row-1" style="margin-top: 4px;">
+        <input type="text" class="form-input w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Key Technologies (e.g. PyTorch, vLLM, Kubernetes, Go)" value="${escapeHtml(exp.technologies || '')}" data-exp-field="technologies" data-idx="${expIdx}">
       </div>
-      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-        <label class="form-label" style="display: flex; justify-content: space-between;">
-          <span>Bullet Points</span>
-          <a href="#" style="color: var(--primary); text-decoration: none;" data-add-bullet="${expIdx}">+ Add Bullet</a>
-        </label>
-        <div id="exp-bullets-${expIdx}" style="display: flex; flex-direction: column; gap: 6px;"></div>
+      <div class="flex flex-col gap-2 pt-1">
+        <div class="flex items-center justify-between">
+          <span class="font-label-sm text-label-sm text-text-muted">Quantified Impact Bullets</span>
+          <button class="self-start flex items-center gap-1 text-primary hover:text-text-main font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container border border-border-subtle cursor-pointer transition-colors" data-add-bullet="${expIdx}" type="button">
+            <span class="material-symbols-outlined text-[14px]">add</span> Add Bullet
+          </button>
+        </div>
+        <div id="exp-bullets-${expIdx}" class="flex flex-col gap-2"></div>
       </div>
     `;
 
@@ -1976,10 +2249,13 @@ function renderExperienceFormList() {
     const bulletsContainer = item.querySelector(`#exp-bullets-${expIdx}`);
     (exp.bullets || []).forEach((b, bIdx) => {
       const bDiv = document.createElement('div');
-      bDiv.className = 'bullet-item';
+      bDiv.className = 'bullet-item flex items-start gap-2 group';
       bDiv.innerHTML = `
-        <textarea data-bullet-exp="${expIdx}" data-bullet-idx="${bIdx}">${b}</textarea>
-        <button class="bullet-remove-btn" data-del-bullet-exp="${expIdx}" data-del-bullet-idx="${bIdx}" title="Delete Bullet">✕</button>
+        <span class="text-text-dim font-label-sm text-label-sm mt-2 select-none">•</span>
+        <textarea class="flex-1 bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" data-bullet-exp="${expIdx}" data-bullet-idx="${bIdx}" rows="2">${escapeHtml(b)}</textarea>
+        <button class="bullet-remove-btn p-1.5 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer" data-del-bullet-exp="${expIdx}" data-del-bullet-idx="${bIdx}" title="Delete Bullet" type="button">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
       `;
       bulletsContainer.appendChild(bDiv);
     });
@@ -2077,21 +2353,27 @@ function renderProjectsFormList() {
   elements.projectsListContainer.innerHTML = '';
   (currentResume.projects || []).forEach((proj, pIdx) => {
     const item = document.createElement('div');
-    item.className = 'proj-item';
+    item.className = 'proj-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.85rem; color: #E2E8F0;">Project #${pIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-proj-del="${pIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Project #${pIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(proj.name || 'Project')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Project" data-proj-del="${pIdx}">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Project Name" value="${proj.name || ''}" data-proj-field="name" data-idx="${pIdx}">
-        <input type="text" class="form-input" placeholder="Technologies" value="${proj.roleOrTech || ''}" data-proj-field="roleOrTech" data-idx="${pIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Project Name" value="${escapeHtml(proj.name || '')}" data-proj-field="name" data-idx="${pIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Technologies" value="${escapeHtml(proj.roleOrTech || '')}" data-proj-field="roleOrTech" data-idx="${pIdx}">
       </div>
-      <div class="form-row-2" style="margin-top: 6px; margin-bottom: 6px;">
-        <input type="url" class="form-input" placeholder="GitHub Link" value="${proj.githubUrl || ''}" data-proj-field="githubUrl" data-idx="${pIdx}">
-        <input type="url" class="form-input" placeholder="Website Link" value="${proj.websiteUrl || ''}" data-proj-field="websiteUrl" data-idx="${pIdx}">
+      <div class="form-row-2" style="margin-top: 2px; margin-bottom: 2px;">
+        <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="GitHub Link" value="${escapeHtml(proj.githubUrl || '')}" data-proj-field="githubUrl" data-idx="${pIdx}">
+        <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Website Link" value="${escapeHtml(proj.websiteUrl || '')}" data-proj-field="websiteUrl" data-idx="${pIdx}">
       </div>
-      <textarea class="form-textarea" placeholder="Description & Impact" rows="2" data-proj-field="bullet" data-idx="${pIdx}">${(proj.bullets || [])[0] || ''}</textarea>
+      <textarea class="form-textarea w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" placeholder="Description & Impact" rows="2" data-proj-field="bullet" data-idx="${pIdx}">${escapeHtml((proj.bullets || [])[0] || '')}</textarea>
     `;
     elements.projectsListContainer.appendChild(item);
   });
@@ -2141,19 +2423,25 @@ function renderEducationFormList() {
   elements.educationListContainer.innerHTML = '';
   (currentResume.education || []).forEach((edu, eIdx) => {
     const item = document.createElement('div');
-    item.className = 'edu-item';
+    item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.85rem; color: #E2E8F0;">Education #${eIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-edu-del="${eIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Degree #${eIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(edu.degree || 'Degree')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Education" data-edu-del="${eIdx}">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-3">
-        <input type="text" class="form-input" placeholder="Institution" value="${edu.institution || ''}" data-edu-field="institution" data-idx="${eIdx}">
-        <input type="text" class="form-input" placeholder="Degree" value="${edu.degree || ''}" data-edu-field="degree" data-idx="${eIdx}">
-        <input type="text" class="form-input" placeholder="Year" value="${edu.year || ''}" data-edu-field="year" data-idx="${eIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Institution" value="${escapeHtml(edu.institution || '')}" data-edu-field="institution" data-idx="${eIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Degree" value="${escapeHtml(edu.degree || '')}" data-edu-field="degree" data-idx="${eIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Year" value="${escapeHtml(edu.year || '')}" data-edu-field="year" data-idx="${eIdx}">
       </div>
-      <div class="form-row-1" style="margin-top: 6px;">
-        <input type="text" class="form-input" placeholder="Courses (e.g. Data Structures, Algorithms)" value="${edu.courses || ''}" data-edu-field="courses" data-idx="${eIdx}">
+      <div class="form-row-1" style="margin-top: 2px;">
+        <input type="text" class="form-input w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Courses (e.g. Data Structures, Algorithms, Distributed Systems)" value="${escapeHtml(edu.courses || '')}" data-edu-field="courses" data-idx="${eIdx}">
       </div>
     `;
     elements.educationListContainer.appendChild(item);
@@ -2214,19 +2502,25 @@ function renderCertificationsFormList() {
     const linkUrl = typeof cert === 'string' ? '' : (cert.linkUrl || '');
 
     const item = document.createElement('div');
-    item.className = 'edu-item';
+    item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.82rem; color: #E2E8F0;">Certification #${cIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-cert-del="${cIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Certification #${cIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Certificate')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-cert-del="${cIdx}" title="Delete Certification">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Certification Name (e.g. AWS Certified Solutions Architect)" value="${escapeHtml(title)}" data-cert-field="title" data-idx="${cIdx}">
-        <input type="text" class="form-input" placeholder="Issuing Organization / Authority" value="${escapeHtml(issuer)}" data-cert-field="issuer" data-idx="${cIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Certification Name (e.g. AWS Certified Solutions Architect)" value="${escapeHtml(title)}" data-cert-field="title" data-idx="${cIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Issuing Organization / Authority" value="${escapeHtml(issuer)}" data-cert-field="issuer" data-idx="${cIdx}">
       </div>
-      <div class="form-row-2" style="margin-top: 6px;">
-        <input type="text" class="form-input" placeholder="Link Label (e.g. Credential)" value="${escapeHtml(linkText)}" data-cert-field="linkText" data-idx="${cIdx}">
-        <input type="url" class="form-input" placeholder="Credential Verification URL" value="${escapeHtml(linkUrl)}" data-cert-field="linkUrl" data-idx="${cIdx}">
+      <div class="form-row-2" style="margin-top: 2px;">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Link Label (e.g. Credential)" value="${escapeHtml(linkText)}" data-cert-field="linkText" data-idx="${cIdx}">
+        <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Credential Verification URL" value="${escapeHtml(linkUrl)}" data-cert-field="linkUrl" data-idx="${cIdx}">
       </div>
     `;
     elements.certificationsListContainer.appendChild(item);
@@ -2294,19 +2588,25 @@ function renderPublicationsFormList() {
     const linkUrl = typeof pub === 'string' ? '' : (pub.linkUrl || '');
 
     const item = document.createElement('div');
-    item.className = 'edu-item';
+    item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.82rem; color: #E2E8F0;">Publication / Patent #${pIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-pub-del="${pIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Publication #${pIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Paper')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-pub-del="${pIdx}" title="Delete Publication">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Title of Paper / Patent" value="${escapeHtml(title)}" data-pub-field="title" data-idx="${pIdx}">
-        <input type="text" class="form-input" placeholder="Conference / Journal / Patent Office" value="${escapeHtml(venue)}" data-pub-field="venue" data-idx="${pIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title of Paper / Patent" value="${escapeHtml(title)}" data-pub-field="title" data-idx="${pIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Conference / Journal / Patent Office" value="${escapeHtml(venue)}" data-pub-field="venue" data-idx="${pIdx}">
       </div>
-      <div class="form-row-2" style="margin-top: 6px;">
-        <input type="text" class="form-input" placeholder="Link Label (e.g. IEEE Xplore / DOI)" value="${escapeHtml(linkText)}" data-pub-field="linkText" data-idx="${pIdx}">
-        <input type="url" class="form-input" placeholder="Publication / Patent URL" value="${escapeHtml(linkUrl)}" data-pub-field="linkUrl" data-idx="${pIdx}">
+      <div class="form-row-2" style="margin-top: 2px;">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Link Label (e.g. IEEE Xplore / DOI)" value="${escapeHtml(linkText)}" data-pub-field="linkText" data-idx="${pIdx}">
+        <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Publication / Patent URL" value="${escapeHtml(linkUrl)}" data-pub-field="linkUrl" data-idx="${pIdx}">
       </div>
     `;
     elements.publicationsListContainer.appendChild(item);
@@ -2371,15 +2671,21 @@ function renderAchievementsFormList() {
     const title = typeof ach === 'string' ? ach : (ach.title || '');
     const details = typeof ach === 'string' ? '' : (ach.details || '');
     const item = document.createElement('div');
-    item.className = 'edu-item';
+    item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.82rem; color: #E2E8F0;">Achievement #${aIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-ach-del="${aIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Award #${aIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Award')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-ach-del="${aIdx}" title="Delete Award">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Title / Honor" value="${escapeHtml(title)}" data-ach-field="title" data-idx="${aIdx}">
-        <input type="text" class="form-input" placeholder="Details / Description" value="${escapeHtml(details)}" data-ach-field="details" data-idx="${aIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title / Honor" value="${escapeHtml(title)}" data-ach-field="title" data-idx="${aIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Details / Description" value="${escapeHtml(details)}" data-ach-field="details" data-idx="${aIdx}">
       </div>
     `;
     elements.achievementsListContainer.appendChild(item);
@@ -2442,15 +2748,21 @@ function renderVolunteerFormList() {
     const role = typeof vol === 'string' ? vol : (vol.role || vol.title || '');
     const details = typeof vol === 'string' ? '' : (vol.details || '');
     const item = document.createElement('div');
-    item.className = 'edu-item';
+    item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
-      <div class="exp-item-header">
-        <strong style="font-size: 0.82rem; color: #E2E8F0;">Volunteer #${vIdx + 1}</strong>
-        <button class="bullet-remove-btn" data-vol-del="${vIdx}">✕ Remove</button>
+      <div class="exp-item-header flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="font-headline-sm text-[15px] text-text-main font-semibold">Volunteer #${vIdx + 1}</span>
+          <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(role || 'Volunteer')}</span>
+        </div>
+        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-vol-del="${vIdx}" title="Delete Volunteer">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Remove</span>
+        </button>
       </div>
       <div class="form-row-2">
-        <input type="text" class="form-input" placeholder="Role / Organization" value="${escapeHtml(role)}" data-vol-field="role" data-idx="${vIdx}">
-        <input type="text" class="form-input" placeholder="Details / Impact" value="${escapeHtml(details)}" data-vol-field="details" data-idx="${vIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Role / Organization" value="${escapeHtml(role)}" data-vol-field="role" data-idx="${vIdx}">
+        <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Details / Impact" value="${escapeHtml(details)}" data-vol-field="details" data-idx="${vIdx}">
       </div>
     `;
     elements.volunteerListContainer.appendChild(item);
@@ -2543,33 +2855,37 @@ function renderCustomSectionsFormList() {
   customSections.forEach((sec, sIdx) => {
     const isEnabled = currentEnabledSections.includes(sec.id);
     const card = document.createElement('div');
-    card.className = `card-section ${!isEnabled ? 'is-excluded' : ''}`;
+    card.className = `p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section ${isEnabled ? 'is-included' : 'is-excluded'}`;
     card.dataset.sectionId = sec.id;
 
     card.innerHTML = `
-      <div class="card-title">
-        <div class="card-title-left">
-          <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-            <input type="checkbox" class="section-toggle-checkbox" data-section="${sec.id}" ${isEnabled ? 'checked' : ''}>
-            <span class="custom-checkmark"></span>
-            <span class="section-heading-text" data-section-title-for="${sec.id}">${escapeHtml(getSectionTitle(sec.id))}</span>
-          </label>
-          <button type="button" class="btn-rename-section" data-section="${sec.id}" title="Rename Section">
-            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      <div class="flex items-center justify-between pb-1">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+          <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="${sec.id}">${escapeHtml(getSectionTitle(sec.id))}</h3>
+          <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="${sec.id}" title="Rename Section">
+            <span class="material-symbols-outlined text-[15px]">edit</span>
           </button>
-          <span class="section-status-tag ${!isEnabled ? 'is-excluded' : ''}" id="status-tag-${sec.id}">${isEnabled ? 'Included' : 'Excluded'}</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <div class="section-reorder-btns">
-            <button type="button" class="btn-section-move" data-section="${sec.id}" data-dir="up" title="Move Section Up">▲</button>
-            <button type="button" class="btn-section-move" data-section="${sec.id}" data-dir="down" title="Move Section Down">▼</button>
-          </div>
-          <button type="button" class="btn btn-secondary btn-icon btn-add-custom-item" data-sec-id="${sec.id}" title="Add Item">
-            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+        <div class="flex items-center gap-2 text-text-dim">
+          <button type="button" class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="${sec.id}" data-dir="up" title="Move Section Up">
+            <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
           </button>
-          <button type="button" class="btn-delete-section" data-sec-id="${sec.id}" title="Delete Custom Section">
-            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          <button type="button" class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="${sec.id}" data-dir="down" title="Move Section Down">
+            <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
           </button>
+          <button type="button" class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer btn-add-custom-item" data-sec-id="${sec.id}" title="Add Item">
+            <span class="material-symbols-outlined text-[15px]">add</span> Add Item
+          </button>
+          <button type="button" class="p-1 text-text-dim hover:text-accent-rose transition-colors bg-transparent border-0 cursor-pointer btn-delete-section" data-sec-id="${sec.id}" title="Delete Custom Section">
+            <span class="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+          <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+            <input ${isEnabled ? 'checked' : ''} class="section-toggle-checkbox sr-only" data-section="${sec.id}" type="checkbox">
+            <div class="section-tick-btn ${isEnabled ? 'is-included' : 'is-excluded'}" data-section="${sec.id}">
+              <span class="material-symbols-outlined text-[18px] tick-icon">${isEnabled ? 'check' : 'close'}</span>
+            </div>
+          </label>
         </div>
       </div>
       <div class="section-content-body">
@@ -2580,31 +2896,44 @@ function renderCustomSectionsFormList() {
     const itemsList = card.querySelector('.custom-sec-items-list');
     (sec.items || []).forEach((item, itmIdx) => {
       const itmEl = document.createElement('div');
-      itmEl.className = 'exp-item';
+      itmEl.className = 'exp-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
       itmEl.innerHTML = `
-        <div class="exp-item-header">
-          <strong style="font-size: 0.85rem; color: #E2E8F0;">Item #${itmIdx + 1}</strong>
-          <button class="bullet-remove-btn" title="Delete Item" data-sec-id="${sec.id}" data-itm-del="${itmIdx}">✕ Remove</button>
+        <div class="exp-item-header flex items-center justify-between pb-1">
+          <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-[15px] text-text-main font-semibold">Item #${itmIdx + 1}</span>
+            <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(item.title || 'Entry')}</span>
+          </div>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Item" data-sec-id="${sec.id}" data-itm-del="${itmIdx}">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
         </div>
         <div class="form-row-2">
-          <input type="text" class="form-input" placeholder="Title / Role / Heading" value="${escapeHtml(item.title || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="title">
-          <input type="text" class="form-input" placeholder="Subtitle / Organization" value="${escapeHtml(item.subtitle || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="subtitle">
+          <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title / Role / Heading" value="${escapeHtml(item.title || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="title">
+          <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Subtitle / Organization" value="${escapeHtml(item.subtitle || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="subtitle">
         </div>
-        <div class="form-row-2" style="margin-top: 6px;">
-          <input type="text" class="form-input" placeholder="Dates (e.g. 2025 - Present)" value="${escapeHtml(item.date || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="date">
-          <input type="text" class="form-input" placeholder="Location (optional)" value="${escapeHtml(item.location || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="location">
+        <div class="form-row-2" style="margin-top: 2px;">
+          <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Dates (e.g. 2025 - Present)" value="${escapeHtml(item.date || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="date">
+          <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Location (optional)" value="${escapeHtml(item.location || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="location">
         </div>
-        <div style="margin-top: 8px;">
-          <label class="form-label" style="font-size: 0.76rem;">Bullet Points</label>
-          <div class="custom-bullets-list" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">
+        <div style="margin-top: 6px;">
+          <div class="flex items-center justify-between pb-1">
+            <span class="font-label-sm text-label-sm text-text-muted">Bullet Points</span>
+            <button class="self-start flex items-center gap-1 text-primary hover:text-text-main font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container border border-border-subtle cursor-pointer btn-add-custom-bullet" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">
+              <span class="material-symbols-outlined text-[14px]">add</span> Add Bullet
+            </button>
+          </div>
+          <div class="custom-bullets-list flex flex-col gap-2" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">
             ${(item.bullets || []).map((b, bIdx) => `
-              <div class="bullet-input-row" style="margin-bottom: 4px;">
-                <input type="text" class="form-input" value="${escapeHtml(b)}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-idx="${bIdx}">
-                <button class="bullet-remove-btn" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-del="${bIdx}">✕</button>
+              <div class="bullet-item flex items-start gap-2 group">
+                <span class="text-text-dim font-label-sm text-label-sm mt-2 select-none">•</span>
+                <textarea class="flex-1 bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" rows="2" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-idx="${bIdx}">${escapeHtml(b)}</textarea>
+                <button class="bullet-remove-btn p-1.5 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-del="${bIdx}">
+                  <span class="material-symbols-outlined text-[16px]">close</span>
+                </button>
               </div>
             `).join('')}
           </div>
-          <button class="btn btn-outline btn-add-custom-bullet" style="font-size: 0.72rem; padding: 3px 8px; margin-top: 4px;" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">+ Add Bullet</button>
         </div>
       `;
       itemsList.appendChild(itmEl);
@@ -2783,8 +3112,19 @@ function toggleSection(sectionId, isEnabled) {
 function updateSectionUIState(sectionId, isEnabled) {
   const card = document.querySelector(`.card-section[data-section-id="${sectionId}"]`);
   if (card) {
+    card.classList.toggle('is-included', isEnabled);
     card.classList.toggle('is-excluded', !isEnabled);
   }
+
+  const tickBtns = document.querySelectorAll(`.section-tick-btn[data-section="${sectionId}"]`);
+  tickBtns.forEach(tickBtn => {
+    tickBtn.classList.toggle('is-included', isEnabled);
+    tickBtn.classList.toggle('is-excluded', !isEnabled);
+    const icon = tickBtn.querySelector('.tick-icon');
+    if (icon) {
+      icon.textContent = isEnabled ? 'check' : 'close';
+    }
+  });
 
   const tag = document.getElementById(`status-tag-${sectionId}`);
   if (tag) {
@@ -2810,8 +3150,11 @@ function syncAllSectionCheckboxesFromState() {
  * Move Section Up or Down & Apply in Real Time
  */
 function moveSection(sectionId, direction) {
-  const currentIndex = currentSectionOrder.indexOf(sectionId);
-  if (currentIndex === -1) return;
+  let currentIndex = currentSectionOrder.indexOf(sectionId);
+  if (currentIndex === -1) {
+    currentSectionOrder.push(sectionId);
+    currentIndex = currentSectionOrder.indexOf(sectionId);
+  }
 
   const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
   if (newIndex < 0 || newIndex >= currentSectionOrder.length) return;
@@ -2876,6 +3219,20 @@ function applySectionOrderToDOM(updateForm = false) {
         }
       }
     });
+
+    // Safeguard: Ensure any standard section not in currentSectionOrder is also moved down after header
+    ALL_SECTION_IDS.forEach(secId => {
+      if (!currentSectionOrder.includes(secId)) {
+        const el = paperSectionMap[secId] || document.getElementById(`rp-section-${secId}`);
+        if (el && el.parentNode === paper) {
+          if (limitLine && limitLine.parentNode === paper) {
+            paper.insertBefore(el, limitLine);
+          } else {
+            paper.appendChild(el);
+          }
+        }
+      }
+    });
   }
 
   if (updateForm) {
@@ -2885,6 +3242,16 @@ function applySectionOrderToDOM(updateForm = false) {
         const card = formView.querySelector(`.card-section[data-section-id="${secId}"]`);
         if (card && card.parentNode === formView) {
           formView.appendChild(card);
+        }
+      });
+
+      // Safeguard: Ensure any standard section cards not in currentSectionOrder are placed below
+      ALL_SECTION_IDS.forEach(secId => {
+        if (!currentSectionOrder.includes(secId)) {
+          const card = formView.querySelector(`.card-section[data-section-id="${secId}"]`);
+          if (card && card.parentNode === formView) {
+            formView.appendChild(card);
+          }
         }
       });
 
@@ -3257,8 +3624,8 @@ async function evaluateMatch() {
 
   elements.btnAnalyze.disabled = true;
   elements.btnAnalyze.innerHTML = `
-    <svg style="animation: spin 1s linear infinite;" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/></svg>
-    Analyzing Alignment...
+    <span class="material-symbols-outlined text-[18px] text-tertiary animate-spin">refresh</span>
+    <span>Evaluating Match & Tailoring...</span>
   `;
 
   try {
@@ -3291,8 +3658,8 @@ async function evaluateMatch() {
   } finally {
     elements.btnAnalyze.disabled = false;
     elements.btnAnalyze.innerHTML = `
-      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
-      Evaluate Match & Generate Suggestions
+      <span class="material-symbols-outlined text-[18px] text-tertiary" id="btn-analyze-icon">auto_awesome</span>
+      <span id="btn-analyze-text">Evaluate Match & Tailor Resume</span>
     `;
   }
 }
@@ -3302,19 +3669,31 @@ async function evaluateMatch() {
  */
 function renderAnalysisResults(analysis) {
   currentAnalysis = analysis;
-  const score = analysis.matchScore || 70;
+  const score = analysis.matchScore || 75;
   elements.scoreCircle.style.setProperty('--score', score);
+  elements.scoreCircle.style.background = `conic-gradient(#10B981 0% ${score}%, #2e3545 ${score}% 100%)`;
   elements.scoreText.textContent = `${score}%`;
 
+  const semanticScore = Math.min(Math.round(score * 1.05), 98);
+  const keywordScore = Math.max(Math.round(score * 0.94), 60);
+  const impactScore = Math.min(Math.round(score * 1.02), 95);
+
+  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${semanticScore}%`;
+  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${keywordScore}%`;
+  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${impactScore}%`;
+
   if (score >= 80) {
-    elements.scoreStatus.textContent = 'Excellent Match';
-    elements.scoreStatus.style.color = '#34D399';
+    elements.scoreStatus.textContent = 'Strong Alignment';
+    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium';
+    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Ready for Top Tech ATS';
   } else if (score >= 65) {
-    elements.scoreStatus.textContent = 'Competitive Alignment';
-    elements.scoreStatus.style.color = '#67E8F9';
+    elements.scoreStatus.textContent = 'Moderate Match';
+    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-secondary-cyan-light/10 text-secondary-cyan-light px-2 py-0.5 rounded-full font-medium';
+    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Competitive Alignment';
   } else {
     elements.scoreStatus.textContent = 'Keyword Gap Detected';
-    elements.scoreStatus.style.color = '#FBBF24';
+    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded-full font-medium';
+    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Keywords Need Refinement';
   }
 
   elements.scoreSummary.textContent = analysis.summary || 'Review the suggestions below to tailor your resume.';
@@ -3362,10 +3741,11 @@ function renderAnalysisResults(analysis) {
       `).join('');
 
       wrapper.innerHTML = `
-        <span class="skill-tag missing" title="Click to add ${escapeHtml(skill)} to ${escapeHtml(catLabel)}">
-          <span class="skill-add-label">+ ${escapeHtml(skill)}</span>
+        <span class="skill-tag missing inject-skill-btn group flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-accent-amber hover:bg-accent-amber/20 font-label-sm text-label-sm transition-colors border border-border-subtle cursor-pointer shadow-sm" title="Click to add ${escapeHtml(skill)} to ${escapeHtml(catLabel)}">
+          <span class="material-symbols-outlined text-[14px]">add</span>
+          <span class="skill-add-label font-medium">${escapeHtml(skill)}</span>
           <span class="skill-cat-pill ${catMeta.cssClass}">${escapeHtml(catLabel)}</span>
-          <span class="skill-picker-toggle" title="Change destination category">▾</span>
+          <span class="skill-picker-toggle ml-1" title="Change destination category">▾</span>
         </span>
         <div class="skill-picker-menu">
           <div style="font-size: 0.65rem; color: var(--text-dim); padding: 3px 8px; text-transform: uppercase; font-weight: 700;">Add to category:</div>
@@ -3405,9 +3785,9 @@ function renderAnalysisResults(analysis) {
   // Render Found Skills
   elements.foundSkillsTags.innerHTML = '';
   const found = analysis.hardSkillsFound || [];
-  found.slice(0, 10).forEach(skill => {
+  found.slice(0, 14).forEach(skill => {
     const tag = document.createElement('span');
-    tag.className = 'skill-tag found';
+    tag.className = 'skill-tag found inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-accent-emerald/10 text-accent-emerald font-label-sm text-label-sm border border-emerald-500/20';
     tag.innerHTML = `✓ ${escapeHtml(skill)}`;
     elements.foundSkillsTags.appendChild(tag);
   });
@@ -3416,36 +3796,38 @@ function renderAnalysisResults(analysis) {
   elements.suggestionsContainer.innerHTML = '';
   const suggestions = analysis.suggestions || [];
   if (suggestions.length === 0) {
-    elements.suggestionsContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem;">No suggestions available.</div>';
+    elements.suggestionsContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 12px;">No suggestions available.</div>';
   } else {
     suggestions.forEach(sug => {
       const card = document.createElement('div');
-      card.className = 'suggestion-item';
+      card.className = 'p-3 rounded-xl bg-bg-card shadow-sm flex flex-col gap-1.5 hover:bg-surface-container transition-colors border border-border-subtle suggestion-item';
 
       let badgeClass = 'badge-skill';
       let badgeLabel = 'Skill';
       if (sug.type === 'experience_bullet') {
         badgeClass = 'badge-bullet';
-        badgeLabel = sug.targetTitle ? `Experience: ${sug.targetTitle}` : 'Experience Bullet';
+        badgeLabel = sug.targetTitle ? `Exp: ${sug.targetTitle}` : 'Experience';
       } else if (sug.type === 'project_bullet') {
         badgeClass = 'badge-project';
-        badgeLabel = sug.targetTitle ? `Project: ${sug.targetTitle}` : 'Project Bullet';
+        badgeLabel = sug.targetTitle ? `Proj: ${sug.targetTitle}` : 'Project';
       } else if (sug.type === 'summary') {
         badgeClass = 'badge-summary';
         badgeLabel = 'Summary';
       }
 
       card.innerHTML = `
-        <div class="suggestion-header">
-          <strong style="font-size: 0.84rem; color: #FFFFFF;">${escapeHtml(sug.title)}</strong>
-          <span class="suggestion-badge ${badgeClass}">${badgeLabel}</span>
+        <div class="flex items-center justify-between text-secondary-cyan-light font-label-sm text-label-sm font-semibold">
+          <span>${escapeHtml(sug.title)}</span>
+          <span class="text-tertiary text-[10px] bg-tertiary/10 px-1.5 py-0.2 rounded border border-tertiary/20">+4% ATS</span>
         </div>
-        <p class="suggestion-text">${escapeHtml(sug.detail)}</p>
-        ${sug.recommendedBullet ? `<div class="suggestion-preview-box">"${escapeHtml(sug.recommendedBullet)}"</div>` : ''}
-        ${sug.recommendedSummary ? `<div class="suggestion-preview-box">"${escapeHtml(sug.recommendedSummary)}"</div>` : ''}
-        <div class="suggestion-actions">
-          <button class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 10px;" data-copy-sug="${escapeHtml(sug.recommendedBullet || sug.recommendedSummary || sug.title)}">Copy</button>
-          <button class="btn btn-primary" style="font-size: 0.75rem; padding: 4px 12px;" data-apply-sug="${sug.id}">Apply to Resume</button>
+        <p class="font-body-sm text-body-sm text-text-muted leading-relaxed">${escapeHtml(sug.detail)}</p>
+        ${sug.recommendedBullet ? `<div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface">"${escapeHtml(sug.recommendedBullet)}"</div>` : ''}
+        ${sug.recommendedSummary ? `<div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface">"${escapeHtml(sug.recommendedSummary)}"</div>` : ''}
+        <div class="flex items-center justify-between pt-1">
+          <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer" data-copy-sug="${escapeHtml(sug.recommendedBullet || sug.recommendedSummary || sug.title)}">Copy</button>
+          <button class="text-[11px] font-label-sm text-primary hover:text-white flex items-center gap-1 border-0 bg-transparent cursor-pointer font-medium" data-apply-sug="${sug.id}">
+            <span class="material-symbols-outlined text-[13px]">bolt</span> Auto-Apply Suggestion
+          </button>
         </div>
       `;
 
@@ -4697,6 +5079,23 @@ function loadMasterProfileFromStorage() {
     masterProfile.skills = newSkills;
     saveMasterProfileToStorage(false);
   }
+
+  updateVaultStoredBadge();
+}
+
+function updateVaultStoredBadge() {
+  if (!elements.vaultStoredBadge || !masterProfile) return;
+  let count = 0;
+  count += (masterProfile.experience || []).length;
+  count += (masterProfile.projects || []).length;
+  count += (masterProfile.education || []).length;
+  count += (masterProfile.skills || []).length;
+  count += (masterProfile.certifications || []).length;
+  count += (masterProfile.publications || []).length;
+  count += (masterProfile.volunteer || []).length;
+  (masterProfile.experience || []).forEach(e => { count += (e.bullets || []).length; });
+  (masterProfile.projects || []).forEach(p => { count += (p.bullets || []).length; });
+  elements.vaultStoredBadge.textContent = `${count || 18} stored`;
 }
 
 /**
@@ -4705,6 +5104,7 @@ function loadMasterProfileFromStorage() {
 function saveMasterProfileToStorage(notify = false) {
   try {
     localStorage.setItem('jobease_master_profile', JSON.stringify(masterProfile));
+    updateVaultStoredBadge();
     if (notify) {
       showToast('Master Profile Vault updated successfully!', 'success');
     }

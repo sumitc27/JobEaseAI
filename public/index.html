@@ -1,116 +1,319 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JobEaseAI - AI-Powered Resume Tailor & 1-Page Guardrail Editor</title>
-  <meta name="description" content="Evaluate your resume against target job descriptions with AI suggestions, strict 1-page formatting guardrails, and instant PDF export.">
+  <title>JobEaseAI - 3-Column Interactive Resume Studio</title>
+  <meta name="description" content="AI-Powered Resume Tailor with strict 1-page formatting guardrails, real-time ATS match engine, and Master Profile Vault.">
+
+  <!-- Stitch Design System Fonts: Outfit (Headlines), Inter (Body), JetBrains Mono (Code/Metrics) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Google Material Symbols Outlined -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+  <!-- TeX Latin Modern Roman Fonts for Authentic Academic Resume Output -->
+  <link href="https://fonts.cdnfonts.com/css/latin-modern-roman" rel="stylesheet">
+
+  <!-- Tailwind CSS Engine & Stitch Design System Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#c0c1ff",
+            "surface-variant": "#2e3545",
+            "on-primary-fixed-variant": "#2f2ebe",
+            "bg-canvas": "#0B0F19",
+            "inverse-primary": "#494bd6",
+            "bg-card": "rgba(17, 24, 39, 0.85)",
+            "surface": "#0c1322",
+            "on-surface-variant": "#c7c4d7",
+            "primary-hover": "#4F46E5",
+            "bg-surface": "#111827",
+            "paper-bg": "#FFFFFF",
+            "surface-dim": "#0c1322",
+            "on-secondary": "#003640",
+            "background": "#0c1322",
+            "secondary-container": "#03b5d3",
+            "accent-amber": "#F59E0B",
+            "outline-variant": "#464554",
+            "on-primary-container": "#0d0096",
+            "secondary-cyan-light": "#38BDF8",
+            "on-tertiary": "#003824",
+            "tertiary": "#4edea3",
+            "paper-divider": "#E5E7EB",
+            "on-tertiary-fixed": "#002113",
+            "on-secondary-fixed-variant": "#004e5c",
+            "secondary-fixed-dim": "#4cd7f6",
+            "on-secondary-container": "#00424e",
+            "secondary": "#4cd7f6",
+            "border-subtle": "rgba(255, 255, 255, 0.08)",
+            "primary-fixed": "#e1e0ff",
+            "primary-container": "#8083ff",
+            "text-muted": "#9CA3AF",
+            "surface-container-lowest": "#070e1d",
+            "tertiary-fixed-dim": "#4edea3",
+            "inverse-surface": "#dce2f7",
+            "surface-container": "#191f2f",
+            "on-tertiary-container": "#000703",
+            "on-background": "#dce2f7",
+            "tertiary-container": "#00885d",
+            "paper-text": "#1F2937",
+            "bg-input": "#151D2C",
+            "text-main": "#F9FAFB",
+            "bg-elevated": "#1F2937",
+            "surface-container-low": "#141b2b",
+            "surface-container-highest": "#2e3545",
+            "accent-emerald": "#10B981",
+            "surface-container-high": "#232a3a",
+            "surface-tint": "#c0c1ff",
+            "error-container": "#93000a",
+            "on-primary": "#1000a9",
+            "secondary-fixed": "#acedff",
+            "error": "#ffb4ab",
+            "on-error-container": "#ffdad6",
+            "on-error": "#690005",
+            "on-surface": "#dce2f7",
+            "on-primary-fixed": "#07006c",
+            "primary-fixed-dim": "#c0c1ff",
+            "inverse-on-surface": "#293040",
+            "text-dim": "#6B7280",
+            "tertiary-fixed": "#6ffbbe",
+            "surface-bright": "#323949",
+            "accent-rose": "#EF4444",
+            "paper-accent": "#1E3A8A",
+            "on-tertiary-fixed-variant": "#005236",
+            "outline": "#908fa0",
+            "on-secondary-fixed": "#001f26"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          spacing: {
+            "gutter": "1.5rem",
+            "space-md": "1rem",
+            "space-sm": "0.5rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "space-xl": "2.5rem",
+            "margin": "2rem"
+          },
+          fontFamily: {
+            "label-sm": ["JetBrains Mono", "monospace"],
+            "headline-sm": ["Outfit", "sans-serif"],
+            "body-md": ["Inter", "sans-serif"],
+            "headline-xl": ["Outfit", "sans-serif"],
+            "headline-lg": ["Outfit", "sans-serif"],
+            "body-lg": ["Inter", "sans-serif"],
+            "headline-md": ["Outfit", "sans-serif"],
+            "headline-xl-mobile": ["Outfit", "sans-serif"],
+            "headline-lg-mobile": ["Outfit", "sans-serif"],
+            "body-sm": ["Inter", "sans-serif"],
+            "label-md": ["JetBrains Mono", "monospace"]
+          },
+          fontSize: {
+            "label-sm": ["11px", { lineHeight: "14px", fontWeight: "500" }],
+            "headline-sm": ["18px", { lineHeight: "24px", fontWeight: "600" }],
+            "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+            "headline-xl": ["40px", { lineHeight: "48px", fontWeight: "700" }],
+            "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "600" }],
+            "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+            "headline-md": ["22px", { lineHeight: "28px", fontWeight: "600" }],
+            "headline-xl-mobile": ["30px", { lineHeight: "38px", fontWeight: "700" }],
+            "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+            "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+            "label-md": ["13px", { lineHeight: "18px", fontWeight: "500" }]
+          }
+        }
+      }
+    };
+  </script>
+
   <link rel="stylesheet" href="css/styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366F1'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z'/></svg>">
 </head>
-<body>
+<body class="bg-bg-canvas font-body-md text-on-surface antialiased">
 
-  <!-- Top Navigation Bar -->
-  <header class="top-nav">
-    <div class="brand">
-      <div class="brand-logo">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 12h8v2H8zm0 4h8v2H8zm0-8h5v2H8z"/></svg>
+  <!-- Stitch Top Navigation Bar -->
+  <header class="top-nav fixed top-0 left-0 right-0 z-50 h-16 bg-surface/90 backdrop-blur-xl border-b border-border-subtle shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
+    <div class="w-full h-full px-gutter flex items-center justify-between gap-space-md">
+      
+      <!-- Brand Identity -->
+      <div class="brand flex items-center gap-space-sm cursor-pointer select-none shrink-0" id="brand-logo-trigger">
+        <div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary shadow-sm border border-border-subtle">
+          <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tight">JobEase<span class="text-primary">AI</span></span>
+          <span class="font-label-sm text-label-sm bg-surface-container-highest text-secondary-cyan-light px-1.5 py-0.5 rounded border border-border-subtle">V1 MVP</span>
+        </div>
       </div>
-      <div>
-        <h1 class="brand-title">JobEaseAI <span class="brand-badge">V1 MVP</span></h1>
+
+      <!-- Center Action Toolbar -->
+      <div class="nav-actions hidden xl:flex items-center gap-space-sm">
+        <!-- Live Auto-Save Status Badge -->
+        <div class="save-status-badge flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-tertiary font-label-sm text-label-sm border border-border-subtle" id="save-status-badge" title="Auto-saved to persistent browser storage">
+          <span class="w-2 h-2 rounded-full bg-tertiary animate-pulse save-status-dot"></span>
+          <span class="save-status-text">All Saved ✓</span>
+        </div>
+
+        <!-- Save Profile Button -->
+        <button class="btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container hover:text-on-surface text-on-surface-variant font-body-sm text-body-sm transition-colors border border-border-subtle" id="btn-save-profile" title="Save current resume profile to Master Vault">
+          <span class="material-symbols-outlined text-[16px]">save</span>
+          <span>Save Profile</span>
+        </button>
+
+        <!-- Master Profile Vault Button -->
+        <button class="btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container hover:text-secondary text-secondary-cyan-light font-body-sm text-body-sm transition-colors border border-cyan-500/30" id="btn-profile-vault" title="Open Master Profile Vault to cherry-pick & import items">
+          <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+          <span>Profile Vault</span>
+          <span class="font-label-sm text-label-sm px-1.5 py-0.2 rounded-full bg-surface-variant text-secondary-fixed" id="vault-stored-badge">18 stored</span>
+        </button>
+
+        <div class="h-4 w-[1px] bg-surface-variant mx-1"></div>
+
+        <!-- Sample Profile Button -->
+        <button class="btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container hover:text-on-surface text-on-surface-variant font-body-sm text-body-sm transition-colors border border-border-subtle" id="btn-load-sample" title="Load sample fullstack developer profile">
+          <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+          <span>Sample Profile</span>
+        </button>
+
+        <!-- Upload PDF Resume Button -->
+        <button class="btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container hover:text-on-surface text-on-surface-variant font-body-sm text-body-sm transition-colors border border-border-subtle" id="btn-open-upload" title="Upload & extract resume from PDF">
+          <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+          <span>Upload PDF</span>
+        </button>
+
+        <!-- Primary CTA: Export 1-Page PDF -->
+        <button class="btn btn-primary flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary-container hover:bg-primary-hover text-on-primary-container font-body-md text-body-md shadow-[0_0_15px_rgba(128,131,255,0.35)] transition-all font-medium border-0" id="btn-export-pdf" title="Export perfectly formatted 1-page PDF">
+          <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+          <span>Export 1-Page PDF</span>
+        </button>
       </div>
-    </div>
 
-    <!-- Top Navigation Actions -->
-    <div class="nav-actions">
-      <button class="btn btn-secondary" id="btn-save-profile" title="Save current details to Master Profile Vault">
-        <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4.5a.5.5 0 0 0-.146-.354l-3-3A.5.5 0 0 0 11.5 1H2zm10.5 1.5L14 3.914V14a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5h9.5v2.5a.5.5 0 0 0 .5.5h.5z"/><path d="M4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-7zm1 .5v6h6V7H5z"/></svg>
-        Save Profile
-      </button>
-      <button class="btn btn-secondary" id="btn-profile-vault" style="color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);" title="Open Master Profile Vault to cherry-pick & import specific items to current resume">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-        Profile Vault
-      </button>
-      <span class="save-status-badge" id="save-status-badge" title="Auto-saved to browser storage">All Saved ✓</span>
+      <!-- Right Navigation & Avatar -->
+      <div class="flex items-center gap-space-md shrink-0">
+        <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0 border border-primary/40 shadow-sm" title="User Profile">
+          <span class="material-symbols-outlined text-white text-[18px]">person</span>
+        </div>
+      </div>
 
-      <button class="btn btn-secondary" id="btn-load-sample" title="Load sample candidate profile">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
-        Sample Profile
-      </button>
-
-      <button class="btn btn-secondary" id="btn-open-upload">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
-        Upload PDF
-      </button>
-
-      <button class="btn btn-primary" id="btn-export-pdf" title="Export perfectly formatted 1-page PDF">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-        Download 1-Page PDF
-      </button>
     </div>
   </header>
 
   <!-- 3-Column Interactive Studio Workspace -->
-  <main class="studio-layout">
+  <main class="studio-layout w-full pt-16 h-screen overflow-hidden flex flex-row bg-bg-canvas text-on-surface">
 
-    <!-- LEFT PANEL: Job Description & AI Suggestions -->
-    <aside class="panel" id="left-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <svg width="18" height="18" fill="var(--primary)" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/></svg>
-          JD & AI Match Engine
+    <!-- LEFT PANEL: Target JD & ATS Match Engine (340px) -->
+    <aside class="panel w-[340px] shrink-0 h-full flex flex-col bg-surface-container-low border-r border-border-subtle shadow-2xl relative z-20 overflow-y-auto" id="left-panel">
+      <div class="p-space-md flex flex-col gap-space-md">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-primary text-[20px]">target</span>
+            <h2 class="font-headline-sm text-headline-sm text-text-main font-semibold tracking-tight">Target Job Description</h2>
+          </div>
+          <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary-cyan-light border border-border-subtle" id="jd-word-count">0 words</span>
         </div>
-        <button class="btn btn-outline btn-icon" id="btn-sample-jd" title="Insert Sample Job Description">
-          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+
+        <!-- JD Input Card -->
+        <div class="flex flex-col gap-space-xs bg-bg-card p-3 rounded-xl shadow-sm border border-border-subtle">
+          <div class="flex items-center justify-between text-text-dim text-body-sm font-body-sm pb-1">
+            <span class="font-medium text-text-muted text-[13px]" id="jd-target-role-label">Target Role Scope</span>
+            <button class="text-secondary-cyan-light hover:underline font-label-sm text-label-sm cursor-pointer border-0 bg-transparent" id="btn-sample-jd" type="button" title="Insert Sample Job Description">Sample JD</button>
+          </div>
+          <textarea class="w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2.5 rounded-lg border-0 resize-none focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed shadow-inner" id="jd-input" placeholder="Paste full Job Description here..." rows="6"></textarea>
+        </div>
+
+        <!-- Primary Match CTA Button -->
+        <button class="group relative w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-inverse-primary hover:bg-primary-hover text-text-main font-body-md text-body-md font-medium shadow-[0_0_20px_rgba(79,70,229,0.35)] transition-all transform active:scale-[0.99] border-0 cursor-pointer" id="btn-analyze" type="button">
+          <span class="material-symbols-outlined text-[18px] text-tertiary group-hover:rotate-180 transition-transform" id="btn-analyze-icon">auto_awesome</span>
+          <span id="btn-analyze-text">Evaluate Match & Tailor Resume</span>
         </button>
-      </div>
 
-      <div class="panel-body">
-        <!-- Target Job Description Input -->
-        <div class="card-section">
-          <div class="card-title">
-            <span>Target Job Description</span>
-            <span style="font-size: 0.7rem; font-weight: normal; text-transform: none; color: var(--text-dim);" id="jd-word-count">0 words</span>
+        <!-- ATS Score Engine Box -->
+        <div class="bg-bg-card p-space-md rounded-xl shadow-md flex flex-col gap-space-sm relative overflow-hidden border border-border-subtle ats-score-card" id="ats-score-box">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-label-md text-text-muted uppercase tracking-wider font-semibold">ATS Score Engine</span>
+            <span class="font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium" id="score-status">Strong Alignment</span>
           </div>
-          <textarea class="jd-textarea" id="jd-input" placeholder="Paste the target job description here..."></textarea>
-          <button class="btn btn-primary" id="btn-analyze" style="width: 100%;">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
-            Evaluate Match & Generate Suggestions
-          </button>
+
+          <div class="flex items-center gap-4 my-1">
+            <!-- Conic Score Ring -->
+            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: conic-gradient(#10B981 0% 75%, #2e3545 75% 100%);">
+              <div class="w-16 h-16 rounded-full bg-bg-elevated flex flex-col items-center justify-center">
+                <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tighter score-value" id="score-text">75%</span>
+                <span class="font-label-sm text-label-sm text-text-dim text-[9px] -mt-1">SCORE</span>
+              </div>
+            </div>
+            
+            <div class="flex flex-col gap-1 min-w-0">
+              <div class="flex items-center gap-1.5 text-accent-emerald font-body-sm text-body-sm font-medium">
+                <span class="material-symbols-outlined text-[16px]">verified</span>
+                <span id="score-badge-headline">Ready for Top Tech ATS</span>
+              </div>
+              <p class="font-body-sm text-body-sm text-text-muted line-clamp-2 leading-tight score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</p>
+              <div id="score-provider" style="margin-top: 2px;"></div>
+            </div>
+          </div>
+
+          <!-- Micro Bar Metrics Grid -->
+          <div class="grid grid-cols-3 gap-2 pt-2 text-center">
+            <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
+              <div class="font-label-sm text-label-sm text-text-dim">Semantic</div>
+              <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-semantic">92%</div>
+            </div>
+            <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
+              <div class="font-label-sm text-label-sm text-text-dim">Keywords</div>
+              <div class="font-label-md text-label-md text-secondary-cyan-light font-bold" id="score-metric-keywords">84%</div>
+            </div>
+            <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
+              <div class="font-label-sm text-label-sm text-text-dim">Impact/KPIs</div>
+              <div class="font-label-md text-label-md text-accent-amber font-bold" id="score-metric-impact">89%</div>
+            </div>
+          </div>
         </div>
 
-        <!-- ATS Score Gauge -->
-        <div class="ats-score-card" id="ats-score-box">
-          <div class="score-circle" id="score-circle" style="--score: 75;">
-            <span class="score-value" id="score-text">75%</span>
+        <!-- Missing Hard Skills Tag Cloud -->
+        <div class="flex flex-col gap-space-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-label-sm text-label-sm text-accent-amber uppercase tracking-wider flex items-center gap-1 font-semibold">
+              <span class="material-symbols-outlined text-[14px]">warning</span> Missing Hard Skills
+            </span>
+            <span class="font-label-sm text-label-sm text-text-dim">Click to Inject</span>
           </div>
-          <div class="score-info">
-            <div class="score-headline" id="score-status">Strong Alignment</div>
-            <div class="score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</div>
-            <div id="score-provider" style="margin-top: 6px;"></div>
-          </div>
-        </div>
-
-        <!-- Skill Analysis Cloud -->
-        <div class="card-section">
-          <div class="card-title">Missing Hard Skills (Click to Add)</div>
-          <div class="tags-wrap" id="missing-skills-tags">
+          <div class="flex flex-wrap gap-1.5 tags-wrap" id="missing-skills-tags">
             <span style="color: var(--text-dim); font-size: 0.8rem;">Evaluate a job description to detect missing skills.</span>
           </div>
         </div>
 
-        <!-- Keyword Gaps -->
-        <div class="card-section">
-          <div class="card-title">Domain Keywords Found</div>
-          <div class="tags-wrap" id="found-skills-tags">
+        <!-- Domain Keywords Matched Tag Cloud -->
+        <div class="flex flex-col gap-space-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-label-sm text-label-sm text-accent-emerald uppercase tracking-wider flex items-center gap-1 font-semibold">
+              <span class="material-symbols-outlined text-[14px]">check_circle</span> Keywords Matched
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 tags-wrap" id="found-skills-tags">
             <span style="color: var(--text-dim); font-size: 0.8rem;">Matched keywords will appear here.</span>
           </div>
         </div>
 
-        <!-- Targeted AI Suggestions List -->
-        <div class="card-section">
-          <div class="card-title">Actionable AI Suggestions</div>
-          <div class="suggestion-list" id="suggestions-container">
+        <!-- Actionable AI Suggestions Container -->
+        <div class="flex flex-col gap-2 pt-1 pb-4">
+          <span class="font-label-sm text-label-sm text-text-dim uppercase tracking-wider flex items-center gap-1 font-semibold">
+            <span class="material-symbols-outlined text-[14px]">insights</span> Actionable JD Gap Fixes
+          </span>
+          <div class="flex flex-col gap-2 suggestion-list" id="suggestions-container">
             <div style="color: var(--text-dim); font-size: 0.82rem; text-align: center; padding: 20px 0;">
               No suggestions yet. Paste a JD and evaluate to get targeted bullet point and skill refinements.
             </div>
@@ -120,682 +323,719 @@
       </div>
     </aside>
 
-    <!-- CENTER PANEL: Structured Manual Editor -->
-    <section class="panel" id="center-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <svg width="18" height="18" fill="var(--secondary)" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/></svg>
-          Structured Resume Editor
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button class="btn btn-secondary btn-sm" id="btn-vault-quick-open" style="font-size: 0.76rem; padding: 4px 10px; color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);" title="Open Master Profile Vault to cherry-pick items">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-            Profile Vault
-          </button>
-          <div class="tabs-header">
-            <button class="tab-btn active" id="tab-form">Form</button>
-            <button class="tab-btn" id="tab-json">Raw JSON</button>
-            <button class="tab-btn" id="tab-latex">LaTeX</button>
+    <!-- CENTER PANEL: Structured Resume Editor (Flex 1) -->
+    <section class="panel flex-1 h-full flex flex-col bg-bg-canvas relative overflow-hidden z-10 border-r border-border-subtle" id="center-panel">
+      
+      <!-- Subheader & Quick-toggle Tabs -->
+      <div class="h-14 px-space-lg flex items-center justify-between bg-surface/80 backdrop-blur-md border-b border-border-subtle shadow-sm shrink-0 z-20">
+        <div class="flex items-center gap-2">
+          <div class="bg-surface-container-high p-1 rounded-xl flex items-center gap-1 border border-border-subtle tabs-header" id="editor-tabs-group">
+            <button class="tab-btn px-3 py-1.5 rounded-lg font-body-sm text-body-sm font-medium transition-all border-0 cursor-pointer active" id="tab-form" type="button">Form Editor</button>
+            <button class="tab-btn px-3 py-1.5 rounded-lg font-body-sm text-body-sm font-medium transition-colors border-0 cursor-pointer" id="tab-json" type="button">Raw JSON</button>
+            <button class="tab-btn px-3 py-1.5 rounded-lg font-body-sm text-body-sm font-medium transition-colors border-0 cursor-pointer" id="tab-latex" type="button">LaTeX (.tex)</button>
           </div>
+          <span class="font-label-sm text-label-sm text-text-dim px-2 hidden md:inline" id="autosave-time-label">Autosaved continuously</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 hover:bg-secondary/20 text-secondary-cyan-light font-label-sm text-label-sm transition-colors border border-cyan-500/30 cursor-pointer" id="btn-vault-quick-open" type="button" title="Open Master Profile Vault">
+            <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+            <span>Profile Vault</span>
+          </button>
         </div>
       </div>
 
-      <div class="panel-body" id="editor-form-view">
-        <!-- Personal Information -->
-        <div class="card-section">
-          <div class="card-title">Personal Information</div>
-          <div class="form-row-2">
-            <div class="form-group">
-              <label class="form-label">Full Name</label>
-              <input type="text" class="form-input" id="pi-name" placeholder="John Doe">
+      <!-- Scrollable Resume Edit Stream (Form View) -->
+      <div class="panel-body flex-1 overflow-y-auto p-space-lg flex flex-col gap-space-lg" id="editor-form-view">
+        
+        <!-- Personal Information Card -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md relative border border-border-subtle card-section">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[20px]">badge</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold">Personal Information</h3>
             </div>
-            <div class="form-group">
-              <label class="form-label">Professional Title</label>
-              <input type="text" class="form-input" id="pi-title" placeholder="Senior Software Engineer">
-            </div>
+            <span class="font-label-sm text-label-sm text-tertiary flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Header Sync Active
+            </span>
           </div>
-          <div class="form-row-3">
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-input" id="pi-email" placeholder="john@example.com">
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">Full Name</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-name" type="text" placeholder="John Doe">
             </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="text" class="form-input" id="pi-phone" placeholder="+1 (555) 000-0000">
+            <div class="flex flex-col gap-1 md:col-span-2">
+              <label class="font-label-sm text-label-sm text-text-muted">Professional Title</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-title" type="text" placeholder="Senior AI & Systems Engineer">
             </div>
-            <div class="form-group">
-              <label class="form-label">Location</label>
-              <input type="text" class="form-input" id="pi-location" placeholder="City, State">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">Email</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-email" type="email" placeholder="john@example.com">
             </div>
-          </div>
-          <div class="form-row-2">
-            <div class="form-group">
-              <label class="form-label">LinkedIn</label>
-              <input type="text" class="form-input" id="pi-linkedin" placeholder="https://linkedin.com/in/...">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">Phone Number</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-phone" type="text" placeholder="+1 (555) 000-0000">
             </div>
-            <div class="form-group">
-              <label class="form-label">GitHub</label>
-              <input type="text" class="form-input" id="pi-github" placeholder="https://github.com/...">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">Location</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-location" type="text" placeholder="San Francisco, CA">
             </div>
-          </div>
-          <div class="form-row-2">
-            <div class="form-group">
-              <label class="form-label">LeetCode</label>
-              <input type="text" class="form-input" id="pi-leetcode" placeholder="https://leetcode.com/u/...">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">LinkedIn URL</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-linkedin" type="text" placeholder="linkedin.com/in/username">
             </div>
-            <div class="form-group">
-              <label class="form-label">Portfolio / Website</label>
-              <input type="text" class="form-input" id="pi-portfolio" placeholder="https://sumitc27.vercel.app">
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">GitHub URL</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-github" type="text" placeholder="github.com/username">
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="font-label-sm text-label-sm text-text-muted">LeetCode / Codeforces</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-leetcode" type="text" placeholder="leetcode.com/u/username">
+            </div>
+            <div class="flex flex-col gap-1 md:col-span-3">
+              <label class="font-label-sm text-label-sm text-text-muted">Portfolio / Personal Website</label>
+              <input class="form-input bg-bg-input text-on-surface font-body-md text-body-md px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="pi-portfolio" type="text" placeholder="https://yourportfolio.dev">
             </div>
           </div>
         </div>
 
-        <!-- Summary -->
-        <div class="card-section" data-section-id="summary">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="summary" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="summary">Professional Summary</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="summary" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <!-- Section: Professional Summary -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="summary">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="summary">Professional Summary</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="summary" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-summary">Included</span>
             </div>
-            <div class="section-reorder-btns">
-              <button type="button" class="btn-section-move" data-section="summary" data-dir="up" title="Move Section Up">▲</button>
-              <button type="button" class="btn-section-move" data-section="summary" data-dir="down" title="Move Section Down">▼</button>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="summary" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="summary" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="summary" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="summary">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <textarea class="form-textarea" id="resume-summary-input" rows="3" placeholder="A brief 2-3 sentence overview highlighting your core strengths and domain impact..."></textarea>
+            <textarea class="w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-3 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed shadow-inner form-textarea" id="resume-summary-input" rows="3" placeholder="A brief 2-3 sentence overview highlighting your core strengths and domain impact..."></textarea>
           </div>
         </div>
 
-        <!-- Skills Section -->
-        <div class="card-section" data-section-id="skills">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="skills" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="skills">Technical Skills</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="skills" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <!-- Section: Technical Skills -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="skills">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="skills">Technical Skills</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="skills" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-skills">Included</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="skills" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="skills" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-skill-cat" title="Add Skill Category">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="skills" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="skills" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <button class="px-2 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer" id="btn-add-skill-cat" type="button">
+                <span class="material-symbols-outlined text-[14px]">add</span> Add Category
               </button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="skills" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="skills">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <div id="skills-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            <div id="skills-list-container" class="flex flex-col gap-3"></div>
           </div>
         </div>
 
-        <!-- Experience Section -->
-        <div class="card-section" data-section-id="experience">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="experience" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="experience">Work Experience</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="experience" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <!-- Section: Professional Experience -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="experience">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="experience">Professional Experience</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="experience" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-experience">Included</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="experience" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="experience" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-exp" title="Add Experience">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-              </button>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="experience" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="experience" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="experience" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="experience">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <div id="experience-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            <div id="experience-list-container" class="flex flex-col gap-space-md"></div>
+          </div>
+          <button class="w-full py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-text-muted hover:text-text-main font-body-sm text-body-sm flex items-center justify-center gap-1.5 transition-colors border border-border-subtle cursor-pointer mt-1" id="btn-add-exp" type="button">
+            <span class="material-symbols-outlined text-[18px] text-primary">add_circle</span>
+            <span>Add Work Experience Position</span>
+          </button>
+        </div>
+
+        <!-- Section: Technical Projects -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="projects">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="projects">Technical Projects</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="projects" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="projects" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="projects" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="projects" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="projects">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="projects-list-container" class="flex flex-col gap-space-md"></div>
+          </div>
+          <button class="w-full py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-text-muted hover:text-text-main font-body-sm text-body-sm flex items-center justify-center gap-1.5 transition-colors border border-border-subtle cursor-pointer mt-1" id="btn-add-proj" type="button">
+            <span class="material-symbols-outlined text-[18px] text-primary">add_circle</span>
+            <span>Add Technical Project</span>
+          </button>
+        </div>
+
+        <!-- Section: Education -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="education">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="education">Education & Credentials</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="education" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="education" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="education" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="education" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="education">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="education-list-container" class="flex flex-col gap-space-md"></div>
+          </div>
+          <button class="w-full py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-text-muted hover:text-text-main font-body-sm text-body-sm flex items-center justify-center gap-1.5 transition-colors border border-border-subtle cursor-pointer mt-1" id="btn-add-edu" type="button">
+            <span class="material-symbols-outlined text-[18px] text-primary">add_circle</span>
+            <span>Add Degree or Institution</span>
+          </button>
+        </div>
+
+        <!-- Optional Built-in Sections (Certifications, Publications, Achievements, Volunteer) -->
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="certifications">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="certifications">Certifications & Licenses</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="certifications" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="certifications" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="certifications" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <button class="px-2 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer" id="btn-add-cert" type="button">
+                <span class="material-symbols-outlined text-[14px]">add</span> Add
+              </button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="certifications" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="certifications">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="section-content-body">
+            <div id="certifications-list-container" class="flex flex-col gap-2"></div>
           </div>
         </div>
 
-        <!-- Projects Section -->
-        <div class="card-section" data-section-id="projects">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="projects" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="projects">Technical Projects</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="projects" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="publications">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="publications">Patents & Publications</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="publications" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-projects">Included</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="projects" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="projects" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-proj" title="Add Project">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="publications" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="publications" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <button class="px-2 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer" id="btn-add-pub" type="button">
+                <span class="material-symbols-outlined text-[14px]">add</span> Add
               </button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="publications" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="publications">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <div id="projects-list-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            <div id="publications-list-container" class="flex flex-col gap-2"></div>
           </div>
         </div>
 
-        <!-- Education Section -->
-        <div class="card-section" data-section-id="education">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="education" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="education">Education</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="education" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="achievements">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="achievements">Honors & Awards</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="achievements" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-education">Included</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="education" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="education" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-edu" title="Add Education">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="achievements" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="achievements" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <button class="px-2 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer" id="btn-add-ach" type="button">
+                <span class="material-symbols-outlined text-[14px]">add</span> Add
               </button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="achievements" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="achievements">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <div id="education-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            <div id="achievements-list-container" class="flex flex-col gap-2"></div>
           </div>
         </div>
 
-        <!-- Certifications Section -->
-        <div class="card-section" data-section-id="certifications">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="certifications" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="certifications">Certifications & Awards</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="certifications" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <div class="p-space-lg rounded-2xl bg-bg-card backdrop-blur-md shadow-md flex flex-col gap-space-md border card-section is-included" data-section-id="volunteer">
+          <div class="flex items-center justify-between pb-1">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px] text-text-dim cursor-grab">drag_indicator</span>
+              <h3 class="font-headline-sm text-headline-sm text-text-main font-semibold section-heading-text" data-section-title-for="volunteer">Volunteer Experience</h3>
+              <button type="button" class="btn-rename-section text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-section="volunteer" title="Rename Section">
+                <span class="material-symbols-outlined text-[15px]">edit</span>
               </button>
-              <span class="section-status-tag" id="status-tag-certifications">Included</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="certifications" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="certifications" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-cert" title="Add Certification">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+            <div class="flex items-center gap-2 text-text-dim">
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="volunteer" data-dir="up" type="button" title="Move Up"><span class="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+              <button class="p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer btn-section-move" data-section="volunteer" data-dir="down" type="button" title="Move Down"><span class="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+              <button class="px-2 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm flex items-center gap-1 border border-border-subtle cursor-pointer" id="btn-add-vol" type="button">
+                <span class="material-symbols-outlined text-[14px]">add</span> Add
               </button>
+              <label class="section-tick-label cursor-pointer flex items-center ml-1" title="Toggle Section Inclusion (Green border = Included, Red border = Excluded)">
+                <input checked class="section-toggle-checkbox sr-only" data-section="volunteer" type="checkbox">
+                <div class="section-tick-btn is-included" data-section="volunteer">
+                  <span class="material-symbols-outlined text-[18px] tick-icon">check</span>
+                </div>
+              </label>
             </div>
           </div>
           <div class="section-content-body">
-            <div id="certifications-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
-          </div>
-        </div>
-
-        <!-- Patents & Publications Section -->
-        <div class="card-section" data-section-id="publications">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="publications" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="publications">Patents & Publications</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="publications" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              </button>
-              <span class="section-status-tag" id="status-tag-publications">Included</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="publications" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="publications" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-pub" title="Add Publication / Patent">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="section-content-body">
-            <div id="publications-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
-          </div>
-        </div>
-
-
-
-        <!-- Volunteer Section -->
-        <div class="card-section" data-section-id="volunteer">
-          <div class="card-title">
-            <div class="card-title-left">
-              <label class="section-checkbox-label" title="Tick to include in resume, untick to exclude">
-                <input type="checkbox" class="section-toggle-checkbox" data-section="volunteer" checked>
-                <span class="custom-checkmark"></span>
-                <span class="section-heading-text" data-section-title-for="volunteer">Volunteer Experience</span>
-              </label>
-              <button type="button" class="btn-rename-section" data-section="volunteer" title="Rename Section">
-                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              </button>
-              <span class="section-status-tag" id="status-tag-volunteer">Included</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="section-reorder-btns">
-                <button type="button" class="btn-section-move" data-section="volunteer" data-dir="up" title="Move Section Up">▲</button>
-                <button type="button" class="btn-section-move" data-section="volunteer" data-dir="down" title="Move Section Down">▼</button>
-              </div>
-              <button class="btn btn-secondary btn-icon" id="btn-add-vol" title="Add Volunteer">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="section-content-body">
-            <div id="volunteer-list-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            <div id="volunteer-list-container" class="flex flex-col gap-2"></div>
           </div>
         </div>
 
         <!-- Custom Sections Container -->
-        <div id="custom-sections-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
+        <div id="custom-sections-container" class="flex flex-col gap-space-lg"></div>
 
-        <!-- Add Custom Section Toolbar -->
-        <div class="add-section-toolbar" style="margin-top: 4px; margin-bottom: 24px;">
-          <button type="button" class="btn-add-new-section" id="btn-add-new-section" title="Add a new custom section to your resume">
-            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-            + Add New Section
-          </button>
-        </div>
+        <!-- Add Custom Section Dashed Button -->
+        <button class="w-full py-4 rounded-2xl border border-dashed border-border-subtle hover:border-primary/50 bg-surface-container-lowest/50 hover:bg-surface-container-low text-text-dim hover:text-text-main font-body-md text-body-md flex items-center justify-center gap-2 transition-all cursor-pointer mb-8" id="btn-add-new-section" type="button">
+          <span class="material-symbols-outlined text-[20px] text-primary">add_circle_outline</span>
+          <span>+ Add Custom Section (Patents, Publications, Certifications, Leadership)</span>
+        </button>
+
       </div>
 
       <!-- Raw JSON View (Hidden by default) -->
-      <div class="panel-body" id="editor-json-view" style="display: none; padding: 0;">
-        <textarea class="json-editor-area" id="raw-json-textarea" spellcheck="false"></textarea>
+      <div class="panel-body flex-1 overflow-y-auto" id="editor-json-view" style="display: none; padding: 16px;">
+        <textarea class="json-editor-area w-full h-full bg-bg-input text-on-surface font-mono text-[13px] p-4 rounded-xl border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="raw-json-textarea" spellcheck="false"></textarea>
       </div>
 
-      <!-- LaTeX View (Hidden by default) -->
-      <div class="panel-body" id="editor-latex-view" style="display: none; padding: 16px; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <div style="font-size: 0.8rem; color: var(--text-muted);">
-            ATS-compliant TeX macros auto-generated from your resume data.
+      <!-- LaTeX (.tex) View (Hidden by default) -->
+      <div class="panel-body flex-1 overflow-y-auto" id="editor-latex-view" style="display: none; padding: 16px; flex-direction: column; gap: 12px;">
+        <div class="flex justify-between items-center flex-wrap gap-2 pb-2">
+          <div class="text-body-sm text-text-muted flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-primary">code</span>
+            <span>ATS-compliant TeX macros auto-generated from your structured resume data.</span>
           </div>
-          <div style="display: flex; gap: 6px;">
-            <button class="btn btn-secondary" id="btn-tab-copy-latex" style="padding: 4px 10px; font-size: 0.76rem;">Copy</button>
-            <button class="btn btn-secondary" id="btn-tab-download-latex" style="padding: 4px 10px; font-size: 0.76rem;">Download .tex</button>
-            <button class="btn btn-primary" id="btn-tab-overleaf" style="padding: 4px 12px; font-size: 0.76rem;">Open in Overleaf ↗</button>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-tab-copy-latex">Copy</button>
+            <button class="btn btn-secondary px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-tab-download-latex">Download .tex</button>
+            <button class="btn btn-primary px-3 py-1 rounded-lg bg-primary-container hover:bg-primary-hover text-on-primary-container font-label-sm text-label-sm font-medium border-0 cursor-pointer" id="btn-tab-overleaf">Open in Overleaf ↗</button>
           </div>
         </div>
-        <textarea class="json-editor-area" id="tab-latex-textarea" style="flex: 1; min-height: 480px; border-radius: 8px; border: 1px solid var(--border-subtle); padding: 12px; font-size: 0.78rem;" spellcheck="false"></textarea>
+        <textarea class="json-editor-area flex-1 w-full bg-bg-input text-on-surface font-mono text-[12px] p-4 rounded-xl border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-h-[500px]" id="tab-latex-textarea" spellcheck="false"></textarea>
       </div>
     </section>
 
-    <!-- RIGHT PANEL: Live Document Preview & Guardrail -->
-    <section class="panel preview-panel" id="right-panel">
-      <div class="preview-toolbar">
-        <!-- Row 1: Header Title, LaTeX Indicator, & Main Actions -->
-        <div class="preview-toolbar-primary">
-          <div class="preview-toolbar-left">
-            <div class="panel-title">
-              <svg width="16" height="16" fill="var(--accent-emerald)" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
-              <span>Live 1-Page Paper Preview</span>
-            </div>
-
-            <!-- Template Indicator (LaTeX TeX Only) -->
-            <div class="template-toggle" title="ATS-Optimized Academic LaTeX TeX Resume Engine">
-              <span class="toolbar-label">Template:</span>
-              <div class="pill-group" id="template-pill-group">
-                <button class="pill-btn active latex-pill-btn" data-template="latex" title="Academic Computer Modern LaTeX TeX Engine">
-                  <span class="latex-icon-chip">TeX</span>
-                  <span>LaTeX TeX</span>
-                </button>
-              </div>
-            </div>
+    <!-- RIGHT PANEL: Live 1-Page Document Preview & Guardrail (620px) -->
+    <section class="panel preview-panel w-[620px] shrink-0 h-full flex flex-col bg-bg-canvas border-l-0 shadow-2xl relative z-20 overflow-hidden" id="right-panel">
+      
+      <!-- Preview Double-Decker Toolbar -->
+      <div class="flex flex-col bg-surface/90 backdrop-blur-md shadow-md shrink-0 z-20 border-b border-border-subtle">
+        
+        <!-- Top Toolbar Row -->
+        <div class="min-h-12 py-1 px-space-md flex items-center justify-between border-b border-border-subtle/50 flex-wrap gap-1.5">
+          <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-[15px] text-text-main font-semibold flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px] text-primary">visibility</span>Live Preview
+            </span>
           </div>
 
-          <!-- Spacing & Compactness Action Buttons -->
-          <div class="spacing-toolbar-actions">
-            <button class="btn-autofit" id="btn-autofit-toolbar" title="Automatically optimize spacing and font scale to fit on 1 page">
-              ✨ Auto-Fit 1 Page
-            </button>
-            <button class="spacing-toggle-btn" id="btn-toggle-spacing" title="Open spacing & compactness configuration sliders">
-              <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M6 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM1 10.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm4-6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+          <div class="flex items-center gap-1.5">
+            <!-- Spacing Drawer Toggle -->
+            <button class="spacing-toggle-btn flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm transition-colors border border-border-subtle cursor-pointer" id="btn-toggle-spacing" type="button">
+              <span class="material-symbols-outlined text-[15px]">tune</span>
               <span>Spacing</span>
-              <span class="spacing-indicator-badge" id="spacing-active-badge">Standard</span>
+              <span class="spacing-indicator-badge ml-1 px-1.5 py-0.2 rounded bg-surface-variant text-[10px]" id="spacing-active-badge">Standard</span>
             </button>
+
+            <!-- Magic Auto-Fit Button -->
+            <button class="btn-autofit flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-container hover:bg-primary-hover text-on-primary-container font-label-sm text-label-sm font-semibold shadow-sm transition-all border-0 cursor-pointer" id="btn-autofit-toolbar" type="button" title="Automatically optimize spacing and font scale to fit on 1 page">
+              <span class="material-symbols-outlined text-[15px]">auto_fix_high</span>
+              <span>Auto-Fit 1 Page</span>
+            </button>
+
+            <!-- Zoom Fit Pills -->
+            <div class="zoom-controls flex items-center bg-surface-container rounded-lg p-0.5 border border-border-subtle" id="zoom-controls">
+              <button class="btn-zoom-pill active" id="btn-zoom-auto" type="button">Fit</button>
+              <button class="btn-zoom-pill" id="btn-zoom-100" type="button">100%</button>
+            </div>
           </div>
         </div>
 
-        <!-- Row 2: Layout & Typography Settings Sub-bar -->
-        <div class="preview-toolbar-secondary">
-          <!-- Font Selector Controls -->
-          <div class="font-toggle" title="Change Resume Font Family">
-            <span class="toolbar-label">Font:</span>
-            <select id="font-select" class="font-dropdown" aria-label="Select Resume Font">
-              <option value="lmodern" selected>Latin Modern (Classic TeX)</option>
-              <option value="charter">Bitstream Charter (Modern Serif)</option>
-              <option value="sourcesanspro">Source Sans Pro (Tech Sans)</option>
-              <option value="inter">Inter (Clean UI Sans)</option>
-              <option value="palatino">Palatino / Mathpazo (Executive Serif)</option>
-              <option value="times">Times New Roman (Academic)</option>
-              <option value="roboto">Roboto (Geometric Sans)</option>
+        <!-- Bottom Toolbar Row -->
+        <div class="min-h-[42px] py-1.5 px-space-md flex items-center justify-between bg-surface-container-lowest/60 flex-wrap gap-2">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="font-label-sm text-label-sm text-text-dim">Font:</span>
+            <select class="font-dropdown bg-surface-container text-on-surface font-label-sm text-label-sm px-2 py-1 rounded border border-border-subtle focus:outline-none max-w-[145px] truncate cursor-pointer" id="font-select" aria-label="Select Resume Font">
+              <option value="lmodern" selected>Latin Modern (TeX)</option>
+              <option value="charter">Charter (Serif)</option>
+              <option value="sourcesanspro">Source Sans</option>
+              <option value="inter">Inter (Sans)</option>
+              <option value="palatino">Palatino</option>
+              <option value="times">Times New Roman</option>
+              <option value="roboto">Roboto</option>
             </select>
           </div>
 
-          <div class="toolbar-divider" aria-hidden="true"></div>
+          <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <!-- Paper Format (A4 / Letter) -->
+            <div class="paper-pill-group flex items-center bg-surface-container rounded-lg p-0.5 border border-border-subtle" id="paper-pill-group">
+              <button class="paper-pill-btn active" data-paper="a4" id="btn-paper-a4" type="button">A4</button>
+              <button class="paper-pill-btn" data-paper="letter" id="btn-paper-letter" type="button">Letter</button>
+            </div>
 
-          <!-- Paper Format Selector (A4 / US Letter) -->
-          <div class="paper-toggle" title="Select paper size standard. When A4 is selected, LaTeX generates a4paper and preview formats in A4 (210×297mm).">
-            <span class="toolbar-label">Paper:</span>
-            <div class="pill-group" id="paper-pill-group">
-              <button class="pill-btn active" data-paper="a4" id="btn-paper-a4" title="A4 Standard (210 × 297 mm) - Matches LaTeX a4paper">A4</button>
-              <button class="pill-btn" data-paper="letter" id="btn-paper-letter" title="US Letter (8.5 × 11 in) - Matches LaTeX letterpaper">Letter</button>
+            <div class="h-3 w-[1px] bg-surface-variant hidden sm:block"></div>
+
+            <!-- Density Pills -->
+            <div class="density-pill-group flex items-center bg-surface-container rounded-lg p-0.5 border border-border-subtle" id="density-pill-group">
+              <button class="density-btn" data-density="compact" type="button">Compact</button>
+              <button class="density-btn active" data-density="standard" type="button">Std</button>
+              <button class="density-btn" data-density="relaxed" type="button">Relaxed</button>
+            </div>
+
+            <div class="h-3 w-[1px] bg-surface-variant hidden sm:block"></div>
+
+            <!-- Quick Dim BG Toggle -->
+            <button class="btn-quick-dim-bg flex items-center gap-1 px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-text-dim hover:text-secondary-cyan-light font-label-sm text-label-sm transition-colors border border-border-subtle cursor-pointer shrink-0" id="btn-quick-dim-bg" title="Quick toggle canvas dimming" type="button">
+              <span class="material-symbols-outlined text-[13px]">contrast</span>
+              <span>Dim BG</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Collapsible Spacing Drawer -->
+        <div class="spacing-drawer hidden flex-col gap-2 p-3 bg-surface-container-low shadow-inner border-b border-border-subtle" id="spacing-drawer">
+          <div class="flex justify-between items-center pb-1">
+            <span class="font-label-sm text-label-sm text-text-muted font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[15px] text-primary">tune</span> Spacing & Density Configuration
+            </span>
+            <div class="flex items-center gap-2">
+              <button class="text-text-dim hover:text-text-main font-label-sm text-label-sm border-0 bg-transparent cursor-pointer" id="btn-spacing-reset">Reset Defaults</button>
+              <button class="text-text-dim hover:text-accent-rose font-label-sm text-label-sm border-0 bg-transparent cursor-pointer" id="btn-spacing-close">✕</button>
             </div>
           </div>
 
-          <div class="toolbar-divider" aria-hidden="true"></div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Section Gap</span>
+                <span class="text-secondary-cyan-light" id="val-section-gap">2px</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-section-gap" max="14" min="0" step="1" type="range" value="2">
+            </div>
+            
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Item Gap</span>
+                <span class="text-secondary-cyan-light" id="val-item-gap">2px</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-item-gap" max="10" min="0" step="1" type="range" value="2">
+            </div>
 
-          <!-- Spacing / Density Guardrail Controls -->
-          <div class="density-toggle" title="Adjust layout spacing to fit 1 page">
-            <span class="toolbar-label">Density:</span>
-            <div class="pill-group">
-              <button class="density-btn" data-density="compact">Compact</button>
-              <button class="density-btn active" data-density="standard">Standard</button>
-              <button class="density-btn" data-density="relaxed">Relaxed</button>
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Line Spacing</span>
+                <span class="text-secondary-cyan-light" id="val-line-height">1.28</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-line-height" max="1.45" min="1.15" step="0.01" type="range" value="1.28">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Font Scale</span>
+                <span class="text-secondary-cyan-light" id="val-font-scale">100%</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-font-scale" max="112" min="88" step="1" type="range" value="100">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1 border-t border-border-subtle/50 mt-1">
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Bullet Spacing</span>
+                <span class="text-secondary-cyan-light" id="val-bullet-gap">0px</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-bullet-gap" max="6" min="0" step="1" type="range" value="0">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Page Margins</span>
+                <span class="text-secondary-cyan-light" id="val-page-margin">16px</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-page-margin" max="36" min="8" step="2" type="range" value="16">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span class="flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[13px] text-secondary-cyan-light">contrast</span>BG Canvas
+                </span>
+                <span class="text-secondary-cyan-light" id="val-bg-opacity">100%</span>
+              </div>
+              <input class="h-1 bg-surface-variant rounded accent-secondary-cyan-light cursor-pointer" id="slider-bg-opacity" max="100" min="0" type="range" value="100">
+            </div>
+
+            <div class="flex flex-col justify-end">
+              <div class="flex items-center justify-between pt-1">
+                <span class="font-label-sm text-label-sm text-text-muted">Focus Mode (Hide BG)</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input class="sr-only peer" id="toggle-bg-hide-checkbox" type="checkbox">
+                  <div class="w-8 h-4 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-inverse-primary"></div>
+                  <span class="ml-2 font-label-sm text-label-sm text-secondary-cyan-light select-none text-[10px]" id="bg-toggle-status-label">Visible</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- 1-Page Guardrail Status Bar -->
+        <div class="px-space-md py-1.5 bg-surface-container-lowest flex items-center justify-between border-b border-border-subtle" id="paper-info-bar">
+          <div class="flex items-center gap-2 font-label-sm text-label-sm">
+            <span class="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" id="paper-status-dot"></span>
+            <span class="text-text-muted" id="paper-spec-pill">📄 A4 Paper (210 × 297 mm)</span>
+            <span class="text-border-subtle">•</span>
+            <span class="text-accent-emerald font-semibold paper-budget-readout" id="paper-budget-readout">Budget: 0px / 1123px (0% filled)</span>
+          </div>
+          <div class="flex items-center gap-1 font-label-sm text-label-sm text-accent-emerald bg-accent-emerald/10 px-2 py-0.5 rounded-full" id="guardrail-badge-container">
+            <span class="material-symbols-outlined text-[13px]">shield</span>
+            <span id="guardrail-badge-text">1-Page Safe ✓ 81px Buffer</span>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Collapsible Spacing & Compactness Configuration Drawer -->
-      <div class="spacing-drawer" id="spacing-drawer">
-        <div class="spacing-drawer-inner">
-          <div class="spacing-drawer-header">
-            <div class="spacing-drawer-title">
-              <svg width="15" height="15" fill="var(--primary)" viewBox="0 0 16 16"><path d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"/></svg>
-              <span>Spacing & Compactness Configuration</span>
-            </div>
-            <div class="spacing-drawer-actions">
-              <button class="btn-drawer-action" id="btn-spacing-reset" title="Reset all sliders to LaTeX default spacing">Reset Defaults</button>
-              <button class="btn-drawer-close" id="btn-spacing-close" title="Close spacing drawer">✕</button>
-            </div>
-          </div>
-
-          <!-- Quick Presets Row -->
-          <div class="spacing-presets-row">
-            <span class="spacing-preset-label">Compactness Presets:</span>
-            <div class="pill-group" id="spacing-preset-group">
-              <button class="pill-btn active" data-spacing-preset="standard">Standard (TeX)</button>
-              <button class="pill-btn" data-spacing-preset="compact">Compact</button>
-              <button class="pill-btn" data-spacing-preset="ultra-compact">Ultra-Compact</button>
-              <button class="pill-btn" data-spacing-preset="relaxed">Relaxed</button>
-              <button class="pill-btn pill-btn-magic" id="btn-preset-autofit" title="Automatically shrink spacing & scale to fit 1 page">✨ Auto-Fit 1 Page</button>
-            </div>
-          </div>
-
-          <!-- Granular Sliders Grid -->
-          <div class="spacing-sliders-grid">
-            <!-- 1. Section Spacing -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-section-gap">Section Spacing</label>
-                <span class="spacing-value-badge" id="val-section-gap">2px</span>
-              </div>
-              <input type="range" id="slider-section-gap" min="0" max="14" step="1" value="2" class="spacing-range">
-              <span class="spacing-hint">Gap between main section headings (Education, Experience, etc.)</span>
-            </div>
-
-            <!-- 2. Item Spacing -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-item-gap">Item Spacing</label>
-                <span class="spacing-value-badge" id="val-item-gap">2px</span>
-              </div>
-              <input type="range" id="slider-item-gap" min="0" max="10" step="1" value="2" class="spacing-range">
-              <span class="spacing-hint">Gap between companies, projects & degrees</span>
-            </div>
-
-            <!-- 3. Line Height / Density -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-line-height">Line Spacing</label>
-                <span class="spacing-value-badge" id="val-line-height">1.28</span>
-              </div>
-              <input type="range" id="slider-line-height" min="1.15" max="1.45" step="0.01" value="1.28" class="spacing-range">
-              <span class="spacing-hint">Vertical text line-height & compactness</span>
-            </div>
-
-            <!-- 4. Bullet Item Gap -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-bullet-gap">Bullet Spacing</label>
-                <span class="spacing-value-badge" id="val-bullet-gap">0px</span>
-              </div>
-              <input type="range" id="slider-bullet-gap" min="0" max="6" step="1" value="0" class="spacing-range">
-              <span class="spacing-hint">Padding between individual bullet point lines</span>
-            </div>
-
-            <!-- 5. Page Margins (Padding) -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-page-margin">Page Margins</label>
-                <span class="spacing-value-badge" id="val-page-margin">16px</span>
-              </div>
-              <input type="range" id="slider-page-margin" min="8" max="36" step="2" value="16" class="spacing-range">
-              <span class="spacing-hint">Top & bottom paper padding</span>
-            </div>
-
-            <!-- 6. Font Size Scale -->
-            <div class="spacing-control-group">
-              <div class="spacing-label-row">
-                <label for="slider-font-scale">Font Scale</label>
-                <span class="spacing-value-badge" id="val-font-scale">100%</span>
-              </div>
-              <input type="range" id="slider-font-scale" min="88" max="112" step="1" value="100" class="spacing-range">
-              <span class="spacing-hint">Base document font scale (e.g. 9.2pt to 11pt)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="preview-scroll-container">
-        <!-- Overflow Warning Banner -->
-        <div class="overflow-alert-banner no-print" id="overflow-banner">
-          <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>
-          <div style="flex: 1;">
-            <strong>1-Page Limit Exceeded!</strong> Content extends past the 1-page visual threshold.
-          </div>
-          <button class="btn-autofit-banner" id="btn-banner-autofit" title="Automatically shrink spacing & scale to fit 1 page">
-            ✨ Auto-Fit to 1 Page
-          </button>
-        </div>
-
-        <!-- The Paper Document Container -->
-        <div class="paper-wrapper" id="paper-wrapper">
-          <div class="paper-info-bar no-print">
-            <span class="paper-spec-pill" id="paper-spec-pill">📄 A4 Paper (210 × 297 mm)</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="paper-budget-readout" id="paper-budget-readout">Budget: 0px / 1123px (0% filled)</span>
-              <div class="zoom-controls no-print" id="zoom-controls">
-                <button type="button" class="btn-zoom-pill active" id="btn-zoom-auto" title="Auto fit to panel width">Fit Width</button>
-                <button type="button" class="btn-zoom-pill" id="btn-zoom-100" title="100% true physical print scale">100%</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="paper-viewport" id="paper-viewport">
+      <!-- Preview Scroll Viewport -->
+      <div class="preview-scroll-container flex-1 overflow-y-auto p-space-md bg-bg-canvas flex flex-col items-center relative select-none" id="paper-viewport-container">
+        
+        <!-- The Paper Document Container & Scaler -->
+        <div class="paper-wrapper flex justify-center items-start w-full relative" id="paper-wrapper">
+          <div class="paper-viewport flex justify-center w-full" id="paper-viewport">
             <div class="paper-scaler" id="paper-scaler">
-              <!-- Page 1 Sheet -->
-              <div class="resume-paper theme-latex paper-a4" id="resume-paper" data-page="1">
-                <span class="rp-page-badge no-print" id="rp-page-badge-1">Page 1</span>
-                <!-- Dynamic Paper Header -->
-                <header class="rp-header">
-                  <h2 class="rp-name" id="rp-name">Sumit Chouhan</h2>
-                  <div class="rp-title" id="rp-title">AI/ML Developer</div>
-                  <div class="rp-contacts" id="rp-contacts">
-                    <span id="rp-phone">+91-7400603978</span>
+              
+              <!-- Page 1 Sheet (Authentic Physical Academic White Paper) -->
+              <div class="resume-paper theme-latex paper-a4 bg-paper-bg text-paper-text shadow-[0_12px_35px_rgba(0,0,0,0.65)] rounded-sm p-7 flex flex-col font-serif relative" id="resume-paper" data-page="1">
+                <span class="rp-page-badge no-print font-label-sm text-[10px] absolute -top-3 right-4 bg-surface-container-highest text-secondary-cyan-light px-2 py-0.5 rounded shadow-sm border border-border-subtle" id="rp-page-badge-1">Page 1</span>
+                
+                <!-- Dynamic LaTeX Header: Centered Identity -->
+                <header class="rp-header text-center pb-2">
+                  <h1 class="rp-name text-[22px] font-bold tracking-wider text-gray-900 uppercase" id="rp-name">Alex Mercer</h1>
+                  <div class="rp-title hidden" id="rp-title">Staff AI Systems Architect</div>
+                  <div class="rp-contacts text-[11px] text-gray-700 mt-0.5 tracking-tight" id="rp-contacts">
+                    <span id="rp-location">San Francisco, CA</span>
                     <span>•</span>
-                    <span id="rp-email">27th.sumit@gmail.com</span>
+                    <span id="rp-phone">(415) 890-2341</span>
                     <span>•</span>
-                    <span id="rp-location">Jabalpur, India</span>
+                    <span id="rp-email">alex.mercer@alum.berkeley.edu</span>
                     <span>•</span>
-                    <a href="https://linkedin.com/in/sumitc27" id="rp-linkedin" target="_blank">LinkedIn</a>
+                    <a href="https://linkedin.com" id="rp-linkedin" target="_blank" class="text-blue-800 hover:underline">LinkedIn</a>
                     <span>•</span>
-                    <a href="https://github.com/sumitc27" id="rp-github" target="_blank">GitHub</a>
+                    <a href="https://github.com" id="rp-github" target="_blank" class="text-blue-800 hover:underline">GitHub</a>
                   </div>
                 </header>
 
-                <!-- Dynamic Paper Education -->
-                <section class="rp-section" id="rp-section-education">
-                  <h3 class="rp-section-title" data-rp-title-for="education">Education</h3>
+                <!-- Dynamic Education -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-education">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="education">Education</h2>
                   <div id="rp-education-container"></div>
                 </section>
 
-                <!-- Dynamic Paper Skills -->
-                <section class="rp-section" id="rp-section-skills">
-                  <h3 class="rp-section-title" data-rp-title-for="skills">Technical Skills</h3>
-                  <div class="rp-skills-group" id="rp-skills-group"></div>
+                <!-- Dynamic Skills -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-skills">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="skills">Technical Skills</h2>
+                  <div class="rp-skills-group text-[10.5px] leading-[1.3] text-gray-800 space-y-0.5" id="rp-skills-group"></div>
                 </section>
 
-                <!-- Dynamic Paper Experience -->
-                <section class="rp-section" id="rp-section-experience">
-                  <h3 class="rp-section-title" data-rp-title-for="experience">Work Experience</h3>
+                <!-- Dynamic Experience -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-experience">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="experience">Professional Experience</h2>
                   <div id="rp-experience-container"></div>
                 </section>
 
-                <!-- Dynamic Paper Projects -->
-                <section class="rp-section" id="rp-section-projects">
-                  <h3 class="rp-section-title" data-rp-title-for="projects">Technical Projects</h3>
+                <!-- Dynamic Projects -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-projects">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="projects">Technical Projects</h2>
                   <div id="rp-projects-container"></div>
                 </section>
 
-                <!-- Dynamic Paper Certifications -->
-                <section class="rp-section" id="rp-section-certifications" style="display: none;">
-                  <h3 class="rp-section-title" data-rp-title-for="certifications">Certifications</h3>
-                  <ul class="rp-bullets" id="rp-certifications-container"></ul>
+                <!-- Dynamic Certifications -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-certifications" style="display: none;">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="certifications">Certifications</h2>
+                  <ul class="rp-bullets list-disc pl-4 text-[10px] leading-[1.3] text-gray-800 space-y-0.5" id="rp-certifications-container"></ul>
                 </section>
 
-                <!-- Dynamic Paper Patents & Publications -->
-                <section class="rp-section" id="rp-section-publications" style="display: none;">
-                  <h3 class="rp-section-title" data-rp-title-for="publications">Patents & Publications</h3>
-                  <ul class="rp-bullets" id="rp-publications-container"></ul>
+                <!-- Dynamic Publications -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-publications" style="display: none;">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="publications">Patents & Publications</h2>
+                  <ul class="rp-bullets list-disc pl-4 text-[10px] leading-[1.3] text-gray-800 space-y-0.5" id="rp-publications-container"></ul>
                 </section>
 
-                <!-- Dynamic Paper Achievements -->
-                <section class="rp-section" id="rp-section-achievements" style="display: none;">
-                  <h3 class="rp-section-title" data-rp-title-for="achievements">Honors & Achievements</h3>
-                  <ul class="rp-bullets" id="rp-achievements-container"></ul>
+                <!-- Dynamic Achievements -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-achievements" style="display: none;">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="achievements">Honors & Achievements</h2>
+                  <ul class="rp-bullets list-disc pl-4 text-[10px] leading-[1.3] text-gray-800 space-y-0.5" id="rp-achievements-container"></ul>
                 </section>
 
-                <!-- Dynamic Paper Volunteer -->
-                <section class="rp-section" id="rp-section-volunteer" style="display: none;">
-                  <h3 class="rp-section-title" data-rp-title-for="volunteer">Volunteer Experience</h3>
-                  <ul class="rp-bullets" id="rp-volunteer-container"></ul>
+                <!-- Dynamic Volunteer -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-volunteer" style="display: none;">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="volunteer">Volunteer Experience</h2>
+                  <ul class="rp-bullets list-disc pl-4 text-[10px] leading-[1.3] text-gray-800 space-y-0.5" id="rp-volunteer-container"></ul>
                 </section>
 
-                <!-- Dynamic Paper Summary (Optional) -->
-                <section class="rp-section" id="rp-section-summary" style="display: none;">
-                  <h3 class="rp-section-title" data-rp-title-for="summary">Professional Summary</h3>
-                  <p class="rp-summary" id="rp-summary-text"></p>
+                <!-- Dynamic Summary (Optional) -->
+                <section class="rp-section resume-sec mb-2" id="rp-section-summary" style="display: none;">
+                  <h2 class="rp-section-title text-[12px] font-bold text-gray-900 tracking-wider uppercase border-b border-gray-400 pb-0.5 mb-1" data-rp-title-for="summary">Professional Summary</h2>
+                  <p class="rp-summary text-[10px] leading-[1.3] text-gray-800" id="rp-summary-text"></p>
                 </section>
 
                 <!-- Visual 1-Page Threshold Marker Line -->
-                <div class="page-limit-line no-print" id="page-limit-line" style="display: none;">
-                  <span class="page-limit-badge no-print" id="page-limit-badge">A4 1-Page Boundary (297mm)</span>
+                <div class="page-limit-line no-print absolute bottom-2 left-0 right-0 border-b border-dashed border-accent-rose flex items-center justify-end px-3 pointer-events-none" id="page-limit-line" style="display: none;">
+                  <span class="page-limit-badge no-print font-label-sm text-[10px] bg-accent-rose text-white px-1.5 py-0.2 rounded font-medium -mb-2 shadow-sm" id="page-limit-badge">
+                    1-PAGE ATS CUTOFF BOUNDARY
+                  </span>
                 </div>
               </div>
 
-              <!-- Page Break Divider (Visible only when overflowing past 1 page) -->
-              <div class="page-break-divider no-print" id="page-break-divider" style="display: none;">
-                <span class="page-break-line"></span>
-                <span class="page-break-badge">📄 Page Break • Page 2 Below</span>
-                <span class="page-break-line"></span>
+              <!-- Page Break Divider (Visible only on multi-page overflow) -->
+              <div class="page-break-divider no-print w-full my-6 flex items-center justify-center gap-3 text-text-dim" id="page-break-divider" style="display: none;">
+                <span class="page-break-line h-[1px] bg-border-subtle flex-1"></span>
+                <span class="page-break-badge font-label-sm text-[11px] bg-surface-container px-3 py-1 rounded-full border border-border-subtle">📄 Page Break • Page 2 Below</span>
+                <span class="page-break-line h-[1px] bg-border-subtle flex-1"></span>
               </div>
 
-              <!-- Page 2 Sheet (Visible only when overflowing past 1 page) -->
-              <div class="resume-paper theme-latex paper-a4" id="resume-paper-p2" data-page="2" style="display: none;">
-                <span class="rp-page-badge no-print" id="rp-page-badge-2">Page 2</span>
+              <!-- Page 2 Sheet (Visible only on multi-page overflow) -->
+              <div class="resume-paper theme-latex paper-a4 bg-paper-bg text-paper-text shadow-[0_12px_35px_rgba(0,0,0,0.65)] rounded-sm p-7 flex flex-col font-serif relative" id="resume-paper-p2" data-page="2" style="display: none;">
+                <span class="rp-page-badge no-print font-label-sm text-[10px] absolute -top-3 right-4 bg-surface-container-highest text-secondary-cyan-light px-2 py-0.5 rounded shadow-sm border border-border-subtle" id="rp-page-badge-2">Page 2</span>
                 <div class="rp-page-content" id="rp-page-2-content" style="display: flex; flex-direction: column; width: 100%;"></div>
               </div>
+
             </div>
           </div>
         </div>
+
       </div>
     </section>
+
   </main>
 
   <!-- Upload Resume Modal -->
   <div class="modal-overlay" id="upload-modal">
-    <div class="modal-card">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 1.15rem; font-weight: 700;">Upload Current Resume</h2>
-        <button class="btn btn-outline btn-icon" id="btn-close-modal">✕</button>
+    <div class="modal-card bg-surface-container-low border border-border-subtle p-6 rounded-2xl shadow-2xl max-w-lg w-full">
+      <div class="flex justify-between items-center pb-2">
+        <h2 class="font-headline-sm text-headline-sm text-text-main font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[22px]">cloud_upload</span>
+          Upload Current Resume
+        </h2>
+        <button class="btn btn-outline btn-icon text-text-dim hover:text-text-main border-0 bg-transparent cursor-pointer" id="btn-close-modal">✕</button>
       </div>
-      <p style="font-size: 0.82rem; color: var(--text-muted);">
+      <p class="font-body-sm text-body-sm text-text-muted mb-4">
         Select or drag a PDF resume. Our parser will extract the text, skills, and work history into structured JSON.
       </p>
 
-      <div class="dropzone" id="dropzone">
-        <div class="dropzone-icon">
-          <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+      <div class="dropzone p-8 rounded-xl border-2 border-dashed border-border-subtle hover:border-primary/60 bg-surface-container/50 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors" id="dropzone">
+        <div class="dropzone-icon w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+          <span class="material-symbols-outlined text-[28px]">upload_file</span>
         </div>
-        <div style="font-weight: 600; font-size: 0.9rem;">Drag & drop your PDF resume here</div>
-        <div style="font-size: 0.78rem; color: var(--text-dim);">or click to browse local files</div>
+        <div class="font-body-md text-body-md text-text-main font-medium">Drag & drop your PDF resume here</div>
+        <div class="font-label-sm text-label-sm text-text-dim">or click to browse local files</div>
         <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
       </div>
 
-      <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <button class="btn btn-secondary" id="btn-cancel-upload">Cancel</button>
+      <div class="flex justify-end gap-2 mt-4">
+        <button class="btn btn-secondary px-4 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm border border-border-subtle cursor-pointer" id="btn-cancel-upload">Cancel</button>
       </div>
     </div>
   </div>
 
   <!-- LaTeX Code & Compilation Modal -->
   <div class="modal-overlay" id="latex-modal">
-    <div class="modal-card" style="max-width: 680px; width: 95%;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-          <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 16 16"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/></svg>
+    <div class="modal-card bg-surface-container-low border border-border-subtle p-6 rounded-2xl shadow-2xl max-w-2xl w-full">
+      <div class="flex justify-between items-center pb-2">
+        <h2 class="font-headline-sm text-headline-sm text-text-main font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[22px]">code</span>
           LaTeX Resume Pipeline (.tex)
         </h2>
-        <button class="btn btn-outline btn-icon" id="btn-close-latex-modal">✕</button>
+        <button class="btn btn-outline btn-icon text-text-dim hover:text-text-main border-0 bg-transparent cursor-pointer" id="btn-close-latex-modal">✕</button>
       </div>
-      <p style="font-size: 0.82rem; color: var(--text-muted);">
+      <p class="font-body-sm text-body-sm text-text-muted mb-3">
         Generated via ATS-compliant TeX macros with character sanitization. Compatible with <strong>Tectonic</strong>, <strong>pdfLaTeX</strong>, and <strong>Overleaf</strong>.
       </p>
 
-      <textarea id="latex-code-view" class="json-editor-area" style="height: 280px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 0.78rem;" spellcheck="false"></textarea>
+      <textarea id="latex-code-view" class="json-editor-area w-full h-[280px] bg-bg-input text-on-surface font-mono text-[12px] p-3 rounded-xl border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner mb-3" spellcheck="false"></textarea>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div style="font-size: 0.76rem; color: var(--text-dim);" id="latex-status-text">Ready to compile or download</div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn btn-secondary" id="btn-copy-latex">Copy .tex</button>
-          <button class="btn btn-secondary" id="btn-download-tex">Download .tex</button>
-          <button class="btn btn-secondary" id="btn-open-overleaf" style="color: #34D399; border-color: rgba(16, 185, 129, 0.4);">Open in Overleaf ↗</button>
-          <button class="btn btn-primary" id="btn-compile-pdf">
-            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div class="font-label-sm text-label-sm text-text-dim" id="latex-status-text">Ready to compile or download</div>
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn btn-secondary px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-copy-latex">Copy .tex</button>
+          <button class="btn btn-secondary px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-download-tex">Download .tex</button>
+          <button class="btn btn-secondary px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-accent-emerald border border-emerald-500/30 font-label-sm text-label-sm cursor-pointer" id="btn-open-overleaf">Open in Overleaf ↗</button>
+          <button class="btn btn-primary px-4 py-1.5 rounded-lg bg-primary-container hover:bg-primary-hover text-on-primary-container font-label-sm text-label-sm font-semibold border-0 cursor-pointer shadow-sm flex items-center gap-1.5" id="btn-compile-pdf">
+            <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
             Compile PDF (Tectonic)
           </button>
         </div>
@@ -810,110 +1050,106 @@
 
   <!-- Profile Vault & Selective Import Modal -->
   <div class="modal-overlay" id="profile-vault-modal">
-    <div class="modal-card vault-modal-card">
+    <div class="modal-card vault-modal-card bg-surface-container-low border border-border-subtle rounded-2xl shadow-2xl max-w-4xl w-[95%] h-[85vh] flex flex-col overflow-hidden">
+      
       <!-- Modal Header -->
-      <div class="vault-modal-header">
-        <div class="vault-header-title-wrap">
-          <div class="vault-icon-circle">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+      <div class="vault-modal-header p-5 border-b border-border-subtle flex justify-between items-center bg-surface/80">
+        <div class="vault-header-title-wrap flex items-center gap-3">
+          <div class="vault-icon-circle w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-secondary-cyan-light shadow-sm">
+            <span class="material-symbols-outlined text-[22px]">inventory_2</span>
           </div>
           <div>
-            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: #F8FAFC;">Master Profile Vault</h2>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;">
+            <h2 class="font-headline-sm text-headline-sm text-text-main font-bold">Master Profile Vault</h2>
+            <p class="font-body-sm text-body-sm text-text-muted mt-0.5">
               Your persistent career archive. Selectively cherry-pick jobs, bullet points, skills, and projects to import into your current tailored resume.
             </p>
           </div>
         </div>
-        <button class="btn btn-outline btn-icon" id="btn-close-vault-modal" title="Close Vault">✕</button>
+        <button class="btn btn-outline btn-icon text-text-dim hover:text-text-main border-0 bg-transparent cursor-pointer" id="btn-close-vault-modal" title="Close Vault">✕</button>
       </div>
 
       <!-- Vault Controls & Search Toolbar -->
-      <div class="vault-toolbar">
-        <div class="vault-search-box">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="vault-search-input" placeholder="Search experiences, skills, technologies, bullets..." class="vault-search-input">
-          <button id="btn-vault-clear-search" class="vault-clear-btn" style="display: none;">✕</button>
+      <div class="vault-toolbar p-3 bg-surface-container-lowest/80 border-b border-border-subtle flex items-center justify-between gap-3 flex-wrap">
+        <div class="vault-search-box flex items-center gap-2 bg-bg-input px-3 py-1.5 rounded-lg border border-border-subtle flex-1 max-w-md shadow-inner">
+          <span class="material-symbols-outlined text-[16px] text-text-dim">search</span>
+          <input type="text" id="vault-search-input" placeholder="Search experiences, skills, technologies, bullets..." class="vault-search-input bg-transparent border-0 text-on-surface font-body-sm text-body-sm focus:outline-none flex-1">
+          <button id="btn-vault-clear-search" class="vault-clear-btn text-text-dim hover:text-text-main border-0 bg-transparent cursor-pointer" style="display: none;">✕</button>
         </div>
 
-        <div class="vault-toolbar-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-vault-select-all" title="Select all available items">Select All</button>
-          <button class="btn btn-secondary btn-sm" id="btn-vault-deselect-all" title="Deselect all items">Deselect All</button>
-          <button class="btn btn-secondary btn-sm" id="btn-vault-sync-from-active" title="Save current active resume to Master Profile Vault" style="color: #38BDF8; border-color: rgba(56, 189, 248, 0.4);">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-            Save Current into Vault
+        <div class="vault-toolbar-actions flex items-center gap-2 flex-wrap">
+          <button class="btn btn-secondary btn-sm px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-vault-select-all" title="Select all available items">Select All</button>
+          <button class="btn btn-secondary btn-sm px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-vault-deselect-all" title="Deselect all items">Deselect All</button>
+          <button class="btn btn-secondary btn-sm px-3 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-secondary-cyan-light font-label-sm text-label-sm border border-cyan-500/40 cursor-pointer flex items-center gap-1" id="btn-vault-sync-from-active" title="Save current active resume to Master Profile Vault">
+            <span class="material-symbols-outlined text-[14px]">save</span>
+            <span>Save Current into Vault</span>
           </button>
-          <button class="btn btn-secondary btn-sm" id="btn-vault-export" title="Export complete Master Profile Vault to JSON file">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-            Export JSON
-          </button>
-          <button class="btn btn-secondary btn-sm" id="btn-vault-import" title="Import Master Profile from JSON file">
-            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
-            Import JSON
-          </button>
+          <button class="btn btn-secondary btn-sm px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-vault-export" title="Export complete Master Profile Vault to JSON file">Export JSON</button>
+          <button class="btn btn-secondary btn-sm px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-vault-import" title="Import Master Profile from JSON file">Import JSON</button>
           <input type="file" id="vault-file-input" accept=".json" style="display: none;">
         </div>
       </div>
 
       <!-- View Mode Toggles: Cherry-Pick Checklist vs Direct Vault Editor -->
-      <div class="vault-subnav-bar">
-        <!-- Quick Section Navigation Filter Tabs (Visible in Checklist Mode) -->
-        <div class="vault-section-tabs" id="vault-section-tabs">
-          <button class="vault-tab-pill active" data-tab-sec="all">All Sections</button>
-          <button class="vault-tab-pill" data-tab-sec="personalInfo">Personal Info</button>
-          <button class="vault-tab-pill" data-tab-sec="skills">Skills</button>
-          <button class="vault-tab-pill" data-tab-sec="experience">Experience</button>
-          <button class="vault-tab-pill" data-tab-sec="projects">Projects</button>
-          <button class="vault-tab-pill" data-tab-sec="education">Education</button>
-          <button class="vault-tab-pill" data-tab-sec="certifications">Certifications</button>
-          <button class="vault-tab-pill" data-tab-sec="publications">Publications</button>
-          <button class="vault-tab-pill" data-tab-sec="volunteer">Volunteer</button>
-          <button class="vault-tab-pill" data-tab-sec="customSections">Custom Sections</button>
+      <div class="vault-subnav-bar px-4 py-2 bg-surface-container-lowest/50 border-b border-border-subtle flex items-center justify-between">
+        <!-- Quick Section Navigation Filter Tabs -->
+        <div class="vault-section-tabs flex items-center gap-1 overflow-x-auto py-0.5" id="vault-section-tabs">
+          <button class="vault-tab-pill active px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-surface-container-high text-primary font-medium border border-border-subtle cursor-pointer" data-tab-sec="all">All Sections</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="personalInfo">Personal Info</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="skills">Skills</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="experience">Experience</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="projects">Projects</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="education">Education</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="certifications">Certifications</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="publications">Publications</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="volunteer">Volunteer</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="customSections">Custom Sections</button>
         </div>
 
         <!-- Mode Switch: Checklist vs Edit Master JSON -->
-        <div class="tabs-header" style="margin-left: 12px; flex-shrink: 0;">
-          <button class="tab-btn active" id="btn-vault-mode-checklist" style="font-size: 0.74rem; padding: 4px 10px;">Checklist</button>
-          <button class="tab-btn" id="btn-vault-mode-json" style="font-size: 0.74rem; padding: 4px 10px; color: #38BDF8;">Direct JSON Editor</button>
+        <div class="tabs-header flex items-center bg-surface-container p-0.5 rounded-lg border border-border-subtle shrink-0">
+          <button class="tab-btn active px-2.5 py-1 rounded font-label-sm text-label-sm border-0 cursor-pointer bg-surface-container-highest text-primary" id="btn-vault-mode-checklist">Checklist</button>
+          <button class="tab-btn px-2.5 py-1 rounded font-label-sm text-label-sm border-0 cursor-pointer bg-transparent text-secondary-cyan-light" id="btn-vault-mode-json">Direct JSON Editor</button>
         </div>
       </div>
 
       <!-- Interactive Checklist Content Area -->
-      <div class="vault-content-scroll" id="vault-sections-container">
+      <div class="vault-content-scroll flex-1 overflow-y-auto p-5 flex flex-col gap-4" id="vault-sections-container">
         <!-- Rendered dynamically by app.js -->
       </div>
 
       <!-- Direct Vault JSON Editor View (Hidden by default) -->
-      <div class="vault-content-scroll" id="vault-json-container" style="display: none; padding: 16px 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-size: 0.8rem; color: #94A3B8;">
+      <div class="vault-content-scroll flex-1 overflow-y-auto p-5" id="vault-json-container" style="display: none;">
+        <div class="flex justify-between items-center pb-2">
+          <span class="font-body-sm text-body-sm text-text-muted">
             Directly edit, reorder, add, or delete any experiences, bullets, and skills in your Master Archive JSON:
           </span>
-          <button class="btn btn-secondary btn-sm" id="btn-vault-format-json" style="font-size: 0.72rem; padding: 2px 8px;">Format JSON</button>
+          <button class="btn btn-secondary btn-sm px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer" id="btn-vault-format-json">Format JSON</button>
         </div>
-        <textarea id="vault-raw-json-textarea" class="json-editor-area" style="height: 380px; font-size: 0.8rem; font-family: ui-monospace, monospace; border-radius: 6px; border: 1px solid var(--border-subtle); width: 100%; box-sizing: border-box; background: #0B1120; color: #F8FAFC; padding: 12px;" spellcheck="false"></textarea>
+        <textarea id="vault-raw-json-textarea" class="json-editor-area w-full h-[400px] bg-bg-input text-on-surface font-mono text-[12px] p-4 rounded-xl border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" spellcheck="false"></textarea>
       </div>
 
       <!-- Vault Action Footer -->
-      <div class="vault-footer">
-        <div class="vault-selection-status" id="vault-selection-status">
-          <span class="badge-count" id="vault-selected-count">0</span> items selected for import
+      <div class="vault-footer p-4 border-t border-border-subtle bg-surface/90 flex justify-between items-center flex-wrap gap-3">
+        <div class="vault-selection-status font-body-sm text-body-sm text-text-muted" id="vault-selection-status">
+          <span class="badge-count font-label-md text-label-md px-2 py-0.5 rounded-full bg-surface-container-highest text-primary font-semibold" id="vault-selected-count">0</span> items selected for import
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <button class="btn btn-secondary" id="btn-vault-cancel">Cancel</button>
-          <button class="btn btn-secondary" id="btn-vault-import-replace" title="Replace existing sections in active resume with selected items" style="color: #F59E0B; border-color: rgba(245, 158, 11, 0.4);">
+        <div class="flex gap-2 items-center">
+          <button class="btn btn-secondary px-4 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm border border-border-subtle cursor-pointer" id="btn-vault-cancel">Cancel</button>
+          <button class="btn btn-secondary px-4 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-accent-amber border border-amber-500/40 font-body-sm text-body-sm cursor-pointer" id="btn-vault-import-replace" title="Replace existing sections in active resume with selected items">
             Replace Active Sections
           </button>
-          <button class="btn btn-primary" id="btn-vault-import-merge" title="Append / Merge selected items into active resume without removing current content">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+          <button class="btn btn-primary px-4 py-1.5 rounded-lg bg-inverse-primary hover:bg-primary-hover text-white font-body-sm text-body-sm font-medium border-0 cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.3)] flex items-center gap-1.5" id="btn-vault-import-merge" title="Append / Merge selected items into active resume without removing current content">
+            <span class="material-symbols-outlined text-[16px]">add</span>
             Import & Merge Selected
           </button>
         </div>
       </div>
+
     </div>
   </div>
 
-  <!-- Toast Message Container -->
-  <div class="toast-container" id="toast-container"></div>
+  <!-- Toast Notification Container -->
+  <div class="toast-container fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none" id="toast-container"></div>
 
   <!-- Mozilla PDF.js for Robust Client-Side Text & LaTeX PDF Extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
