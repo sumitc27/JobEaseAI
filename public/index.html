@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JobEaseAI - 3-Column Interactive Resume Studio</title>
+  <title>JobEaseAI</title>
   <meta name="description" content="AI-Powered Resume Tailor with strict 1-page formatting guardrails, real-time ATS match engine, and Master Profile Vault.">
 
   <!-- Stitch Design System Fonts: Outfit (Headlines), Inter (Body), JetBrains Mono (Code/Metrics) -->
@@ -153,7 +153,7 @@
         </div>
         <div class="flex items-center gap-space-xs">
           <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tight">JobEase<span class="text-primary">AI</span></span>
-          <span class="font-label-sm text-label-sm bg-surface-container-highest text-secondary-cyan-light px-1.5 py-0.5 rounded border border-border-subtle">V1 MVP</span>
+          <span class="font-label-sm text-label-sm bg-surface-container-highest text-secondary-cyan-light px-1.5 py-0.5 rounded border border-border-subtle">Beta</span>
         </div>
       </div>
 
@@ -269,16 +269,16 @@
           <!-- Micro Bar Metrics Grid -->
           <div class="grid grid-cols-3 gap-2 pt-2 text-center">
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Semantic</div>
-              <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-semantic">92%</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Tech Skills</div>
+              <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-semantic">--%</div>
             </div>
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Keywords</div>
-              <div class="font-label-md text-label-md text-secondary-cyan-light font-bold" id="score-metric-keywords">84%</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Exp Depth</div>
+              <div class="font-label-md text-label-md text-secondary-cyan-light font-bold" id="score-metric-keywords">--%</div>
             </div>
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Impact/KPIs</div>
-              <div class="font-label-md text-label-md text-accent-amber font-bold" id="score-metric-impact">89%</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Metrics/KPIs</div>
+              <div class="font-label-md text-label-md text-accent-amber font-bold" id="score-metric-impact">--%</div>
             </div>
           </div>
         </div>
@@ -757,14 +757,6 @@
               <button class="density-btn active" data-density="standard" type="button">Std</button>
               <button class="density-btn" data-density="relaxed" type="button">Relaxed</button>
             </div>
-
-            <div class="h-3 w-[1px] bg-surface-variant hidden sm:block"></div>
-
-            <!-- Quick Dim BG Toggle -->
-            <button class="btn-quick-dim-bg flex items-center gap-1 px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-text-dim hover:text-secondary-cyan-light font-label-sm text-label-sm transition-colors border border-border-subtle cursor-pointer shrink-0" id="btn-quick-dim-bg" title="Quick toggle canvas dimming" type="button">
-              <span class="material-symbols-outlined text-[13px]">contrast</span>
-              <span>Dim BG</span>
-            </button>
           </div>
         </div>
 
@@ -859,8 +851,6 @@
           <div class="flex items-center gap-2 font-label-sm text-label-sm">
             <span class="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" id="paper-status-dot"></span>
             <span class="text-text-muted" id="paper-spec-pill">📄 A4 Paper (210 × 297 mm)</span>
-            <span class="text-border-subtle">•</span>
-            <span class="text-accent-emerald font-semibold paper-budget-readout" id="paper-budget-readout">Budget: 0px / 1123px (0% filled)</span>
           </div>
           <div class="flex items-center gap-1 font-label-sm text-label-sm text-accent-emerald bg-accent-emerald/10 px-2 py-0.5 rounded-full" id="guardrail-badge-container">
             <span class="material-symbols-outlined text-[13px]">shield</span>

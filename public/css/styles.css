@@ -3175,6 +3175,42 @@ label:has(.section-toggle-checkbox):hover {
 }
 
 /* ==========================================================================
+   Actionable Suggestion Impact Badges (High, Medium, Low)
+   ========================================================================== */
+.impact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+
+.impact-badge.impact-high {
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+}
+
+.impact-badge.impact-medium {
+  color: #FBBF24;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.impact-badge.impact-low {
+  color: #38BDF8;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* ==========================================================================
    PRINT SPECIFICATION (@media print) - Strict 1-Page PDF Guardrail
    ========================================================================== */
 @media print {

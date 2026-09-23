@@ -134,35 +134,66 @@ function textContainsSkill(haystack, skill) {
 
 /**
  * Deterministic Pre-Audit: Fast Ground-Truth Extraction
- * Computes exact hard skills, soft skills, and keyword gaps before calling LLM.
+ * Computes exact hard skills, soft skills, quantifiable metrics, and keyword gaps before calling LLM.
  */
 export function preAuditDeterministic(resumeJson, jobDescription) {
   const jdLower = (jobDescription || '').toLowerCase();
   const resumeText = JSON.stringify(resumeJson || {}).toLowerCase();
 
-  // 1. Hard Skills
+  // 1. Hard Skills Match (45% weight)
   const jdHardSkills = COMMON_TECH_SKILLS.filter(skill => textContainsSkill(jdLower, skill));
   const resumeHardSkills = COMMON_TECH_SKILLS.filter(skill => textContainsSkill(resumeText, skill));
 
   const hardSkillsFound = jdHardSkills.filter(s => resumeHardSkills.includes(s));
   const missingHardSkills = jdHardSkills.filter(s => !resumeHardSkills.includes(s));
+  const hardSkillsCoverage = jdHardSkills.length > 0 
+    ? Math.round((hardSkillsFound.length / jdHardSkills.length) * 100) 
+    : (resumeHardSkills.length > 5 ? 65 : 45);
 
-  // 2. Soft Skills
+  // 2. Experience Relevance & Application Depth (25% weight)
+  // Check if skills are demonstrated in experience/projects or just dumped in skills list
+  const expBullets = (resumeJson?.experience || []).flatMap(e => e.bullets || []).join(' ').toLowerCase();
+  const projBullets = (resumeJson?.projects || []).flatMap(p => (p.bullets || []).concat(p.tech || '', p.description || '')).join(' ').toLowerCase();
+  const workText = `${expBullets} ${projBullets}`;
+
+  let expSkillsCount = 0;
+  hardSkillsFound.forEach(skill => {
+    if (textContainsSkill(workText, skill)) {
+      expSkillsCount++;
+    }
+  });
+  const experienceDepthScore = hardSkillsFound.length > 0
+    ? Math.round((expSkillsCount / hardSkillsFound.length) * 100)
+    : 30;
+
+  // 3. Action Verbs & Quantifiable Metrics Impact (15% weight)
+  const allBullets = (resumeJson?.experience || []).flatMap(e => e.bullets || [])
+    .concat((resumeJson?.projects || []).flatMap(p => p.bullets || []));
+  const metricRegex = /\b(\d+(\.\d+)?%|\$\d+[\d,]*|\d+\+?k|\d+\+?m|\b\d{2,}\b|\b(reduced|increased|optimized|decreased|accelerated|improved|scaled|saved|cut)\b.*?\b\d+)/i;
+  let metricCount = 0;
+  allBullets.forEach(b => {
+    if (metricRegex.test(b)) metricCount++;
+  });
+  const quantifiableImpactScore = allBullets.length > 0
+    ? Math.round((metricCount / allBullets.length) * 100)
+    : 25;
+
+  // 4. Soft Skills & Keyword Extraction
   const jdSoftSkills = COMMON_SOFT_SKILLS.filter(skill => textContainsSkill(jdLower, skill));
   const resumeSoftSkills = COMMON_SOFT_SKILLS.filter(skill => textContainsSkill(resumeText, skill));
-
   const softSkillsFound = jdSoftSkills.filter(s => resumeSoftSkills.includes(s));
   const missingSoftSkills = jdSoftSkills.filter(s => !resumeSoftSkills.includes(s));
 
-  // 3. Keyword Extraction from JD
-  const words = jdLower.match(/[a-z]{5,}/g) || [];
+  const words = jdLower.match(/[a-z]{4,}/g) || [];
   const freq = {};
-  const stopWords = [
+  const stopWords = new Set([
     'experience', 'required', 'responsibilities', 'qualifications', 'ability', 'working',
-    'candidate', 'company', 'position', 'opportunity', 'including', 'knowledge', 'preferred'
-  ];
+    'candidate', 'company', 'position', 'opportunity', 'including', 'knowledge', 'preferred',
+    'years', 'skills', 'degree', 'looking', 'strong', 'demonstrated', 'excellent', 'must',
+    'have', 'with', 'from', 'they', 'this', 'that', 'your', 'about', 'will', 'role'
+  ]);
   words.forEach(w => {
-    if (!stopWords.includes(w)) {
+    if (!stopWords.has(w) && w.length >= 4) {
       freq[w] = (freq[w] || 0) + 1;
     }
   });
@@ -173,10 +204,17 @@ export function preAuditDeterministic(resumeJson, jobDescription) {
     .map(e => e[0]);
 
   const keywordGaps = topKeywords.filter(k => !resumeText.includes(k));
+  const domainKeywordsScore = topKeywords.length > 0
+    ? Math.round(((topKeywords.length - keywordGaps.length) / topKeywords.length) * 100)
+    : 45;
 
-  const totalChecked = (jdHardSkills.length * 2) + jdSoftSkills.length + topKeywords.length;
-  const totalFound = (hardSkillsFound.length * 2) + softSkillsFound.length + (topKeywords.length - keywordGaps.length);
-  const rawScore = totalChecked > 0 ? Math.round((totalFound / totalChecked) * 100) : 70;
+  // Strict Enterprise ATS Weighted Formula (No Artificial Hikes)
+  const rawScore = Math.max(15, Math.min(98, Math.round(
+    (hardSkillsCoverage * 0.45) +
+    (experienceDepthScore * 0.25) +
+    (quantifiableImpactScore * 0.15) +
+    (domainKeywordsScore * 0.15)
+  )));
 
   return {
     jdHardSkills,
@@ -187,6 +225,10 @@ export function preAuditDeterministic(resumeJson, jobDescription) {
     missingSoftSkills,
     topKeywords,
     keywordGaps,
+    hardSkillsCoverage,
+    experienceDepthScore,
+    quantifiableImpactScore,
+    domainKeywordsScore,
     rawScore
   };
 }
@@ -213,7 +255,22 @@ function buildPrompt(resumeJson, jobDescription, preAudit) {
   }
 
   return `You are an executive ATS optimization specialist and principal technical recruiter.
-Your objective is to evaluate this candidate's resume against the target Job Description and generate actionable, high-impact refinements.
+Your objective is to evaluate this candidate's resume against the target Job Description with STRICT, UNCOMPROMISING ENTERPRISE ATS ACCURACY.
+
+CRITICAL SCORING RULES (RIGOROUS & ACCURATE, NO GRADE INFLATION):
+- Real enterprise ATS algorithms (Workday, Taleo, Greenhouse) evaluate candidates strictly.
+- Un-tailored resumes or resumes missing core tech stack must score between 40% and 65%. DO NOT hike scores to 80%+ unless the candidate demonstrates 85%+ of required skills with metrics in their actual experience.
+- The ATS matchScore (0-100) must reflect:
+  1. Hard Skills Coverage (45%): Proportion of required JD technologies present.
+  2. Experience Depth (25%): Are the skills proven in production work experience bullets?
+  3. Quantifiable Impact (15%): Are bullets backed by numbers, percentages, and metrics?
+  4. Domain Relevance (15%): Title match and domain keyword alignment.
+
+CRITICAL IMPACT CATEGORIZATION:
+Every recommendation MUST be assigned an "impact" field strictly categorized as one of:
+- "High": Critical missing core technical skills or primary work experience bullet rewrites with quantifiable metrics (Google XYZ formula).
+- "Medium": Secondary tools, frameworks, database experience, or technical project enhancements.
+- "Low": Professional summary phrasing alignment, soft skills, or formatting tweaks.
 
 TARGET JOB DESCRIPTION:
 """
@@ -225,6 +282,7 @@ GROUND-TRUTH PRE-AUDIT DATA (Deterministic keyword audit):
 - Missing Hard Skills from JD: ${preAudit.missingHardSkills.join(', ') || 'None'}
 - Missing Soft Skills: ${preAudit.missingSoftSkills.join(', ') || 'None'}
 - Domain Keyword Gaps: ${preAudit.keywordGaps.join(', ') || 'None'}
+- Pre-Audit Formula Score: ${preAudit.rawScore}%
 
 CANDIDATE WORK EXPERIENCE:
 ${experiences || 'No experience listed'}
@@ -237,19 +295,23 @@ Summary: ${resumeJson?.summary || 'N/A'}
 ${skillsSummary}
 
 TASK REQUIREMENTS:
-1. Provide an ATS match score (0-100) based on realistic role fit, qualifications, and depth of experience.
-2. Provide a 2-sentence executive summary of alignment.
+1. Provide a rigorous, un-inflated ATS match score (0-100).
+2. Provide a 2-sentence executive summary of alignment and key gaps.
 3. List hardSkillsFound and missingHardSkills cleanly.
-4. Generate actionable suggestions:
-   - "skill" suggestion: Recommend critical missing skills. Assign them to the most relevant category from the candidate's active category names (${categoryNamesList}). Set "targetCategory" to that category name.
-   - "experience_bullet" suggestion: Rewrite or add a high-impact bullet point for a specific role in work experience. Must follow Google XYZ formula ("Accomplished [X] as measured by [Y], by doing [Z]") and weave in JD requirements. Include "targetIndex" (0-based integer index of experience) and "targetTitle".
-   - "project_bullet" suggestion: Rewrite or add a technical bullet for one of the candidate's projects to highlight relevant JD technologies (e.g. Docker, Kubernetes, LangChain, PyTorch, Cloud APIs). Include "targetIndex" (0-based integer index of project) and "targetTitle".
-   - "summary" suggestion: Provide an aligned, compelling professional summary.
+4. Generate actionable suggestions with strict "impact": "High" | "Medium" | "Low":
+   - "skill" suggestion: Recommend critical missing skills. Assign them to the most relevant category from the candidate's active category names (${categoryNamesList}). Set "targetCategory" to that category name. Impact: "High" for core skills, "Medium" for secondary tools.
+   - "experience_bullet" suggestion: Rewrite or add a high-impact bullet point for a specific role in work experience. Must follow Google XYZ formula ("Accomplished [X] as measured by [Y], by doing [Z]") and weave in JD requirements. Impact: "High". Include "targetIndex" (0-based integer index of experience) and "targetTitle".
+   - "project_bullet" suggestion: Rewrite or add a technical bullet for one of the candidate's projects to highlight relevant JD technologies. Impact: "Medium". Include "targetIndex" (0-based integer index of project) and "targetTitle".
+   - "summary" suggestion: Provide an aligned, compelling professional summary. Impact: "Low".
 
 OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
 {
-  "matchScore": <number between 0 and 100>,
-  "summary": "<2-sentence executive assessment>",
+  "matchScore": <integer 0-100 based on strict formula>,
+  "hardSkillsCoverage": <integer 0-100>,
+  "experienceDepthScore": <integer 0-100>,
+  "quantifiableImpactScore": <integer 0-100>,
+  "domainKeywordsScore": <integer 0-100>,
+  "summary": "<2-sentence realistic assessment of candidate fit and gaps>",
   "hardSkillsFound": ["<found skill>"],
   "missingHardSkills": ["<missing skill>"],
   "softSkillsFound": ["<found soft skill>"],
@@ -259,6 +321,7 @@ OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
     {
       "id": "sug-skill-1",
       "type": "skill",
+      "impact": "High",
       "category": "hard_skill",
       "targetCategory": "cloudDevOps",
       "title": "Add Kubernetes & Docker to Cloud/DevOps",
@@ -272,6 +335,7 @@ OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
     {
       "id": "sug-exp-1",
       "type": "experience_bullet",
+      "impact": "High",
       "targetIndex": 0,
       "targetTitle": "<Company or Title of Experience>",
       "category": "quantify_impact",
@@ -282,6 +346,7 @@ OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
     {
       "id": "sug-proj-1",
       "type": "project_bullet",
+      "impact": "Medium",
       "targetIndex": 0,
       "targetTitle": "<Project Title>",
       "category": "technical_depth",
@@ -292,6 +357,7 @@ OUTPUT STRICTLY AS VALID JSON (no markdown fences, no commentary):
     {
       "id": "sug-summary-1",
       "type": "summary",
+      "impact": "Low",
       "category": "keyword_alignment",
       "title": "Align Summary with Target Role",
       "detail": "Tailor opening profile with primary domain keywords.",
@@ -439,10 +505,10 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
   const preAudit = preAuditDeterministic(resumeJson, jobDescription);
   const { hardSkillsFound, missingHardSkills, softSkillsFound, missingSoftSkills, keywordGaps, rawScore } = preAudit;
 
-  const matchScore = Math.min(Math.max(rawScore, 42), 95);
+  const matchScore = rawScore;
   const suggestions = [];
 
-  // 1. Skill Suggestions
+  // 1. Skill Suggestions (High Impact)
   if (missingHardSkills.length > 0) {
     const grouped = {};
     missingHardSkills.slice(0, 6).forEach(sk => {
@@ -456,10 +522,11 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
       suggestions.push({
         id: `sug-skills-${catKey}-${idx}`,
         type: 'skill',
+        impact: idx < 2 ? 'High' : 'Medium',
         category: 'hard_skill',
         targetCategory: catKey,
         title: `Add ${skills.join(', ')} to ${catMeta.label}`,
-        detail: `The job description emphasizes ${skills.join(', ')}. Adding them to ${catMeta.label} improves automated ATS subsection ranking.`,
+        detail: `The job description emphasizes ${skills.join(', ')}. Adding them to ${catMeta.label} directly satisfies core technical ATS screeners.`,
         action: {
           target: `skills.${catKey}`,
           category: catKey,
@@ -469,7 +536,7 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
     });
   }
 
-  // 2. Experience Bullet Refinement
+  // 2. Experience Bullet Refinement (High Impact)
   const keyTech = missingHardSkills[0] ? capitalize(missingHardSkills[0]) : 'Modern Cloud Architecture';
   const keyTerm = keywordGaps[0] ? capitalize(keywordGaps[0]) : 'Scalability';
   const primaryRole = resumeJson?.experience?.[0]?.title || 'Software Engineer';
@@ -478,6 +545,7 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
   suggestions.push({
     id: 'sug-exp-1',
     type: 'experience_bullet',
+    impact: 'High',
     targetIndex: 0,
     targetTitle: `${primaryRole} (${primaryCompany})`,
     category: 'quantify_impact',
@@ -486,12 +554,13 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
     recommendedBullet: `Architected and deployed scalable services using ${keyTech}, improving system ${keyTerm.toLowerCase()} and decreasing response latency by 32% for 150k+ active users.`
   });
 
-  // 3. Project Bullet Refinement
+  // 3. Project Bullet Refinement (Medium Impact)
   const projectTitle = resumeJson?.projects?.[0]?.title || 'Featured Technical Project';
   const secondaryTech = missingHardSkills[1] ? capitalize(missingHardSkills[1]) : (keyTech || 'Docker');
   suggestions.push({
     id: 'sug-proj-1',
     type: 'project_bullet',
+    impact: 'Medium',
     targetIndex: 0,
     targetTitle: projectTitle,
     category: 'technical_depth',
@@ -500,11 +569,12 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
     recommendedBullet: `Engineered full-stack system utilizing ${secondaryTech} and modern microservices, achieving 99.9% uptime with automated CI/CD deployment pipelines.`
   });
 
-  // 4. Summary Refinement
+  // 4. Summary Refinement (Low Impact)
   const primaryTitle = resumeJson?.personalInfo?.title || 'Software Engineer';
   suggestions.push({
     id: 'sug-summary-1',
     type: 'summary',
+    impact: 'Low',
     category: 'keyword_alignment',
     title: 'Align Professional Summary with Target Role',
     detail: 'Tailor the opening summary so recruiters immediately see exact keyword alignment in their initial 6-second scan.',
@@ -513,6 +583,10 @@ export function analyzeWithHeuristic(resumeJson, jobDescription) {
 
   return {
     matchScore,
+    hardSkillsCoverage: preAudit.hardSkillsCoverage,
+    experienceDepthScore: preAudit.experienceDepthScore,
+    quantifiableImpactScore: preAudit.quantifiableImpactScore,
+    domainKeywordsScore: preAudit.domainKeywordsScore,
     providerUsed: 'Built-in Heuristic Engine',
     summary: `Resume matches approximately ${matchScore}% of target qualifications. ${missingHardSkills.length > 0 ? `Key technical gaps identified: ${missingHardSkills.slice(0, 4).map(capitalize).join(', ')}.` : 'Strong core alignment across tech stack.'}`,
     hardSkillsFound: hardSkillsFound.map(capitalize),

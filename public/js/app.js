@@ -1796,10 +1796,6 @@ function paginateResume() {
     const ratio = Math.round((totalActualHeight / targetHeight) * 100);
     const bufferPx = Math.max(0, targetHeight - totalActualHeight);
 
-    if (elements.paperBudgetReadout) {
-      elements.paperBudgetReadout.textContent = `Budget: ${totalActualHeight}px / ${targetHeight}px (${ratio}% filled)`;
-    }
-
     if (elements.meterFill) {
       elements.meterFill.style.width = `${Math.min(ratio, 100)}%`;
       elements.meterFill.classList.remove('warning', 'overflow');
@@ -1933,10 +1929,6 @@ function paginateResume() {
     }
     const p2Ratio = Math.round((p2Bottom / targetHeight) * 100);
     const overflowLines = Math.max(1, Math.round(p2Bottom / 18));
-
-    if (elements.paperBudgetReadout) {
-      elements.paperBudgetReadout.textContent = `Budget: 2 Pages • Page 1: 100% full • Page 2: ${p2Ratio}% filled`;
-    }
 
     if (elements.meterFill) {
       elements.meterFill.style.width = '100%';
@@ -3674,13 +3666,19 @@ function renderAnalysisResults(analysis) {
   elements.scoreCircle.style.background = `conic-gradient(#10B981 0% ${score}%, #2e3545 ${score}% 100%)`;
   elements.scoreText.textContent = `${score}%`;
 
-  const semanticScore = Math.min(Math.round(score * 1.05), 98);
-  const keywordScore = Math.max(Math.round(score * 0.94), 60);
-  const impactScore = Math.min(Math.round(score * 1.02), 95);
+  const techSkillsScore = typeof analysis.hardSkillsCoverage === 'number'
+    ? analysis.hardSkillsCoverage
+    : Math.min(Math.round(score * 0.95), 98);
+  const expDepthScore = typeof analysis.experienceDepthScore === 'number'
+    ? analysis.experienceDepthScore
+    : Math.min(Math.round(score * 0.88), 95);
+  const quantifiableScore = typeof analysis.quantifiableImpactScore === 'number'
+    ? analysis.quantifiableImpactScore
+    : Math.min(Math.round(score * 0.82), 95);
 
-  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${semanticScore}%`;
-  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${keywordScore}%`;
-  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${impactScore}%`;
+  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${techSkillsScore}%`;
+  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${expDepthScore}%`;
+  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${quantifiableScore}%`;
 
   if (score >= 80) {
     elements.scoreStatus.textContent = 'Strong Alignment';
@@ -3792,33 +3790,31 @@ function renderAnalysisResults(analysis) {
     elements.foundSkillsTags.appendChild(tag);
   });
 
-  // Render Suggestions
+  // Render Suggestions sorted by Impact (High -> Medium -> Low)
   elements.suggestionsContainer.innerHTML = '';
   const suggestions = analysis.suggestions || [];
   if (suggestions.length === 0) {
     elements.suggestionsContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 12px;">No suggestions available.</div>';
   } else {
-    suggestions.forEach(sug => {
+    const impactWeight = { high: 3, medium: 2, low: 1 };
+    const sortedSuggestions = [...suggestions].sort((a, b) => {
+      const wA = impactWeight[(a.impact || 'medium').toLowerCase()] || 2;
+      const wB = impactWeight[(b.impact || 'medium').toLowerCase()] || 2;
+      return wB - wA;
+    });
+
+    sortedSuggestions.forEach(sug => {
       const card = document.createElement('div');
       card.className = 'p-3 rounded-xl bg-bg-card shadow-sm flex flex-col gap-1.5 hover:bg-surface-container transition-colors border border-border-subtle suggestion-item';
 
-      let badgeClass = 'badge-skill';
-      let badgeLabel = 'Skill';
-      if (sug.type === 'experience_bullet') {
-        badgeClass = 'badge-bullet';
-        badgeLabel = sug.targetTitle ? `Exp: ${sug.targetTitle}` : 'Experience';
-      } else if (sug.type === 'project_bullet') {
-        badgeClass = 'badge-project';
-        badgeLabel = sug.targetTitle ? `Proj: ${sug.targetTitle}` : 'Project';
-      } else if (sug.type === 'summary') {
-        badgeClass = 'badge-summary';
-        badgeLabel = 'Summary';
-      }
+      const rawImpact = (sug.impact || 'Medium').toLowerCase();
+      const impactLabel = rawImpact === 'high' ? 'High Impact' : (rawImpact === 'low' ? 'Low Impact' : 'Medium Impact');
+      const impactClass = `impact-${rawImpact === 'high' ? 'high' : (rawImpact === 'low' ? 'low' : 'medium')}`;
 
       card.innerHTML = `
-        <div class="flex items-center justify-between text-secondary-cyan-light font-label-sm text-label-sm font-semibold">
-          <span>${escapeHtml(sug.title)}</span>
-          <span class="text-tertiary text-[10px] bg-tertiary/10 px-1.5 py-0.2 rounded border border-tertiary/20">+4% ATS</span>
+        <div class="flex items-center justify-between text-secondary-cyan-light font-label-sm text-label-sm font-semibold gap-2">
+          <span class="truncate">${escapeHtml(sug.title)}</span>
+          <span class="impact-badge ${impactClass} flex-shrink-0">${impactLabel}</span>
         </div>
         <p class="font-body-sm text-body-sm text-text-muted leading-relaxed">${escapeHtml(sug.detail)}</p>
         ${sug.recommendedBullet ? `<div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface">"${escapeHtml(sug.recommendedBullet)}"</div>` : ''}
@@ -4060,9 +4056,19 @@ function addSkillToResume(skill, targetCategory = null) {
       currentAnalysis.hardSkillsFound.unshift(cleanSkill);
     }
 
-    // 3. Dynamically increment match score
-    if (typeof currentAnalysis.matchScore === 'number' && currentAnalysis.matchScore < 98) {
-      currentAnalysis.matchScore = Math.min(98, currentAnalysis.matchScore + 4);
+    // 3. Dynamically recalculate match score with genuine ATS multi-factor math
+    const totalSkills = ((currentAnalysis.hardSkillsFound?.length || 0) + (currentAnalysis.missingHardSkills?.length || 0));
+    if (totalSkills > 0) {
+      currentAnalysis.hardSkillsCoverage = Math.round((currentAnalysis.hardSkillsFound.length / totalSkills) * 100);
+      const expDepth = currentAnalysis.experienceDepthScore || 50;
+      const impactKpi = currentAnalysis.quantifiableImpactScore || 50;
+      const domainDensity = currentAnalysis.domainKeywordsScore || 50;
+      currentAnalysis.matchScore = Math.max(15, Math.min(98, Math.round(
+        (currentAnalysis.hardSkillsCoverage * 0.45) +
+        (expDepth * 0.25) +
+        (impactKpi * 0.15) +
+        (domainDensity * 0.15)
+      )));
     }
 
     // 4. Update any suggestion cards that recommended this skill
@@ -4115,7 +4121,46 @@ function clientHeuristicMatch(resume, jd) {
   const missing = techPool.filter(t => jdLower.includes(t.toLowerCase()) && !resText.includes(t.toLowerCase()));
   const found = techPool.filter(t => jdLower.includes(t.toLowerCase()) && resText.includes(t.toLowerCase()));
 
-  const matchScore = Math.max(50, Math.min(92, 100 - (missing.length * 9)));
+  // 1. Hard Skills Coverage (45% weight)
+  const totalSkills = found.length + missing.length;
+  const hardSkillsCoverage = totalSkills > 0
+    ? Math.round((found.length / totalSkills) * 100)
+    : 45;
+
+  // 2. Experience Depth (25% weight)
+  const expBullets = (resume?.experience || []).flatMap(e => e.bullets || []).join(' ').toLowerCase();
+  const projBullets = (resume?.projects || []).flatMap(p => (p.bullets || []).concat(p.tech || '', p.description || '')).join(' ').toLowerCase();
+  const workText = `${expBullets} ${projBullets}`;
+  let expSkillsCount = 0;
+  found.forEach(s => {
+    if (workText.includes(s.toLowerCase())) expSkillsCount++;
+  });
+  const experienceDepthScore = found.length > 0
+    ? Math.round((expSkillsCount / found.length) * 100)
+    : 30;
+
+  // 3. Quantifiable Impact (15% weight)
+  const allBullets = (resume?.experience || []).flatMap(e => e.bullets || [])
+    .concat((resume?.projects || []).flatMap(p => p.bullets || []));
+  const metricRegex = /\b(\d+(\.\d+)?%|\$\d+[\d,]*|\d+\+?k|\d+\+?m|\b\d{2,}\b|\b(reduced|increased|optimized|decreased|accelerated|improved|scaled|saved|cut)\b.*?\b\d+)/i;
+  let metricCount = 0;
+  allBullets.forEach(b => {
+    if (metricRegex.test(b)) metricCount++;
+  });
+  const quantifiableImpactScore = allBullets.length > 0
+    ? Math.round((metricCount / allBullets.length) * 100)
+    : 25;
+
+  // 4. Domain Keywords (15% weight)
+  const domainKeywordsScore = Math.max(20, Math.min(95, Math.round(hardSkillsCoverage * 0.9)));
+
+  // Strict Enterprise ATS Weighted Formula (No Artificial Hikes)
+  const matchScore = Math.max(15, Math.min(98, Math.round(
+    (hardSkillsCoverage * 0.45) +
+    (experienceDepthScore * 0.25) +
+    (quantifiableImpactScore * 0.15) +
+    (domainKeywordsScore * 0.15)
+  )));
 
   // Group missing skills by candidate's actual editable categories
   const groupedMissing = {};
@@ -4130,6 +4175,7 @@ function clientHeuristicMatch(resume, jd) {
     return {
       id: `sug-hard-skill-${idx}`,
       type: 'skill',
+      impact: idx < 2 ? 'High' : 'Medium',
       category: 'hard_skill',
       targetCategory: catName,
       title: `Add ${skills.join(', ')} to ${catName}`,
@@ -4145,6 +4191,7 @@ function clientHeuristicMatch(resume, jd) {
   suggestions.push({
     id: 'sug-bullet-quantify',
     type: 'experience_bullet',
+    impact: 'High',
     targetIndex: 0,
     category: 'quantify_impact',
     title: 'Inject Cloud Architecture & Performance Metric',
@@ -4156,6 +4203,7 @@ function clientHeuristicMatch(resume, jd) {
   suggestions.push({
     id: 'sug-proj-quantify',
     type: 'project_bullet',
+    impact: 'Medium',
     targetIndex: 0,
     targetTitle: projTitle,
     category: 'technical_depth',
@@ -4164,10 +4212,24 @@ function clientHeuristicMatch(resume, jd) {
     recommendedBullet: `Engineered scalable pipeline using Python and Docker, optimizing query performance and reducing processing latency by 28%.`
   });
 
+  suggestions.push({
+    id: 'sug-summary-align',
+    type: 'summary',
+    impact: 'Low',
+    category: 'keyword_alignment',
+    title: 'Refine Executive Summary with Target Keywords',
+    detail: 'Align the summary statement to highlight primary technical proficiencies for immediate recruiter visibility.',
+    recommendedSummary: `Results-driven Software Engineer with proven expertise building scalable cloud systems and resilient backend services aligned with enterprise delivery standards.`
+  });
+
   return {
     matchScore,
+    hardSkillsCoverage,
+    experienceDepthScore,
+    quantifiableImpactScore,
+    domainKeywordsScore,
     providerUsed: 'Browser Offline Heuristic',
-    summary: `Resume aligns with ${matchScore}% of target requirements. ${missing.length > 0 ? `Key technical gaps: ${missing.slice(0, 4).join(', ')}.` : 'Strong core alignment.'}`,
+    summary: `Resume aligns with ${matchScore}% of target requirements based on strict multi-factor ATS evaluation. ${missing.length > 0 ? `Key technical gaps: ${missing.slice(0, 4).join(', ')}.` : 'Strong core alignment.'}`,
     hardSkillsFound: found,
     missingHardSkills: missing,
     suggestions
