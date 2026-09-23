@@ -3,7 +3,7 @@
 # Includes Node.js LTS + Linux Tectonic LaTeX Compiler Engine
 # ==============================================================================
 
-FROM node:20-slim
+FROM node:20
 
 # Install system dependencies & Tectonic LaTeX engine
 RUN apt-get update && apt-get install -y --no-install-recommends \
