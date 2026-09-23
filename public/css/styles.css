@@ -87,6 +87,7 @@
   --accent-emerald: #10B981;
   --accent-amber: #F59E0B;
   --accent-rose: #EF4444;
+  --score-ring-track: #2e3545;
 
   /* Typography */
   --text-main: #F9FAFB;
@@ -3371,6 +3372,7 @@ body.theme-light, html.theme-light {
   --accent-emerald: #059669;
   --accent-amber: #D97706;
   --accent-rose: #DC2626;
+  --score-ring-track: #E2E8F0;
 
   --text-main: #0F172A;
   --text-muted: #475569;
@@ -3404,6 +3406,52 @@ body.theme-light .panel {
 body.theme-light .panel-header {
   background: #FFFFFF !important;
   border-bottom-color: #E2E8F0 !important;
+}
+
+/* Subheader Bars in Light Mode (Middle Editor & Live Preview) */
+body.theme-light .center-subheader,
+body.theme-light #center-subheader,
+body.theme-light #center-panel > div:first-child,
+body.theme-light .bg-surface\/80 {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+body.theme-light #btn-vault-quick-open {
+  background-color: #E0F2FE !important;
+  color: #0369A1 !important;
+  border: 1px solid #BAE6FD !important;
+}
+
+body.theme-light #btn-vault-quick-open:hover {
+  background-color: #BAE6FD !important;
+  color: #075985 !important;
+}
+
+body.theme-light #autosave-time-label {
+  color: #64748B !important;
+}
+
+body.theme-light .preview-toolbar,
+body.theme-light #preview-toolbar,
+body.theme-light #right-panel > div:first-child,
+body.theme-light .bg-surface\/90 {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #CBD5E1 !important;
+}
+
+body.theme-light .preview-toolbar > div:first-child {
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+body.theme-light .preview-toolbar-secondary,
+body.theme-light #preview-toolbar-secondary,
+body.theme-light .bg-surface-container-lowest\/60 {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
 }
 
 /* High Contrast Text Utilities in Light Mode */
@@ -3735,22 +3783,29 @@ body.theme-light [data-apply-sug]:hover {
 }
 
 /* Preview Toolbar & Viewport Canvas in Light Mode */
+body.theme-light #right-panel,
 body.theme-light .preview-panel {
+  background: #E2E8F0 !important;
   background-color: #E2E8F0 !important;
+  background-image: none !important;
 }
 
-body.theme-light .preview-toolbar {
-  background: #FFFFFF !important;
-  border-bottom: 1px solid #CBD5E1 !important;
-}
-
-body.theme-light .preview-toolbar-secondary {
-  background: #F8FAFC !important;
-  border-top: 1px solid #E2E8F0 !important;
-}
-
+body.theme-light #paper-viewport-container,
 body.theme-light .preview-scroll-container {
-  background-color: #CBD5E1 !important;
+  background: #E2E8F0 !important;
+  background-color: #E2E8F0 !important;
+  background-image: none !important;
+}
+
+body.theme-light #paper-wrapper,
+body.theme-light .paper-wrapper,
+body.theme-light #paper-viewport,
+body.theme-light .paper-viewport,
+body.theme-light #paper-scaler,
+body.theme-light .paper-scaler {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 body.theme-light #paper-info-bar {
@@ -3758,10 +3813,143 @@ body.theme-light #paper-info-bar {
   border-bottom: 1px solid #CBD5E1 !important;
 }
 
+body.theme-light #paper-info-bar #paper-spec-pill {
+  color: #475569 !important;
+}
+
+body.theme-light #paper-info-bar #guardrail-badge-container {
+  background-color: #D1FAE5 !important;
+  color: #065F46 !important;
+}
+
 /* Paper Document Shadow in Light Mode */
 body.theme-light .resume-paper {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
   border: 1px solid #CBD5E1 !important;
+}
+
+body.theme-light .rp-page-badge {
+  background-color: #E2E8F0 !important;
+  color: #0369A1 !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* Custom Section Dashed Button & Add Item Buttons in Light Mode */
+body.theme-light #btn-add-new-section,
+body.theme-light .btn-add-new-section,
+body.theme-light .bg-surface-container-lowest\/50 {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  color: #475569 !important;
+  border: 1.5px dashed #CBD5E1 !important;
+}
+
+body.theme-light #btn-add-new-section:hover,
+body.theme-light .btn-add-new-section:hover {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  border-color: #4F46E5 !important;
+  color: #4F46E5 !important;
+}
+
+body.theme-light #btn-add-new-section span.text-primary,
+body.theme-light #btn-add-new-section .material-symbols-outlined {
+  color: #4F46E5 !important;
+}
+
+body.theme-light #btn-add-skill-cat,
+body.theme-light #btn-add-exp,
+body.theme-light #btn-add-proj,
+body.theme-light #btn-add-edu,
+body.theme-light #btn-add-cert,
+body.theme-light #btn-add-pub,
+body.theme-light #btn-add-ach,
+body.theme-light #btn-add-vol {
+  background-color: #F1F5F9 !important;
+  color: #334155 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+body.theme-light #btn-add-skill-cat:hover,
+body.theme-light #btn-add-exp:hover,
+body.theme-light #btn-add-proj:hover,
+body.theme-light #btn-add-edu:hover,
+body.theme-light #btn-add-cert:hover,
+body.theme-light #btn-add-pub:hover,
+body.theme-light #btn-add-ach:hover,
+body.theme-light #btn-add-vol:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+
+/* Toolbar Controls in Light Mode */
+body.theme-light .spacing-toggle-btn {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #334155 !important;
+}
+
+body.theme-light .spacing-toggle-btn:hover {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+body.theme-light #spacing-active-badge {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+}
+
+body.theme-light .btn-autofit {
+  background: linear-gradient(135deg, #4F46E5, #0284C7) !important;
+  color: #FFFFFF !important;
+}
+
+body.theme-light #zoom-controls,
+body.theme-light .zoom-controls {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+
+body.theme-light .btn-zoom-pill {
+  color: #475569 !important;
+}
+
+body.theme-light .btn-zoom-pill.active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+}
+
+body.theme-light #font-select {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+body.theme-light #paper-pill-group,
+body.theme-light .paper-pill-group,
+body.theme-light #density-pill-group,
+body.theme-light .density-pill-group {
+  background-color: #E2E8F0 !important;
+  border-color: #CBD5E1 !important;
+}
+
+body.theme-light .paper-pill-btn,
+body.theme-light .density-btn {
+  color: #475569 !important;
+}
+
+body.theme-light .paper-pill-btn.active {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+}
+
+body.theme-light .density-btn.active {
+  background-color: #4F46E5 !important;
+  color: #FFFFFF !important;
 }
 
 /* Modals & Dropzones in Light Mode */

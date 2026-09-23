@@ -748,6 +748,11 @@ function setTheme(theme, save = true) {
     document.body.classList.add('theme-light');
     if (elements.themeToggleIcon) elements.themeToggleIcon.textContent = 'dark_mode';
     if (elements.btnThemeToggle) elements.btnThemeToggle.setAttribute('title', 'Switch to Dark Mode');
+    if (elements.paperViewportContainer) {
+      elements.paperViewportContainer.style.background = '#E2E8F0';
+      elements.paperViewportContainer.style.backgroundColor = '#E2E8F0';
+      elements.paperViewportContainer.style.backgroundImage = 'none';
+    }
   } else {
     document.documentElement.classList.remove('light');
     document.documentElement.classList.remove('theme-light');
@@ -755,12 +760,34 @@ function setTheme(theme, save = true) {
     document.body.classList.remove('theme-light');
     if (elements.themeToggleIcon) elements.themeToggleIcon.textContent = 'light_mode';
     if (elements.btnThemeToggle) elements.btnThemeToggle.setAttribute('title', 'Switch to Light Mode');
+    if (elements.paperViewportContainer) {
+      elements.paperViewportContainer.style.background = '';
+      elements.paperViewportContainer.style.backgroundColor = '';
+      elements.paperViewportContainer.style.backgroundImage = '';
+    }
   }
+
+  // Synchronize ATS Score Circle track color
+  const curScore = currentAnalysis?.matchScore || (elements.scoreText ? parseInt(elements.scoreText.textContent || '75', 10) : 75);
+  updateScoreCircle(curScore);
+
   if (save) {
     try {
       localStorage.setItem('jobease_theme', theme);
     } catch (e) {}
   }
+}
+
+/**
+ * Dynamically render ATS score ring with theme-aware track colors
+ */
+function updateScoreCircle(score) {
+  if (!elements.scoreCircle) return;
+  const isLight = document.body.classList.contains('theme-light') || document.documentElement.classList.contains('theme-light');
+  const trackColor = isLight ? '#E2E8F0' : '#2e3545';
+  const fillColor = score >= 75 ? '#10B981' : (score >= 50 ? '#F59E0B' : '#EF4444');
+  elements.scoreCircle.style.setProperty('--score', score);
+  elements.scoreCircle.style.background = `conic-gradient(${fillColor} 0% ${score}%, ${trackColor} ${score}% 100%)`;
 }
 
 function toggleTheme() {
@@ -1142,7 +1169,12 @@ function bindEvents() {
       const val = e.target.value;
       if (elements.valBgOpacity) elements.valBgOpacity.textContent = `${val}%`;
       if (elements.paperViewportContainer) {
-        elements.paperViewportContainer.style.backgroundColor = `rgba(11, 15, 25, ${val / 100})`;
+        const isLight = document.body.classList.contains('theme-light');
+        if (isLight) {
+          elements.paperViewportContainer.style.backgroundColor = `rgba(226, 232, 240, ${val / 100})`;
+        } else {
+          elements.paperViewportContainer.style.backgroundColor = `rgba(11, 15, 25, ${val / 100})`;
+        }
       }
     });
   }
@@ -3712,8 +3744,7 @@ async function evaluateMatch() {
 function renderAnalysisResults(analysis) {
   currentAnalysis = analysis;
   const score = analysis.matchScore || 75;
-  elements.scoreCircle.style.setProperty('--score', score);
-  elements.scoreCircle.style.background = `conic-gradient(#10B981 0% ${score}%, #2e3545 ${score}% 100%)`;
+  updateScoreCircle(score);
   elements.scoreText.textContent = `${score}%`;
 
   const techSkillsScore = typeof analysis.hardSkillsCoverage === 'number'
@@ -4079,10 +4110,7 @@ function recalcAnalysisScore() {
 
   // Update Score Circle & Sub-metrics in real-time
   const score = currentAnalysis.matchScore;
-  if (elements.scoreCircle) {
-    elements.scoreCircle.style.setProperty('--score', score);
-    elements.scoreCircle.style.background = `conic-gradient(#10B981 0% ${score}%, #2e3545 ${score}% 100%)`;
-  }
+  updateScoreCircle(score);
   if (elements.scoreText) elements.scoreText.textContent = `${score}%`;
   if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${hCoverage}%`;
   if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${expDepth}%`;
