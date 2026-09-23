@@ -55,7 +55,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu74 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh -s - --to /usr/local/bin \
+    && curl --proto '=https' --tlsv1.2 -fsSL https://drop-sh.fullyjustified.net | sh \
+    && mv tectonic /usr/local/bin/ \
     && chmod +x /usr/local/bin/tectonic \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
