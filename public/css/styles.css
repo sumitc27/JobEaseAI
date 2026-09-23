@@ -691,7 +691,8 @@ label:has(.section-toggle-checkbox):hover {
   padding: 2px 4px;
 }
 
-.btn-section-move {
+.btn-section-move,
+.btn-item-move {
   background: transparent;
   border: none;
   color: var(--text-dim);
@@ -706,20 +707,50 @@ label:has(.section-toggle-checkbox):hover {
   transition: all 0.15s ease;
 }
 
-.btn-section-move:hover {
+.btn-section-move:hover:not(:disabled),
+.btn-item-move:hover:not(:disabled) {
   background: var(--bg-elevated);
   color: #818CF8;
   transform: translateY(-1px);
 }
 
-.btn-section-move:active {
+.btn-section-move:active:not(:disabled),
+.btn-item-move:active:not(:disabled) {
   transform: scale(0.92);
 }
 
-.btn-section-move:disabled {
+.btn-section-move:disabled,
+.btn-item-move:disabled,
+.btn-bullet-move:disabled {
   opacity: 0.25;
   cursor: not-allowed;
   transform: none;
+  pointer-events: none;
+}
+
+.btn-bullet-move {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  opacity: 0.7;
+}
+
+.btn-bullet-move:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: #818CF8;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.btn-bullet-move:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .jd-textarea {

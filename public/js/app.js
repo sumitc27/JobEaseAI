@@ -1386,14 +1386,119 @@ function bindEvents() {
     }
   });
 
-  // Section Reordering Buttons (Up / Down)
+  // Section, Item, Category & Bullet Reordering Buttons (Up / Down)
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-section-move');
+    const btn = e.target.closest('.btn-section-move, .btn-item-move, .btn-bullet-move');
     if (!btn) return;
-    const section = btn.dataset.section;
     const dir = btn.dataset.dir;
-    if (section && dir) {
+    if (!dir) return;
+
+    // 1. Section move
+    const section = btn.dataset.section;
+    if (section) {
       moveSection(section, dir);
+      return;
+    }
+
+    // 2. Skill Category move
+    const skillMove = btn.dataset.skillMove;
+    if (skillMove !== undefined) {
+      const idx = parseInt(skillMove, 10);
+      if (!isNaN(idx)) moveSkillCategory(idx, dir);
+      return;
+    }
+
+    // 3. Experience position move
+    const expMove = btn.dataset.expMove;
+    if (expMove !== undefined) {
+      const idx = parseInt(expMove, 10);
+      if (!isNaN(idx)) moveExperience(idx, dir);
+      return;
+    }
+
+    // 4. Experience bullet move
+    const moveBulletExp = btn.dataset.moveBulletExp;
+    if (moveBulletExp !== undefined) {
+      const expIdx = parseInt(moveBulletExp, 10);
+      const bIdx = parseInt(btn.dataset.bulletIdx, 10);
+      if (!isNaN(expIdx) && !isNaN(bIdx)) moveExperienceBullet(expIdx, bIdx, dir);
+      return;
+    }
+
+    // 5. Project move
+    const projMove = btn.dataset.projMove;
+    if (projMove !== undefined) {
+      const idx = parseInt(projMove, 10);
+      if (!isNaN(idx)) moveProject(idx, dir);
+      return;
+    }
+
+    // 6. Project bullet move
+    const moveBulletProj = btn.dataset.moveBulletProj;
+    if (moveBulletProj !== undefined) {
+      const projIdx = parseInt(moveBulletProj, 10);
+      const bIdx = parseInt(btn.dataset.bulletIdx, 10);
+      if (!isNaN(projIdx) && !isNaN(bIdx)) moveProjectBullet(projIdx, bIdx, dir);
+      return;
+    }
+
+    // 7. Education degree move
+    const eduMove = btn.dataset.eduMove;
+    if (eduMove !== undefined) {
+      const idx = parseInt(eduMove, 10);
+      if (!isNaN(idx)) moveEducation(idx, dir);
+      return;
+    }
+
+    // 8. Certification move
+    const certMove = btn.dataset.certMove;
+    if (certMove !== undefined) {
+      const idx = parseInt(certMove, 10);
+      if (!isNaN(idx)) moveCertification(idx, dir);
+      return;
+    }
+
+    // 9. Publication move
+    const pubMove = btn.dataset.pubMove;
+    if (pubMove !== undefined) {
+      const idx = parseInt(pubMove, 10);
+      if (!isNaN(idx)) movePublication(idx, dir);
+      return;
+    }
+
+    // 10. Achievement move
+    const achMove = btn.dataset.achMove;
+    if (achMove !== undefined) {
+      const idx = parseInt(achMove, 10);
+      if (!isNaN(idx)) moveAchievement(idx, dir);
+      return;
+    }
+
+    // 11. Volunteer move
+    const volMove = btn.dataset.volMove;
+    if (volMove !== undefined) {
+      const idx = parseInt(volMove, 10);
+      if (!isNaN(idx)) moveVolunteer(idx, dir);
+      return;
+    }
+
+    // 12. Custom section item move
+    const itmMove = btn.dataset.itmMove;
+    if (itmMove !== undefined) {
+      const secId = btn.dataset.secId;
+      const idx = parseInt(itmMove, 10);
+      if (secId && !isNaN(idx)) moveCustomItem(secId, idx, dir);
+      return;
+    }
+
+    // 13. Custom section bullet move
+    const bMove = btn.dataset.bMove;
+    if (bMove !== undefined) {
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const bIdx = parseInt(bMove, 10);
+      if (secId && !isNaN(itmIdx) && !isNaN(bIdx)) moveCustomBullet(secId, itmIdx, bIdx, dir);
+      return;
     }
   });
 
@@ -2241,16 +2346,24 @@ function parseCommaList(str) {
 function renderSkillsFormList() {
   if (!elements.skillsListContainer) return;
   elements.skillsListContainer.innerHTML = '';
-  
+  const totalSkills = (currentResume.skills || []).length;
   (currentResume.skills || []).forEach((skill, idx) => {
     const item = document.createElement('div');
     item.className = 'skill-item form-group p-space-md rounded-xl bg-surface-container-low border border-border-subtle shadow-sm flex flex-col gap-2';
     item.innerHTML = `
-      <div class="flex items-center justify-between pb-1">
+      <div class="exp-item-header flex items-center justify-between pb-1">
         <span class="font-label-sm text-label-sm text-text-muted font-medium">Category #${idx + 1}</span>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors" title="Delete Category" data-skill-del="${idx}">
-          <span class="material-symbols-outlined text-[15px]">close</span>
-        </button>
+        <div class="flex items-center gap-1 text-text-dim">
+          <button type="button" class="btn-section-move btn-item-move" data-skill-move="${idx}" data-dir="up" title="Move Category Up" ${idx === 0 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move" data-skill-move="${idx}" data-dir="down" title="Move Category Down" ${idx === totalSkills - 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors ml-1" title="Delete Category" data-skill-del="${idx}" type="button">
+            <span class="material-symbols-outlined text-[15px]">close</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm px-3 py-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Category (e.g. Languages)" value="${escapeHtml(skill.category || '')}" data-skill-field="category">
@@ -2267,12 +2380,47 @@ function renderSkillsFormList() {
 
   elements.skillsListContainer.querySelectorAll('[data-skill-del]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.dataset.skillDel, 10);
+      const delBtn = e.target.closest('[data-skill-del]');
+      if (!delBtn) return;
+      const idx = parseInt(delBtn.dataset.skillDel, 10);
       currentResume.skills.splice(idx, 1);
       renderSkillsFormList();
       syncFormToState();
     });
   });
+
+  elements.skillsListContainer.querySelectorAll('[data-skill-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const moveBtn = e.target.closest('[data-skill-move]');
+      if (!moveBtn) return;
+      const idx = parseInt(moveBtn.dataset.skillMove, 10);
+      const dir = moveBtn.dataset.dir;
+      moveSkillCategory(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Skill Category Up or Down
+ */
+function moveSkillCategory(idx, direction) {
+  if (!currentResume.skills || !Array.isArray(currentResume.skills)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.skills.length) return;
+
+  const temp = currentResume.skills[idx];
+  currentResume.skills[idx] = currentResume.skills[newIdx];
+  currentResume.skills[newIdx] = temp;
+
+  renderSkillsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+  const catTitle = currentResume.skills[newIdx].category || 'Skill Category';
+  showToast(`Moved ${catTitle} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 /**
@@ -2280,6 +2428,7 @@ function renderSkillsFormList() {
  */
 function renderExperienceFormList() {
   elements.experienceListContainer.innerHTML = '';
+  const totalExp = (currentResume.experience || []).length;
   (currentResume.experience || []).forEach((exp, expIdx) => {
     const item = document.createElement('div');
     item.className = 'exp-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-space-sm border border-border-subtle';
@@ -2289,10 +2438,18 @@ function renderExperienceFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Position #${expIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(exp.company || 'Company')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Position" data-exp-del="${expIdx}">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1 text-text-dim">
+          <button type="button" class="btn-section-move btn-item-move btn-exp-move" data-exp-move="${expIdx}" data-dir="up" title="Move Position Up" ${expIdx === 0 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move btn-exp-move" data-exp-move="${expIdx}" data-dir="down" title="Move Position Down" ${expIdx === totalExp - 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" title="Delete Position" data-exp-del="${expIdx}" type="button">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Role / Title" value="${escapeHtml(exp.role || '')}" data-exp-field="role" data-idx="${expIdx}">
@@ -2318,15 +2475,27 @@ function renderExperienceFormList() {
 
     // Render bullets
     const bulletsContainer = item.querySelector(`#exp-bullets-${expIdx}`);
-    (exp.bullets || []).forEach((b, bIdx) => {
+    if (!Array.isArray(exp.bullets)) {
+      exp.bullets = exp.bullets ? [exp.bullets] : [];
+    }
+    const totalBullets = exp.bullets.length;
+    exp.bullets.forEach((b, bIdx) => {
       const bDiv = document.createElement('div');
       bDiv.className = 'bullet-item flex items-start gap-2 group';
       bDiv.innerHTML = `
         <span class="text-text-dim font-label-sm text-label-sm mt-2 select-none">•</span>
         <textarea class="flex-1 bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" data-bullet-exp="${expIdx}" data-bullet-idx="${bIdx}" rows="2">${escapeHtml(b)}</textarea>
-        <button class="bullet-remove-btn p-1.5 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer" data-del-bullet-exp="${expIdx}" data-del-bullet-idx="${bIdx}" title="Delete Bullet" type="button">
-          <span class="material-symbols-outlined text-[16px]">close</span>
-        </button>
+        <div class="flex items-center gap-0.5 mt-1 self-start">
+          <button type="button" class="btn-bullet-move" data-move-bullet-exp="${expIdx}" data-bullet-idx="${bIdx}" data-dir="up" title="Move Bullet Up" ${bIdx === 0 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-bullet-move" data-move-bullet-exp="${expIdx}" data-bullet-idx="${bIdx}" data-dir="down" title="Move Bullet Down" ${bIdx === totalBullets - 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn p-1 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer ml-0.5" data-del-bullet-exp="${expIdx}" data-del-bullet-idx="${bIdx}" title="Delete Bullet" type="button">
+            <span class="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        </div>
       `;
       bulletsContainer.appendChild(bDiv);
     });
@@ -2341,33 +2510,68 @@ function renderExperienceFormList() {
 
   elements.experienceListContainer.querySelectorAll('[data-exp-del]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.dataset.expDel, 10);
+      const delBtn = e.target.closest('[data-exp-del]');
+      if (!delBtn) return;
+      const idx = parseInt(delBtn.dataset.expDel, 10);
       currentResume.experience.splice(idx, 1);
       renderExperienceFormList();
       renderPreview();
       check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.experienceListContainer.querySelectorAll('[data-exp-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const moveBtn = e.target.closest('[data-exp-move]');
+      if (!moveBtn) return;
+      const idx = parseInt(moveBtn.dataset.expMove, 10);
+      const dir = moveBtn.dataset.dir;
+      moveExperience(idx, dir);
+    });
+  });
+
+  elements.experienceListContainer.querySelectorAll('[data-move-bullet-exp]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const moveBtn = e.target.closest('[data-move-bullet-exp]');
+      if (!moveBtn) return;
+      const expIdx = parseInt(moveBtn.dataset.moveBulletExp, 10);
+      const bIdx = parseInt(moveBtn.dataset.bulletIdx, 10);
+      const dir = moveBtn.dataset.dir;
+      moveExperienceBullet(expIdx, bIdx, dir);
     });
   });
 
   elements.experienceListContainer.querySelectorAll('[data-add-bullet]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      const expIdx = parseInt(e.target.dataset.addBullet, 10);
+      const addBtn = e.target.closest('[data-add-bullet]');
+      if (!addBtn) return;
+      const expIdx = parseInt(addBtn.dataset.addBullet, 10);
+      if (!Array.isArray(currentResume.experience[expIdx].bullets)) {
+        currentResume.experience[expIdx].bullets = [];
+      }
       currentResume.experience[expIdx].bullets.push('Spearheaded key technical initiatives and improved overall system performance.');
       renderExperienceFormList();
       renderPreview();
       check1PageGuardrail();
+      triggerAutoSave();
     });
   });
 
   elements.experienceListContainer.querySelectorAll('[data-del-bullet-exp]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const expIdx = parseInt(e.target.dataset.delBulletExp, 10);
-      const bIdx = parseInt(e.target.dataset.delBulletIdx, 10);
-      currentResume.experience[expIdx].bullets.splice(bIdx, 1);
-      renderExperienceFormList();
-      renderPreview();
-      check1PageGuardrail();
+      const delBtn = e.target.closest('[data-del-bullet-exp]');
+      if (!delBtn) return;
+      const expIdx = parseInt(delBtn.dataset.delBulletExp, 10);
+      const bIdx = parseInt(delBtn.dataset.delBulletIdx, 10);
+      if (Array.isArray(currentResume.experience[expIdx]?.bullets)) {
+        currentResume.experience[expIdx].bullets.splice(bIdx, 1);
+        renderExperienceFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
     });
   });
 }
@@ -2383,14 +2587,70 @@ function handleExperienceInput(e) {
       currentResume.experience[idx].endDate = parts[1]?.trim() || '';
     } else {
       currentResume.experience[idx][field] = el.value;
+      if (field === 'company') {
+        const badge = el.closest('.exp-item')?.querySelector('.exp-item-header .text-secondary-cyan-light');
+        if (badge) badge.textContent = el.value || 'Company';
+      }
     }
   } else if (el.dataset.bulletExp) {
     const expIdx = parseInt(el.dataset.bulletExp, 10);
     const bIdx = parseInt(el.dataset.bulletIdx, 10);
+    if (!Array.isArray(currentResume.experience[expIdx].bullets)) {
+      currentResume.experience[expIdx].bullets = [];
+    }
     currentResume.experience[expIdx].bullets[bIdx] = el.value;
   }
   renderPreview();
   check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Move Experience Item Up or Down
+ */
+function moveExperience(idx, direction) {
+  if (!currentResume.experience || !Array.isArray(currentResume.experience)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.experience.length) return;
+
+  const temp = currentResume.experience[idx];
+  currentResume.experience[idx] = currentResume.experience[newIdx];
+  currentResume.experience[newIdx] = temp;
+
+  renderExperienceFormList();
+  renderPreview();
+  check1PageGuardrail();
+
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const expTitle = currentResume.experience[newIdx].company || currentResume.experience[newIdx].role || 'Position';
+  showToast(`Moved ${expTitle} ${direction}!`, 'info');
+  triggerAutoSave();
+}
+
+/**
+ * Move Experience Bullet Up or Down
+ */
+function moveExperienceBullet(expIdx, bIdx, direction) {
+  const exp = currentResume.experience?.[expIdx];
+  if (!exp || !Array.isArray(exp.bullets)) return;
+  const newIdx = direction === 'up' ? bIdx - 1 : bIdx + 1;
+  if (newIdx < 0 || newIdx >= exp.bullets.length) return;
+
+  const temp = exp.bullets[bIdx];
+  exp.bullets[bIdx] = exp.bullets[newIdx];
+  exp.bullets[newIdx] = temp;
+
+  renderExperienceFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+  showToast(`Moved bullet ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewSkillCat() {
@@ -2415,6 +2675,7 @@ function addNewExperienceItem() {
   renderExperienceFormList();
   renderPreview();
   check1PageGuardrail();
+  triggerAutoSave();
 }
 
 /**
@@ -2422,6 +2683,7 @@ function addNewExperienceItem() {
  */
 function renderProjectsFormList() {
   elements.projectsListContainer.innerHTML = '';
+  const totalProj = (currentResume.projects || []).length;
   (currentResume.projects || []).forEach((proj, pIdx) => {
     const item = document.createElement('div');
     item.className = 'proj-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
@@ -2431,10 +2693,18 @@ function renderProjectsFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Project #${pIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(proj.name || 'Project')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Project" data-proj-del="${pIdx}">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1 text-text-dim">
+          <button type="button" class="btn-section-move btn-item-move btn-proj-move" data-proj-move="${pIdx}" data-dir="up" title="Move Project Up" ${pIdx === 0 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move btn-proj-move" data-proj-move="${pIdx}" data-dir="down" title="Move Project Down" ${pIdx === totalProj - 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" title="Delete Project" data-proj-del="${pIdx}" type="button">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Project Name" value="${escapeHtml(proj.name || '')}" data-proj-field="name" data-idx="${pIdx}">
@@ -2444,34 +2714,189 @@ function renderProjectsFormList() {
         <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="GitHub Link" value="${escapeHtml(proj.githubUrl || '')}" data-proj-field="githubUrl" data-idx="${pIdx}">
         <input type="url" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Website Link" value="${escapeHtml(proj.websiteUrl || '')}" data-proj-field="websiteUrl" data-idx="${pIdx}">
       </div>
-      <textarea class="form-textarea w-full bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" placeholder="Description & Impact" rows="2" data-proj-field="bullet" data-idx="${pIdx}">${escapeHtml((proj.bullets || [])[0] || '')}</textarea>
+      <div class="flex flex-col gap-2 pt-1">
+        <div class="flex items-center justify-between">
+          <span class="font-label-sm text-label-sm text-text-muted">Quantified Impact Bullets</span>
+          <button class="self-start flex items-center gap-1 text-primary hover:text-text-main font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container border border-border-subtle cursor-pointer transition-colors" data-add-bullet-proj="${pIdx}" type="button">
+            <span class="material-symbols-outlined text-[14px]">add</span> Add Bullet
+          </button>
+        </div>
+        <div id="proj-bullets-${pIdx}" class="flex flex-col gap-2"></div>
+      </div>
     `;
+
+    // Render bullets
+    const bulletsContainer = item.querySelector(`#proj-bullets-${pIdx}`);
+    if (!Array.isArray(proj.bullets)) {
+      proj.bullets = proj.bullets ? [proj.bullets] : [];
+    }
+    const totalProjBullets = proj.bullets.length;
+    proj.bullets.forEach((b, bIdx) => {
+      const bDiv = document.createElement('div');
+      bDiv.className = 'bullet-item flex items-start gap-2 group';
+      bDiv.innerHTML = `
+        <span class="text-text-dim font-label-sm text-label-sm mt-2 select-none">•</span>
+        <textarea class="flex-1 bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" data-bullet-proj="${pIdx}" data-bullet-idx="${bIdx}" rows="2" placeholder="Key feature or quantified impact...">${escapeHtml(b)}</textarea>
+        <div class="flex items-center gap-0.5 mt-1 self-start">
+          <button type="button" class="btn-bullet-move" data-move-bullet-proj="${pIdx}" data-bullet-idx="${bIdx}" data-dir="up" title="Move Bullet Up" ${bIdx === 0 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-bullet-move" data-move-bullet-proj="${pIdx}" data-bullet-idx="${bIdx}" data-dir="down" title="Move Bullet Down" ${bIdx === totalProjBullets - 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn p-1 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer ml-0.5" data-del-bullet-proj="${pIdx}" data-del-bullet-idx="${bIdx}" title="Delete Bullet" type="button">
+            <span class="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        </div>
+      `;
+      bulletsContainer.appendChild(bDiv);
+    });
+
     elements.projectsListContainer.appendChild(item);
   });
 
+  // Attach dynamic handlers for projects list
   elements.projectsListContainer.querySelectorAll('input, textarea').forEach(el => {
-    el.addEventListener('input', (e) => {
-      const idx = parseInt(e.target.dataset.idx, 10);
-      const field = e.target.dataset.projField;
-      if (field === 'bullet') {
-        currentResume.projects[idx].bullets = [e.target.value];
-      } else {
-        currentResume.projects[idx][field] = e.target.value;
-      }
-      renderPreview();
-      check1PageGuardrail();
-    });
+    el.addEventListener('input', handleProjectInput);
   });
 
   elements.projectsListContainer.querySelectorAll('[data-proj-del]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const idx = parseInt(e.target.dataset.projDel, 10);
+      const delBtn = e.target.closest('[data-proj-del]');
+      if (!delBtn) return;
+      const idx = parseInt(delBtn.dataset.projDel, 10);
       currentResume.projects.splice(idx, 1);
       renderProjectsFormList();
       renderPreview();
       check1PageGuardrail();
+      triggerAutoSave();
     });
   });
+
+  elements.projectsListContainer.querySelectorAll('[data-proj-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const moveBtn = e.target.closest('[data-proj-move]');
+      if (!moveBtn) return;
+      const idx = parseInt(moveBtn.dataset.projMove, 10);
+      const dir = moveBtn.dataset.dir;
+      moveProject(idx, dir);
+    });
+  });
+
+  elements.projectsListContainer.querySelectorAll('[data-move-bullet-proj]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const moveBtn = e.target.closest('[data-move-bullet-proj]');
+      if (!moveBtn) return;
+      const projIdx = parseInt(moveBtn.dataset.moveBulletProj, 10);
+      const bIdx = parseInt(moveBtn.dataset.bulletIdx, 10);
+      const dir = moveBtn.dataset.dir;
+      moveProjectBullet(projIdx, bIdx, dir);
+    });
+  });
+
+  elements.projectsListContainer.querySelectorAll('[data-add-bullet-proj]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const addBtn = e.target.closest('[data-add-bullet-proj]');
+      if (!addBtn) return;
+      const projIdx = parseInt(addBtn.dataset.addBulletProj, 10);
+      if (!Array.isArray(currentResume.projects[projIdx].bullets)) {
+        currentResume.projects[projIdx].bullets = [];
+      }
+      currentResume.projects[projIdx].bullets.push('Architected key features and implemented end-to-end functionality.');
+      renderProjectsFormList();
+      renderPreview();
+      check1PageGuardrail();
+      triggerAutoSave();
+    });
+  });
+
+  elements.projectsListContainer.querySelectorAll('[data-del-bullet-proj]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-del-bullet-proj]');
+      if (!delBtn) return;
+      const projIdx = parseInt(delBtn.dataset.delBulletProj, 10);
+      const bIdx = parseInt(delBtn.dataset.delBulletIdx, 10);
+      if (Array.isArray(currentResume.projects[projIdx]?.bullets)) {
+        currentResume.projects[projIdx].bullets.splice(bIdx, 1);
+        renderProjectsFormList();
+        renderPreview();
+        check1PageGuardrail();
+        triggerAutoSave();
+      }
+    });
+  });
+}
+
+function handleProjectInput(e) {
+  const el = e.target;
+  if (el.dataset.projField) {
+    const idx = parseInt(el.dataset.idx, 10);
+    const field = el.dataset.projField;
+    currentResume.projects[idx][field] = el.value;
+    if (field === 'name') {
+      const badge = el.closest('.proj-item')?.querySelector('.exp-item-header .text-secondary-cyan-light');
+      if (badge) badge.textContent = el.value || 'Project';
+    }
+  } else if (el.dataset.bulletProj) {
+    const projIdx = parseInt(el.dataset.bulletProj, 10);
+    const bIdx = parseInt(el.dataset.bulletIdx, 10);
+    if (!Array.isArray(currentResume.projects[projIdx].bullets)) {
+      currentResume.projects[projIdx].bullets = [];
+    }
+    currentResume.projects[projIdx].bullets[bIdx] = el.value;
+  }
+  renderPreview();
+  check1PageGuardrail();
+  triggerAutoSave();
+}
+
+/**
+ * Move Project Item Up or Down
+ */
+function moveProject(idx, direction) {
+  if (!currentResume.projects || !Array.isArray(currentResume.projects)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.projects.length) return;
+
+  const temp = currentResume.projects[idx];
+  currentResume.projects[idx] = currentResume.projects[newIdx];
+  currentResume.projects[newIdx] = temp;
+
+  renderProjectsFormList();
+  renderPreview();
+  check1PageGuardrail();
+
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const projTitle = currentResume.projects[newIdx].name || currentResume.projects[newIdx].title || 'Project';
+  showToast(`Moved ${projTitle} ${direction}!`, 'info');
+  triggerAutoSave();
+}
+
+/**
+ * Move Project Bullet Up or Down
+ */
+function moveProjectBullet(projIdx, bIdx, direction) {
+  const proj = currentResume.projects?.[projIdx];
+  if (!proj || !Array.isArray(proj.bullets)) return;
+  const newIdx = direction === 'up' ? bIdx - 1 : bIdx + 1;
+  if (newIdx < 0 || newIdx >= proj.bullets.length) return;
+
+  const temp = proj.bullets[bIdx];
+  proj.bullets[bIdx] = proj.bullets[newIdx];
+  proj.bullets[newIdx] = temp;
+
+  renderProjectsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+  showToast(`Moved bullet ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewProjectItem() {
@@ -2485,6 +2910,7 @@ function addNewProjectItem() {
   renderProjectsFormList();
   renderPreview();
   check1PageGuardrail();
+  triggerAutoSave();
 }
 
 /**
@@ -2492,7 +2918,10 @@ function addNewProjectItem() {
  */
 function renderEducationFormList() {
   elements.educationListContainer.innerHTML = '';
-  (currentResume.education || []).forEach((edu, eIdx) => {
+  const eduList = currentResume.education || [];
+  eduList.forEach((edu, eIdx) => {
+    const isFirst = eIdx === 0;
+    const isLast = eIdx === eduList.length - 1;
     const item = document.createElement('div');
     item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
@@ -2501,10 +2930,18 @@ function renderEducationFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Degree #${eIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(edu.degree || 'Degree')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Education" data-edu-del="${eIdx}">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-edu-move="${eIdx}" data-dir="up" title="Move Degree Up" ${isFirst ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-edu-move="${eIdx}" data-dir="down" title="Move Degree Down" ${isLast ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" title="Delete Education" data-edu-del="${eIdx}">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner min-w-0" placeholder="Institution / University" value="${escapeHtml(edu.institution || '')}" data-edu-field="institution" data-idx="${eIdx}">
@@ -2528,6 +2965,7 @@ function renderEducationFormList() {
       currentResume.education[idx][field] = e.target.value;
       renderPreview();
       check1PageGuardrail();
+      triggerAutoSave();
     });
   });
 
@@ -2538,8 +2976,42 @@ function renderEducationFormList() {
       renderEducationFormList();
       renderPreview();
       check1PageGuardrail();
+      triggerAutoSave();
     });
   });
+
+  elements.educationListContainer.querySelectorAll('[data-edu-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.eduMove, 10);
+      const dir = btn.dataset.dir;
+      moveEducation(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Education Item Up or Down
+ */
+function moveEducation(idx, direction) {
+  if (!Array.isArray(currentResume.education)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.education.length) return;
+
+  const temp = currentResume.education[idx];
+  currentResume.education[idx] = currentResume.education[newIdx];
+  currentResume.education[newIdx] = temp;
+
+  renderEducationFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const title = currentResume.education[newIdx].degree || currentResume.education[newIdx].institution || 'Degree';
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewEducationItem() {
@@ -2552,6 +3024,7 @@ function addNewEducationItem() {
   renderEducationFormList();
   renderPreview();
   check1PageGuardrail();
+  triggerAutoSave();
 }
 
 /**
@@ -2569,7 +3042,10 @@ function renderCertificationsFormList() {
     return;
   }
 
-  currentResume.certifications.forEach((cert, cIdx) => {
+  const certList = currentResume.certifications;
+  certList.forEach((cert, cIdx) => {
+    const isFirst = cIdx === 0;
+    const isLast = cIdx === certList.length - 1;
     const title = typeof cert === 'string' ? cert : (cert.title || cert.name || '');
     const issuer = typeof cert === 'string' ? '' : (cert.issuer || cert.details || '');
     const linkText = typeof cert === 'string' ? '' : (cert.linkText || '');
@@ -2583,10 +3059,18 @@ function renderCertificationsFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Certification #${cIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Certificate')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-cert-del="${cIdx}" title="Delete Certification">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-cert-move="${cIdx}" data-dir="up" title="Move Certification Up" ${isFirst ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-cert-move="${cIdx}" data-dir="down" title="Move Certification Down" ${isLast ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" data-cert-del="${cIdx}" title="Delete Certification">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Certification Name (e.g. AWS Certified Solutions Architect)" value="${escapeHtml(title)}" data-cert-field="title" data-idx="${cIdx}">
@@ -2624,6 +3108,40 @@ function renderCertificationsFormList() {
       triggerAutoSave();
     });
   });
+
+  elements.certificationsListContainer.querySelectorAll('[data-cert-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.certMove, 10);
+      const dir = btn.dataset.dir;
+      moveCertification(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Certification Up or Down
+ */
+function moveCertification(idx, direction) {
+  if (!Array.isArray(currentResume.certifications)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.certifications.length) return;
+
+  const temp = currentResume.certifications[idx];
+  currentResume.certifications[idx] = currentResume.certifications[newIdx];
+  currentResume.certifications[newIdx] = temp;
+
+  renderCertificationsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const item = currentResume.certifications[newIdx];
+  const title = typeof item === 'string' ? item : (item.title || item.name || 'Certification');
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewCertificationItem() {
@@ -2655,7 +3173,10 @@ function renderPublicationsFormList() {
     return;
   }
 
-  currentResume.publications.forEach((pub, pIdx) => {
+  const pubList = currentResume.publications;
+  pubList.forEach((pub, pIdx) => {
+    const isFirst = pIdx === 0;
+    const isLast = pIdx === pubList.length - 1;
     const title = typeof pub === 'string' ? pub : (pub.title || pub.name || '');
     const venue = typeof pub === 'string' ? '' : (pub.venue || pub.details || pub.publisher || '');
     const linkText = typeof pub === 'string' ? '' : (pub.linkText || '');
@@ -2669,10 +3190,18 @@ function renderPublicationsFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Publication #${pIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Paper')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-pub-del="${pIdx}" title="Delete Publication">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-pub-move="${pIdx}" data-dir="up" title="Move Publication Up" ${isFirst ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-pub-move="${pIdx}" data-dir="down" title="Move Publication Down" ${isLast ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" data-pub-del="${pIdx}" title="Delete Publication">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title of Paper / Patent" value="${escapeHtml(title)}" data-pub-field="title" data-idx="${pIdx}">
@@ -2710,6 +3239,40 @@ function renderPublicationsFormList() {
       triggerAutoSave();
     });
   });
+
+  elements.publicationsListContainer.querySelectorAll('[data-pub-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.pubMove, 10);
+      const dir = btn.dataset.dir;
+      movePublication(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Publication Up or Down
+ */
+function movePublication(idx, direction) {
+  if (!Array.isArray(currentResume.publications)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.publications.length) return;
+
+  const temp = currentResume.publications[idx];
+  currentResume.publications[idx] = currentResume.publications[newIdx];
+  currentResume.publications[newIdx] = temp;
+
+  renderPublicationsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const item = currentResume.publications[newIdx];
+  const title = typeof item === 'string' ? item : (item.title || item.name || 'Publication');
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewPublicationItem() {
@@ -2741,7 +3304,10 @@ function renderAchievementsFormList() {
     return;
   }
 
-  currentResume.achievements.forEach((ach, aIdx) => {
+  const achList = currentResume.achievements;
+  achList.forEach((ach, aIdx) => {
+    const isFirst = aIdx === 0;
+    const isLast = aIdx === achList.length - 1;
     const title = typeof ach === 'string' ? ach : (ach.title || '');
     const details = typeof ach === 'string' ? '' : (ach.details || '');
     const item = document.createElement('div');
@@ -2752,10 +3318,18 @@ function renderAchievementsFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Award #${aIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(title || 'Award')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-ach-del="${aIdx}" title="Delete Award">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-ach-move="${aIdx}" data-dir="up" title="Move Award Up" ${isFirst ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-ach-move="${aIdx}" data-dir="down" title="Move Award Down" ${isLast ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" data-ach-del="${aIdx}" title="Delete Award">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title / Honor" value="${escapeHtml(title)}" data-ach-field="title" data-idx="${aIdx}">
@@ -2789,6 +3363,40 @@ function renderAchievementsFormList() {
       triggerAutoSave();
     });
   });
+
+  elements.achievementsListContainer.querySelectorAll('[data-ach-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.achMove, 10);
+      const dir = btn.dataset.dir;
+      moveAchievement(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Achievement Up or Down
+ */
+function moveAchievement(idx, direction) {
+  if (!Array.isArray(currentResume.achievements)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.achievements.length) return;
+
+  const temp = currentResume.achievements[idx];
+  currentResume.achievements[idx] = currentResume.achievements[newIdx];
+  currentResume.achievements[newIdx] = temp;
+
+  renderAchievementsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const item = currentResume.achievements[newIdx];
+  const title = typeof item === 'string' ? item : (item.title || 'Award');
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewAchievementItem() {
@@ -2818,7 +3426,10 @@ function renderVolunteerFormList() {
     return;
   }
 
-  currentResume.volunteer.forEach((vol, vIdx) => {
+  const volList = currentResume.volunteer;
+  volList.forEach((vol, vIdx) => {
+    const isFirst = vIdx === 0;
+    const isLast = vIdx === volList.length - 1;
     const role = typeof vol === 'string' ? vol : (vol.role || vol.title || '');
     const details = typeof vol === 'string' ? '' : (vol.details || '');
     const item = document.createElement('div');
@@ -2829,10 +3440,18 @@ function renderVolunteerFormList() {
           <span class="font-headline-sm text-[15px] text-text-main font-semibold">Volunteer #${vIdx + 1}</span>
           <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(role || 'Volunteer')}</span>
         </div>
-        <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" data-vol-del="${vIdx}" title="Delete Volunteer">
-          <span class="material-symbols-outlined text-[16px]">delete</span>
-          <span>Remove</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-vol-move="${vIdx}" data-dir="up" title="Move Volunteer Item Up" ${isFirst ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+          </button>
+          <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-vol-move="${vIdx}" data-dir="down" title="Move Volunteer Item Down" ${isLast ? 'disabled' : ''}>
+            <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+          </button>
+          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" data-vol-del="${vIdx}" title="Delete Volunteer">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            <span>Remove</span>
+          </button>
+        </div>
       </div>
       <div class="form-row-2">
         <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Role / Organization" value="${escapeHtml(role)}" data-vol-field="role" data-idx="${vIdx}">
@@ -2866,6 +3485,40 @@ function renderVolunteerFormList() {
       triggerAutoSave();
     });
   });
+
+  elements.volunteerListContainer.querySelectorAll('[data-vol-move]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(btn.dataset.volMove, 10);
+      const dir = btn.dataset.dir;
+      moveVolunteer(idx, dir);
+    });
+  });
+}
+
+/**
+ * Move Volunteer Item Up or Down
+ */
+function moveVolunteer(idx, direction) {
+  if (!Array.isArray(currentResume.volunteer)) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= currentResume.volunteer.length) return;
+
+  const temp = currentResume.volunteer[idx];
+  currentResume.volunteer[idx] = currentResume.volunteer[newIdx];
+  currentResume.volunteer[newIdx] = temp;
+
+  renderVolunteerFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const item = currentResume.volunteer[newIdx];
+  const title = typeof item === 'string' ? item : (item.role || item.title || 'Volunteer item');
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 function addNewVolunteerItem() {
@@ -2968,7 +3621,12 @@ function renderCustomSectionsFormList() {
     `;
 
     const itemsList = card.querySelector('.custom-sec-items-list');
-    (sec.items || []).forEach((item, itmIdx) => {
+    const items = sec.items || [];
+    items.forEach((item, itmIdx) => {
+      const isFirstItem = itmIdx === 0;
+      const isLastItem = itmIdx === items.length - 1;
+      const bullets = item.bullets || [];
+
       const itmEl = document.createElement('div');
       itmEl.className = 'exp-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
       itmEl.innerHTML = `
@@ -2977,10 +3635,18 @@ function renderCustomSectionsFormList() {
             <span class="font-headline-sm text-[15px] text-text-main font-semibold">Item #${itmIdx + 1}</span>
             <span class="font-label-sm text-label-sm bg-surface-container px-2 py-0.5 rounded text-secondary-cyan-light">${escapeHtml(item.title || 'Entry')}</span>
           </div>
-          <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer" title="Delete Item" data-sec-id="${sec.id}" data-itm-del="${itmIdx}">
-            <span class="material-symbols-outlined text-[16px]">delete</span>
-            <span>Remove</span>
-          </button>
+          <div class="flex items-center gap-1">
+            <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-sec-id="${sec.id}" data-itm-move="${itmIdx}" data-dir="up" title="Move Item Up" ${isFirstItem ? 'disabled' : ''}>
+              <span class="material-symbols-outlined text-[17px]">arrow_upward</span>
+            </button>
+            <button type="button" class="btn-section-move btn-item-move p-1 rounded hover:bg-surface-container hover:text-text-main border-0 bg-transparent cursor-pointer text-text-dim" data-sec-id="${sec.id}" data-itm-move="${itmIdx}" data-dir="down" title="Move Item Down" ${isLastItem ? 'disabled' : ''}>
+              <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
+            </button>
+            <button class="bullet-remove-btn text-text-dim hover:text-accent-rose transition-colors flex items-center gap-1 font-label-sm text-label-sm cursor-pointer ml-1" title="Delete Item" data-sec-id="${sec.id}" data-itm-del="${itmIdx}">
+              <span class="material-symbols-outlined text-[16px]">delete</span>
+              <span>Remove</span>
+            </button>
+          </div>
         </div>
         <div class="form-row-2">
           <input type="text" class="form-input bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" placeholder="Title / Role / Heading" value="${escapeHtml(item.title || '')}" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-itm-field="title">
@@ -2998,13 +3664,21 @@ function renderCustomSectionsFormList() {
             </button>
           </div>
           <div class="custom-bullets-list flex flex-col gap-2" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}">
-            ${(item.bullets || []).map((b, bIdx) => `
+            ${bullets.map((b, bIdx) => `
               <div class="bullet-item flex items-start gap-2 group">
                 <span class="text-text-dim font-label-sm text-label-sm mt-2 select-none">•</span>
                 <textarea class="flex-1 bg-bg-input text-on-surface font-body-sm text-body-sm p-2 rounded-lg border border-border-subtle focus:outline-none focus:ring-1 focus:ring-primary leading-normal shadow-inner" rows="2" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-idx="${bIdx}">${escapeHtml(b)}</textarea>
-                <button class="bullet-remove-btn p-1.5 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-del="${bIdx}">
-                  <span class="material-symbols-outlined text-[16px]">close</span>
-                </button>
+                <div class="flex items-center gap-0.5 mt-1">
+                  <button type="button" class="btn-bullet-move p-1 text-text-dim hover:text-text-main rounded hover:bg-surface-container bg-transparent border-0 cursor-pointer" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-move="${bIdx}" data-dir="up" title="Move Bullet Up" ${bIdx === 0 ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                  </button>
+                  <button type="button" class="btn-bullet-move p-1 text-text-dim hover:text-text-main rounded hover:bg-surface-container bg-transparent border-0 cursor-pointer" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-move="${bIdx}" data-dir="down" title="Move Bullet Down" ${bIdx === bullets.length - 1 ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+                  </button>
+                  <button class="bullet-remove-btn p-1.5 text-text-dim hover:text-accent-rose transition-colors opacity-70 group-hover:opacity-100 cursor-pointer" data-sec-id="${sec.id}" data-itm-idx="${itmIdx}" data-b-del="${bIdx}" title="Remove Bullet">
+                    <span class="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -3088,6 +3762,17 @@ function attachCustomSectionListeners() {
     };
   });
 
+  // Move Item button
+  container.querySelectorAll('[data-itm-move]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmMove, 10);
+      const dir = btn.dataset.dir;
+      moveCustomItem(secId, itmIdx, dir);
+    };
+  });
+
   // Add Bullet button
   container.querySelectorAll('.btn-add-custom-bullet').forEach(btn => {
     btn.onclick = (e) => {
@@ -3124,6 +3809,18 @@ function attachCustomSectionListeners() {
     };
   });
 
+  // Move Bullet button
+  container.querySelectorAll('[data-b-move]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const secId = btn.dataset.secId;
+      const itmIdx = parseInt(btn.dataset.itmIdx, 10);
+      const bIdx = parseInt(btn.dataset.bMove, 10);
+      const dir = btn.dataset.dir;
+      moveCustomBullet(secId, itmIdx, bIdx, dir);
+    };
+  });
+
   // Input changes
   container.querySelectorAll('input[data-itm-field]').forEach(input => {
     input.oninput = (e) => {
@@ -3140,8 +3837,8 @@ function attachCustomSectionListeners() {
     };
   });
 
-  // Bullet text changes
-  container.querySelectorAll('input[data-b-idx]').forEach(input => {
+  // Bullet text changes (supports textarea and input)
+  container.querySelectorAll('textarea[data-b-idx], input[data-b-idx]').forEach(input => {
     input.oninput = (e) => {
       const secId = input.dataset.secId;
       const itmIdx = parseInt(input.dataset.itmIdx, 10);
@@ -3155,6 +3852,56 @@ function attachCustomSectionListeners() {
       }
     };
   });
+}
+
+/**
+ * Move Custom Section Item Up or Down
+ */
+function moveCustomItem(secId, itmIdx, direction) {
+  const sec = (currentResume.customSections || []).find(s => s.id === secId);
+  if (!sec || !Array.isArray(sec.items)) return;
+  const newIdx = direction === 'up' ? itmIdx - 1 : itmIdx + 1;
+  if (newIdx < 0 || newIdx >= sec.items.length) return;
+
+  const temp = sec.items[itmIdx];
+  sec.items[itmIdx] = sec.items[newIdx];
+  sec.items[newIdx] = temp;
+
+  renderCustomSectionsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  const title = sec.items[newIdx].title || 'Item';
+  showToast(`Moved ${title} ${direction}!`, 'info');
+  triggerAutoSave();
+}
+
+/**
+ * Move Custom Section Bullet Up or Down
+ */
+function moveCustomBullet(secId, itmIdx, bIdx, direction) {
+  const sec = (currentResume.customSections || []).find(s => s.id === secId);
+  if (!sec || !sec.items || !sec.items[itmIdx] || !Array.isArray(sec.items[itmIdx].bullets)) return;
+  const bullets = sec.items[itmIdx].bullets;
+  const newIdx = direction === 'up' ? bIdx - 1 : bIdx + 1;
+  if (newIdx < 0 || newIdx >= bullets.length) return;
+
+  const temp = bullets[bIdx];
+  bullets[bIdx] = bullets[newIdx];
+  bullets[newIdx] = temp;
+
+  renderCustomSectionsFormList();
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'latex') {
+    updateTabLatexView();
+  }
+
+  showToast(`Moved bullet ${direction}!`, 'info');
+  triggerAutoSave();
 }
 
 /**

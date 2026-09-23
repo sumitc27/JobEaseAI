@@ -51,3 +51,7 @@ desktop.ini
 *.swo
 .agents/
 .gemini/
+
+
+GEMINI.md
+structure.md
