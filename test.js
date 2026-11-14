@@ -26,7 +26,7 @@ console.log('Test 1: Empty Resume Data Structure');
 const empty = createEmptyResume();
 assert(typeof empty === 'object', 'Resume is an object');
 assert(Array.isArray(empty.experience), 'Experience is an array');
-assert(Array.isArray(empty.skills.technical), 'Technical skills is an array');
+assert(Array.isArray(empty.skills), 'Skills is an array');
 
 // 2. Test Resume Text Parsing
 console.log('\nTest 2: Raw Resume Text Parser');
@@ -55,13 +55,13 @@ B.S. in Computer Science - University of California (2018)
 const parsed = parseResumeText(sampleRawText);
 assert(parsed.personalInfo.name.includes('Jane Doe'), `Name correctly extracted: ${parsed.personalInfo.name}`);
 assert(parsed.personalInfo.email === 'jane.doe@example.com', `Email correctly extracted: ${parsed.personalInfo.email}`);
-assert(parsed.skills.technical.length > 0, `Technical skills extracted: ${parsed.skills.technical.length} found`);
+assert(parsed.skills.length > 0, `Skill categories extracted: ${parsed.skills.length} found`);
 assert(parsed.experience.length > 0, `Experience records extracted: ${parsed.experience.length} found`);
 assert(parsed.education.length > 0, `Education extracted: ${parsed.education.length} found`);
 
 // 2b. Test LaTeX Resume Format Parsing (Sample Profile)
 console.log('\nTest 2b: LaTeX Resume Format Parsing (Sample Profile)');
-const sampleRawText = `Alex Rivera
+const sampleLatexRawText = `Alex Rivera
 +1 (555) 234-5678 | alex.rivera@example.com
 LinkedIn | Github | Leetcode | Website
 
@@ -96,13 +96,13 @@ Python, React, FastAPI, RAG, BM25, LLM Router, Docker
 • Engineered a Retrieval-Augmented Generation (RAG) backend.
 • Built prompt-driven query rewriting and answer generation modules.`;
 
-const sampleParsed = parseResumeText(sampleRawText);
+const sampleParsed = parseResumeText(sampleLatexRawText);
 assert(sampleParsed.personalInfo.name === 'Alex Rivera', `Name extracted exactly: ${sampleParsed.personalInfo.name}`);
 assert(sampleParsed.personalInfo.email === 'alex.rivera@example.com', `Email extracted exactly: ${sampleParsed.personalInfo.email}`);
 assert(sampleParsed.personalInfo.phone.includes('234-5678'), `Phone extracted: ${sampleParsed.personalInfo.phone}`);
-assert(sampleParsed.skills.technical.length > 0, `Technical skills extracted: ${sampleParsed.skills.technical.join(', ')}`);
-assert(sampleParsed.skills.frameworks.length > 0, `Frameworks/AI extracted: ${sampleParsed.skills.frameworks.join(', ')}`);
-assert(sampleParsed.skills.tools.length > 0, `Tools/DevOps extracted: ${sampleParsed.skills.tools.join(', ')}`);
+assert(sampleParsed.skills.some(skill => skill.category === 'Languages' && skill.items), 'Languages skill category extracted');
+assert(sampleParsed.skills.some(skill => skill.category.includes('AI') && skill.items), 'Frameworks/AI skill category extracted');
+assert(sampleParsed.skills.some(skill => skill.category.includes('Cloud') && skill.items), 'Tools/DevOps skill category extracted');
 assert(sampleParsed.experience.length >= 2, `Experience extracted: ${sampleParsed.experience.length} jobs found`);
 assert(sampleParsed.education.length >= 1, `Education extracted: ${sampleParsed.education.length} found`);
 assert(sampleParsed.projects.length >= 1, `Projects extracted: ${sampleParsed.projects.length} found`);
@@ -203,7 +203,11 @@ assert(revEduIdx < revSkillsIdx, 'Education precedes Technical Skills when order
 
 // 7. Test Section Inclusion & Exclusion (enabledSections)
 console.log('\nTest 7: Section Inclusion & Exclusion (enabledSections)');
-const partialLatex = generateLatexResume(parsed, {
+const resumeWithProject = {
+  ...parsed,
+  projects: [{ name: 'JobEaseAI', roleOrTech: 'Node.js', bullets: ['Built an ATS resume optimizer'] }]
+};
+const partialLatex = generateLatexResume(resumeWithProject, {
   enabledSections: ['education', 'projects']
 });
 assert(partialLatex.includes('\\section{Education}'), 'Education is included when specified in enabledSections');
@@ -269,7 +273,7 @@ assert(accuracyLatex.includes('DevMetrics Engine') && accuracyLatex.includes('Ob
 
 // 10. Test Dynamic Section Renaming in LaTeX Generator
 console.log('\nTest 10: Dynamic Section Renaming in LaTeX');
-const renamedLatex = generateLatexResume(parsed, {
+const renamedLatex = generateLatexResume(resumeWithProject, {
   sectionTitles: {
     skills: 'Core Competencies & Stack',
     experience: 'Industry Experience',
@@ -288,13 +292,17 @@ const customSecLatex = generateLatexResume(parsed, {
     {
       id: 'custom-leadership',
       title: 'Leadership & Community',
-      subtitle: 'Organizer & President',
-      location: 'Campus Chapter',
-      detail: 'Open Source Community',
-      date: '2024 - 2025',
       items: [
-        'Organized hackathon with 500+ participants',
-        'Mentored 50+ junior developers in web & AI technologies'
+        {
+          title: 'Open Source Community',
+          subtitle: 'Organizer & President',
+          location: 'Campus Chapter',
+          date: '2024 - 2025',
+          bullets: [
+            'Organized hackathon with 500+ participants',
+            'Mentored 50+ junior developers in web & AI technologies'
+          ]
+        }
       ]
     }
   ],

@@ -43,6 +43,7 @@ Latest (1).tex
 .DS_Store
 Thumbs.db
 desktop.ini
+Microsoft/
 
 # IDE, Editor & Agent Directories
 .vscode/
@@ -51,6 +52,9 @@ desktop.ini
 *.swo
 .agents/
 .gemini/
+
+# Local setup scaffolds (not part of the JobEaseAI runtime)
+clerk-javascript/
 
 
 GEMINI.md

@@ -3,131 +3,184 @@
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933?logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Runtime%20Dependencies-0%20(Pure%20Native)-success" alt="Zero Dependencies">
-  <img src="https://img.shields.io/badge/ATS%20Engine-Gemini%20%7C%20Heuristic%20NLP-6366F1" alt="ATS Match Engine">
-  <img src="https://img.shields.io/badge/LaTeX%20Engine-Tectonic%20%7C%20Overleaf-teal" alt="LaTeX Engine">
+  <img src="https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk&logoColor=white" alt="Clerk authentication">
+  <img src="https://img.shields.io/badge/Cloud-Supabase-3FCF8E?logo=supabase&logoColor=white" alt="Supabase cloud sync">
+  <img src="https://img.shields.io/badge/AI-Groq%20%7C%20Gemini%20%7C%20OpenAI%20%7C%20Offline-6366F1" alt="AI providers">
+  <img src="https://img.shields.io/badge/Tests-78%20passing-success" alt="78 tests passing">
 </p>
 
-> **A developer-first resume engineering studio designed to maximize your ATS match score, enforce strict single-page constraints, and instantly compile LaTeX/PDF resumes.**
+> A developer-first resume engineering studio for tailoring resumes to job descriptions, improving ATS alignment, enforcing one-page layouts, and generating LaTeX/PDF output.
 
-JobEaseAI streamlines the job application process by solving two major challenges:
-1. **ATS Rejection**: Many resumes fail automated Applicant Tracking Systems (ATS) due to poor parsing, lacking keywords, or non-standard formatting.
-2. **The 1-Page Rule**: Manually tweaking resumes often causes unwanted overflow, breaking margins and readability.
+JobEaseAI separates structured resume data from presentation so a resume can be edited once, rearranged for each application, optimized against a job description, and rendered consistently in the browser or as LaTeX/PDF.
 
-By separating the **raw resume data (JSON)** from the **visual layout (CSS/LaTeX)**, JobEaseAI gives you automated single-page bounds, AI-driven keyword alignment, and ATS-optimized document generation out of the box.
+## Current release highlights
 
----
+- **Clerk authentication and Supabase sync:** sign in with Clerk, manage multiple cloud resumes, synchronize the Master Profile Vault, and keep guest workspaces separate from user-scoped drafts.
+- **Conflict-aware persistence:** serialized saves, optimistic version checks, dirty-state tracking, per-tab active resume state, legacy guest import, and reload-or-copy recovery when a cloud record changes elsewhere.
+- **One-click AI auto-optimization:** evaluate a target job description, propose summary/skill/bullet changes, review a granular diff, and selectively apply only approved changes.
+- **Provider waterfall:** Groq → Gemini → OpenAI → built-in offline heuristic, so core optimization remains usable without an AI key.
+- **Flexible resume editor:** reorder, rename, include, or exclude sections; add custom sections; reorder entries and bullets; and edit certifications, publications, achievements, and volunteer experience.
+- **Layout controls:** A4/Letter paper, font selection, compact/standard/relaxed spacing, detailed spacing sliders, themes, auto-fit, and a live page-overflow guardrail.
+- **Safer public API:** exact-origin CORS, JSON content-type enforcement, and validation that prevents secret Clerk or Supabase keys from being exposed through `/api/config`.
 
-## ✨ Key Features
+## Core features
 
-### 🛡️ 1-Page Formatting Guardrail
-* **Visual Boundary Line**: An interactive threshold marker on your virtual canvas helps you stay within one page.
-* **Intelligent Spacing Presets**: Quickly toggle between **Compact**, **Standard**, and **Relaxed** layouts.
-* **Auto-Fit Algorithm**: Programmatically selects the optimum spacing and density to fit your content perfectly.
+### ATS matching and optimization
 
-### 🤖 AI-Powered Job Description Matcher
-* **Dual-Engine Architecture**: Integrates with the **Google Gemini API** for deep insights, while offering a built-in **Heuristic NLP engine** that runs offline.
-* **Keyword Analysis & Scoring**: Extracts essential hard skills, cloud tooling, and domain concepts from the target job description.
-* **Bullet Point Suggestions**: Generates metric-driven bullet points with a seamless 1-Click "Apply to Resume" feature.
+- Extracts hard skills, keyword gaps, and target-role concepts from a job description.
+- Produces an ATS match score and actionable bullet/skill suggestions.
+- Generates an itemized before/after optimization review with impact and rationale.
+- Supports selective application of summary, skill, experience, and project changes.
+- Falls back to the deterministic heuristic engine when cloud AI providers are unavailable.
 
-### 🗄️ Master Profile Vault
-* **Complete Experience Repository**: Securely store all career history, projects, and skills in your browser's local storage.
-* **Selective Import**: Cherry-pick specific projects and skills for each unique application.
-* **JSON Backup & Restore**: Export your profile as a JSON file to transfer between devices.
+### Resume studio and Master Profile Vault
 
-### 📄 ATS-Compliant LaTeX Compiler
-* **TeX Source Generation**: Creates clean, standard TeX code that passes 100% of enterprise ATS parsers.
-* **Local Tectonic Engine**: Uses the self-contained `tectonic` binary to compile pixel-perfect PDFs locally.
-* **Overleaf Cloud Sync**: 1-Click redirect to compile directly in Overleaf.
+- Imports PDF or plain-text resume content into a normalized JSON model.
+- Stores a reusable archive of experience, projects, education, skills, and custom sections.
+- Selectively imports Vault items into the active resume.
+- Supports multiple tailored cloud resumes for authenticated users.
+- Preserves a local guest workspace when the user is signed out.
 
-### 🎨 Themes
-* Choose between a sleek **Bioluminescent Dark Theme** and an accessible **High-Contrast Light Theme**.
+### LaTeX and PDF output
 
----
+- Generates ATS-friendly LaTeX with configurable section order, titles, and inclusion.
+- Escapes LaTeX-sensitive characters and supports both A4 and Letter paper.
+- Compiles locally with Tectonic when the binary is available.
+- Exports source for use in Overleaf or another LaTeX environment.
 
-## 🏗️ System Architecture
+## Architecture
 
 ```text
-                                  +---------------------------------------+
-                                  |            JobEaseAI Client           |
-                                  |  (3-Column Studio & Real-time Canvas) |
-                                  +-------------------+-------------------+
-                                                      |
-                    +---------------------------------+---------------------------------+
-                    |                                 |                                 |
-                    v                                 v                                 v
-        [POST /api/upload-resume]          [POST /api/analyze-match]          [POST /api/compile-latex]
-                    |                                 |                                 |
-                    v                                 v                                 v
-        +-----------------------+         +-----------------------+         +-----------------------+
-        |  services/pdfParser   |         |   services/aiEngine   |         | services/latexGenerator|
-        | - zlib stream parser  |         | - Google Gemini API   |         | - TeX sanitization    |
-        | - Text classifier     |         | - Heuristic NLP engine|         | - Tectonic execution  |
-        | - Normalized JSON     |         | - ATS scoring & gaps  |         | - PDF compilation     |
-        +-----------------------+         +-----------------------+         +-----------------------+
+Browser (vanilla HTML/CSS/JavaScript)
+  ├─ Resume editor, live preview, Vault, ATS review
+  ├─ ClerkJS authentication
+  ├─ Supabase client + Clerk session token
+  │    └─ resumes / user_profiles protected by RLS and optimistic versions
+  └─ Node HTTP API
+       ├─ /api/config and /api/health
+       ├─ /api/upload-resume and /api/parse-text → services/pdfParser.js
+       ├─ /api/analyze-match and /api/auto-optimize → services/aiEngine.js
+       └─ /api/export-latex and /api/compile → services/latexGenerator.js
 ```
 
----
+The normal runtime is the native Node.js server in `server.js`. The optional FastAPI prototype under `python_backend/` is separate and is not used by the current browser application.
 
-## 🚀 Quick Start Guide
+## Quick start
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (v18.0.0 or higher)
-* [Git](https://git-scm.com/)
 
-### 1. Clone the Repository
+- [Node.js](https://nodejs.org/) 18 or newer
+- [Git](https://git-scm.com/)
+- Optional: Tectonic for local PDF compilation (the repository setup includes Windows support)
+
+### 1. Clone and install
+
 ```bash
 git clone https://github.com/sumitc27/JobEaseAI.git
 cd JobEaseAI
+npm install
 ```
 
-### 2. Configure Environment Variables (Optional)
-If you want to use the Google Gemini API for generative AI suggestions, copy the `.env.example` to `.env`:
+On Windows PowerShell systems that block `npm.ps1`, use `npm.cmd` in the commands below; changing the machine execution policy is not required.
+
+### 2. Configure the environment
+
+Copy `.env.example` to `.env`:
+
 ```bash
 cp .env.example .env
 ```
-Add your API key:
+
+PowerShell equivalent:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Minimum configuration for authentication and cross-device sync:
+
 ```env
 PORT=3000
-GEMINI_API_KEY=your_gemini_api_key_here
+APP_ORIGIN=http://localhost:3000
+CLERK_PUBLISHABLE_KEY=pk_test_your_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 ```
-> **Note**: If `GEMINI_API_KEY` is not provided, the app will seamlessly fall back to its built-in **heuristic NLP match engine**.
 
-### 3. Start the Server
-JobEaseAI uses Node.js with **zero external runtime dependencies**:
-```bash
-npm start
-```
-For hot-reloading during development:
+AI keys are optional. Configure one or more of `GROQ_API_KEY`, `GEMINI_API_KEY`, and `OPENAI_API_KEY`; the application tries them in that order before using its offline heuristic engine.
+
+Never expose a Clerk secret key, a Supabase secret/service-role key, or an AI provider key to browser code.
+
+### 3. Configure Clerk and Supabase
+
+1. Enable the desired Clerk sign-in methods and activate Clerk's native Supabase integration.
+2. In Supabase, add Clerk under **Authentication → Sign In / Providers → Third-party**.
+3. Run [`migrations/001_clerk_sync.sql`](migrations/001_clerk_sync.sql) in the Supabase SQL editor.
+4. Add `http://localhost:3000` to the Clerk development origins.
+5. Keep Row Level Security enabled; the migration owns resume and profile rows by the Clerk user ID.
+
+The editor still works in local guest mode if Clerk/Supabase are not configured, but sign-in and cross-device sync will be unavailable.
+
+### 4. Start the development server
+
 ```bash
 npm run dev
 ```
 
-Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+Windows PowerShell fallback:
 
-### 4. Run Tests
-```bash
-npm test
+```powershell
+npm.cmd run dev
 ```
 
----
+Open [http://localhost:3000](http://localhost:3000). The development command watches server files and restarts automatically.
 
-## 🐳 Docker Deployment
+For a non-watching run, use `npm start` (or `npm.cmd start` on affected PowerShell installations).
 
-A self-contained `Dockerfile` is included, featuring **Node.js 20 LTS** and the official **Tectonic LaTeX compiler**.
+### 5. Verify the project
 
-### 1. Build the Image
+```bash
+npm test
+node --check server.js
+node --check public/js/app.js
+node --check public/js/supabaseAuth.js
+```
+
+The current automated baseline is **78 passing, 0 failing**.
+
+## Cloud-sync behavior
+
+- Guest data remains browser-local until a signed-in user explicitly imports it.
+- Authenticated drafts are scoped by Clerk user and cloud resume ID.
+- Resume and Vault updates use optimistic versions to detect concurrent edits.
+- A conflict can be resolved by loading the cloud copy or saving the local draft as a separate copy.
+- The app attempts to flush pending edits before sign-out, navigation, workspace switching, and page unload.
+
+For the detailed data model, security boundary, migration notes, and test matrix, see [`master.md`](master.md).
+
+## Docker deployment
+
+Build the image:
+
 ```bash
 docker build -t jobease-ai .
 ```
 
-### 2. Run the Container
+Run the container with an environment file:
+
 ```bash
-docker run -d -p 3000:3000 --name jobease-container jobease-ai
+docker run -d --env-file .env -p 3000:3000 --name jobease-container jobease-ai
 ```
-Access the application at `http://localhost:3000`.
 
----
+Then open `http://localhost:3000`. Set `APP_ORIGIN` to the exact public origin when deploying outside local development, and add that origin in Clerk.
 
-## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+## Security notes
+
+- Only publishable Clerk and Supabase keys may be returned by `/api/config`.
+- Browser access to Supabase depends on the RLS policies in the tracked migration.
+- Production deployments should use HTTPS and an exact `APP_ORIGIN`.
+- Clerk account deletion cleanup is not automated yet; a verified deletion webhook is still needed to remove orphaned Supabase rows.
+
+## License
+
+This project is licensed under the MIT License, as declared in `package.json`.

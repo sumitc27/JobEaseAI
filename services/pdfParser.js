@@ -356,10 +356,10 @@ function parseSkills(lines, skillsObj) {
 
     if (lower.startsWith('languages:') || lower.includes('programming') || lower.includes('languages')) {
       technical.push(...tokens);
-    } else if (lower.includes('framework') || lower.includes('ai') || lower.includes('ml') || lower.includes('libraries') || lower.includes('cv')) {
-      frameworks.push(...tokens);
     } else if (lower.includes('cloud') || lower.includes('devops') || lower.includes('tools') || lower.includes('platforms') || lower.includes('databases')) {
       tools.push(...tokens);
+    } else if (lower.includes('framework') || lower.includes('ai') || lower.includes('ml') || lower.includes('libraries') || lower.includes('cv')) {
+      frameworks.push(...tokens);
     } else {
       technical.push(...tokens);
     }

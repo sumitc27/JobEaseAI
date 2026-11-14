@@ -5,19 +5,117 @@
  */
 
 import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
+import * as cloudAuth from './supabaseAuth.js';
+
+const SCOPED_STORAGE_KEYS = {
+  jobease_user_resume: 'resume',
+  jobease_master_profile: 'master-profile',
+  jobease_enabled_sections: 'enabled-sections',
+  jobease_section_order: 'section-order',
+  jobease_section_titles: 'section-titles',
+  jobease_spacing: 'spacing',
+  jobease_template: 'template',
+  jobease_font: 'font',
+  jobease_font_user_explicit: 'font-user-explicit',
+  jobease_paper_size: 'paper-size',
+  jobease_cloud_dirty: 'cloud-dirty',
+  jobease_profile_cloud_dirty: 'profile-cloud-dirty'
+};
+
+const ACCOUNT_SCOPED_STORAGE_KEYS = new Set([
+  'jobease_master_profile',
+  'jobease_profile_cloud_dirty'
+]);
+
+let activeStorageUserId = null;
+let activeDraftResumeId = null;
+let activeDraftResumeVersion = null;
+let suppressCloudSync = false;
+let workspaceGeneration = 0;
+let resumeLocalRevision = 0;
+let profileLocalRevision = 0;
+let pendingLocalChanges = false;
+let dirtyTokenSequence = 0;
+
+const tabSessionId = (() => {
+  try {
+    const existing = sessionStorage.getItem('jobease:tab-id');
+    if (existing) return existing;
+    const generated = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem('jobease:tab-id', generated);
+    return generated;
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+})();
+
+function getAppStorageKey(key) {
+  const suffix = SCOPED_STORAGE_KEYS[key];
+  if (!activeStorageUserId || !suffix) return key;
+  if (ACCOUNT_SCOPED_STORAGE_KEYS.has(key)) return `jobease:${activeStorageUserId}:${suffix}`;
+  return `jobease:${activeStorageUserId}:resume:${activeDraftResumeId || 'draft'}:${suffix}`;
+}
+
+function getAppStorageItem(key) {
+  return localStorage.getItem(getAppStorageKey(key));
+}
+
+function setAppStorageItem(key, value) {
+  localStorage.setItem(getAppStorageKey(key), value);
+}
+
+function removeAppStorageItem(key) {
+  localStorage.removeItem(getAppStorageKey(key));
+}
+
+function markAppStorageDirty(key) {
+  dirtyTokenSequence += 1;
+  setAppStorageItem(key, `${tabSessionId}:${Date.now()}:${dirtyTokenSequence}`);
+}
+
+function isAppStorageDirty(key) {
+  return !!getAppStorageItem(key);
+}
+
+function restoreActiveResumeContext(userId) {
+  activeDraftResumeId = null;
+  activeDraftResumeVersion = null;
+  try {
+    activeDraftResumeId = sessionStorage.getItem(`jobease:${userId}:active-resume-id`) || null;
+    const storedVersion = Number(sessionStorage.getItem(`jobease:${userId}:active-resume-version`));
+    activeDraftResumeVersion = Number.isInteger(storedVersion) && storedVersion > 0 ? storedVersion : null;
+  } catch {}
+  cloudAuth.setActiveCloudResumeId(activeDraftResumeId, activeDraftResumeVersion);
+}
+
+function setActiveResumeContext(resumeId, version = null) {
+  activeDraftResumeId = resumeId || null;
+  activeDraftResumeVersion = resumeId && Number.isInteger(Number(version)) ? Number(version) : null;
+  cloudAuth.setActiveCloudResumeId(activeDraftResumeId, activeDraftResumeVersion);
+  if (!activeStorageUserId) return;
+
+  try {
+    const idKey = `jobease:${activeStorageUserId}:active-resume-id`;
+    const versionKey = `jobease:${activeStorageUserId}:active-resume-version`;
+    if (activeDraftResumeId) {
+      sessionStorage.setItem(idKey, activeDraftResumeId);
+      if (activeDraftResumeVersion) sessionStorage.setItem(versionKey, String(activeDraftResumeVersion));
+      else sessionStorage.removeItem(versionKey);
+    } else {
+      sessionStorage.removeItem(idKey);
+      sessionStorage.removeItem(versionKey);
+    }
+  } catch {}
+}
 
 // Application State
 let currentResume = JSON.parse(JSON.stringify(SAMPLE_RESUMES.fullstack));
 try {
-  const savedUserResume = localStorage.getItem('jobease_user_resume');
+  const savedUserResume = getAppStorageItem('jobease_user_resume');
   if (savedUserResume) {
-    if (savedUserResume.includes('Sumit') || savedUserResume.includes('27th.sumit@gmail.com')) {
-      localStorage.removeItem('jobease_user_resume');
-    } else {
-      const parsedResume = JSON.parse(savedUserResume);
-      if (parsedResume && typeof parsedResume === 'object' && parsedResume.personalInfo) {
-        currentResume = parsedResume;
-      }
+    const parsedResume = JSON.parse(savedUserResume);
+    if (parsedResume && typeof parsedResume === 'object' && parsedResume.personalInfo) {
+      currentResume = parsedResume;
     }
   }
 } catch (e) {
@@ -28,14 +126,14 @@ let currentJD = SAMPLE_JOB_DESCRIPTIONS.fullstack_cloud;
 let currentDensity = 'standard';
 let currentTemplate = 'latex';
 try {
-  localStorage.setItem('jobease_template', 'latex');
+  setAppStorageItem('jobease_template', 'latex');
 } catch (e) {}
-let currentFont = localStorage.getItem('jobease_font') || 'lmodern';
-if (currentFont === 'charter' && !localStorage.getItem('jobease_font_user_explicit')) {
+let currentFont = getAppStorageItem('jobease_font') || 'lmodern';
+if (currentFont === 'charter' && !getAppStorageItem('jobease_font_user_explicit')) {
   currentFont = 'lmodern';
 }
 let activeTab = 'form';
-let currentPaperSize = localStorage.getItem('jobease_paper_size') || 'a4';
+let currentPaperSize = getAppStorageItem('jobease_paper_size') || 'a4';
 let currentAnalysis = null;
 
 // Resume Section Reordering & Selection State
@@ -86,7 +184,7 @@ if (!Array.isArray(currentResume.customSections)) {
 
 let currentSectionTitles = { ...DEFAULT_SECTION_TITLES };
 try {
-  const savedTitles = localStorage.getItem('jobease_section_titles');
+  const savedTitles = getAppStorageItem('jobease_section_titles');
   if (savedTitles) {
     const parsed = JSON.parse(savedTitles);
     if (parsed && typeof parsed === 'object') {
@@ -103,7 +201,7 @@ if (currentResume.sectionTitles && typeof currentResume.sectionTitles === 'objec
 
 let currentSectionOrder = [...DEFAULT_SECTION_ORDER];
 try {
-  const savedOrder = localStorage.getItem('jobease_section_order');
+  const savedOrder = getAppStorageItem('jobease_section_order');
   if (savedOrder) {
     const parsed = JSON.parse(savedOrder);
     if (Array.isArray(parsed) && parsed.length > 0) {
@@ -149,13 +247,13 @@ if (achIdx === -1 || (maxCoreIdx !== -1 && achIdx < maxCoreIdx)) {
     }
   }
   try {
-    localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+    setAppStorageItem('jobease_section_order', JSON.stringify(currentSectionOrder));
   } catch (e) {}
 }
 
 let currentEnabledSections = [...ALL_SECTION_IDS];
 try {
-  const savedEnabled = localStorage.getItem('jobease_enabled_sections');
+  const savedEnabled = getAppStorageItem('jobease_enabled_sections');
   if (savedEnabled) {
     const parsed = JSON.parse(savedEnabled);
     if (Array.isArray(parsed)) {
@@ -179,17 +277,30 @@ try {
 
 let autoSaveTimer = null;
 
-function saveProfileToStorage(notify = false) {
+function saveProfileToStorage(notify = false, options = {}) {
   try {
     currentResume.sectionTitles = { ...currentSectionTitles };
     currentResume.sectionOrder = [...currentSectionOrder];
     currentResume.enabledSections = [...currentEnabledSections];
 
-    localStorage.setItem('jobease_user_resume', JSON.stringify(currentResume));
-    localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
-    localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
-    localStorage.setItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
+    setAppStorageItem('jobease_user_resume', JSON.stringify(currentResume));
+    setAppStorageItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+    setAppStorageItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+    setAppStorageItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
+
+    if (options.markDirty !== false && options.revisionAlreadyMarked !== true) {
+      resumeLocalRevision += 1;
+    }
+    pendingLocalChanges = false;
+
+    if (activeStorageUserId && options.markDirty !== false) {
+      if (options.revisionAlreadyMarked !== true) markAppStorageDirty('jobease_cloud_dirty');
+    }
     
+    if (!suppressCloudSync && options.sync !== false) {
+      syncResumeToCloudDebounced();
+    }
+
     if (elements.saveStatusBadge) {
       const textEl = elements.saveStatusBadge.querySelector('.save-status-text');
       elements.saveStatusBadge.classList.remove('is-saving', 'is-error');
@@ -327,6 +438,10 @@ function startRenamingSection(secId) {
 }
 
 function triggerAutoSave() {
+  resumeLocalRevision += 1;
+  pendingLocalChanges = true;
+  if (activeStorageUserId) markAppStorageDirty('jobease_cloud_dirty');
+
   if (elements.saveStatusBadge) {
     elements.saveStatusBadge.classList.add('is-saving');
     elements.saveStatusBadge.classList.remove('is-error');
@@ -336,8 +451,16 @@ function triggerAutoSave() {
 
   if (autoSaveTimer) clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
-    saveProfileToStorage(false);
+    autoSaveTimer = null;
+    saveProfileToStorage(false, { revisionAlreadyMarked: true });
   }, 400);
+}
+
+function flushPendingLocalSave() {
+  if (!pendingLocalChanges) return;
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = null;
+  saveProfileToStorage(false, { revisionAlreadyMarked: true });
 }
 
 function getTargetPageHeight() {
@@ -403,7 +526,7 @@ const SPACING_PRESETS = {
 
 let spacingState = { ...SPACING_PRESETS.standard };
 try {
-  const savedSpacing = localStorage.getItem('jobease_spacing');
+  const savedSpacing = getAppStorageItem('jobease_spacing');
   if (savedSpacing) {
     Object.assign(spacingState, JSON.parse(savedSpacing));
   }
@@ -733,7 +856,51 @@ const elements = {
 
   // Theme Toggle
   btnThemeToggle: document.getElementById('btn-theme-toggle'),
-  themeToggleIcon: document.getElementById('theme-toggle-icon')
+  themeToggleIcon: document.getElementById('theme-toggle-icon'),
+
+  // Auth & Cloud Sync Navigation
+  btnCloudSyncStatus: document.getElementById('btn-cloud-sync-status'),
+  cloudSyncIcon: document.getElementById('cloud-sync-icon'),
+  cloudSyncLabel: document.getElementById('cloud-sync-label'),
+  btnUserAuthTrigger: document.getElementById('btn-user-auth-trigger'),
+  userProfileDropdown: document.getElementById('user-profile-dropdown'),
+  dropdownUserName: document.getElementById('dropdown-user-name'),
+  dropdownUserEmail: document.getElementById('dropdown-user-email'),
+  userAuthenticatedOptions: document.getElementById('user-authenticated-options'),
+  btnDropdownMyResumes: document.getElementById('btn-dropdown-my-resumes'),
+  btnDropdownNewResume: document.getElementById('btn-dropdown-new-resume'),
+  btnDropdownSyncNow: document.getElementById('btn-dropdown-sync-now'),
+  btnDropdownManageAccount: document.getElementById('btn-dropdown-manage-account'),
+  btnDropdownSignin: document.getElementById('btn-dropdown-signin'),
+  btnDropdownSignout: document.getElementById('btn-dropdown-signout'),
+  userDisplayNameLabel: document.getElementById('user-display-name-label'),
+  userAvatarBadge: document.getElementById('user-avatar-badge'),
+  userAvatarIcon: document.getElementById('user-avatar-icon'),
+
+  // Cloud Resumes Modal
+  cloudResumesModal: document.getElementById('cloud-resumes-modal'),
+  btnCloseCloudResumesModal: document.getElementById('btn-close-cloud-resumes-modal'),
+  btnCloseCloudResumes: document.getElementById('btn-close-cloud-resumes'),
+  cloudResumesListContainer: document.getElementById('cloud-resumes-list-container'),
+  btnCreateNewCloudResume: document.getElementById('btn-create-new-cloud-resume'),
+
+  // 1-Click Auto-Optimize
+  btnAutoOptimize: document.getElementById('btn-auto-optimize'),
+  autoOptimizeModal: document.getElementById('auto-optimize-modal'),
+  btnCloseOptModal: document.getElementById('btn-close-opt-modal'),
+  btnOptCancel: document.getElementById('btn-opt-cancel'),
+  btnOptApply: document.getElementById('btn-opt-apply'),
+  optScoreLeapBadge: document.getElementById('opt-score-leap-badge'),
+  optSummaryText: document.getElementById('opt-summary-text'),
+  optFilterTabs: document.getElementById('opt-filter-tabs'),
+  btnOptFilterAll: document.getElementById('btn-opt-filter-all'),
+  btnOptFilterBullets: document.getElementById('btn-opt-filter-bullets'),
+  btnOptFilterSkills: document.getElementById('btn-opt-filter-skills'),
+  btnOptFilterSummary: document.getElementById('btn-opt-filter-summary'),
+  optChangesContainer: document.getElementById('opt-changes-container'),
+  optSelectedCount: document.getElementById('opt-selected-count'),
+  btnOptSelectAll: document.getElementById('btn-opt-select-all'),
+  btnOptDeselectAll: document.getElementById('btn-opt-deselect-all')
 };
 
 /**
@@ -807,6 +974,7 @@ function init() {
 
   loadMasterProfileFromStorage();
   bindEvents();
+  handleAuthInit();
   loadResumeIntoForm(currentResume);
   applySectionOrderToDOM();
   elements.jdInput.value = currentJD;
@@ -832,6 +1000,126 @@ function bindEvents() {
   // Theme Toggle Action
   if (elements.btnThemeToggle) {
     elements.btnThemeToggle.addEventListener('click', toggleTheme);
+  }
+
+  // Auth & Cloud Sync Navigation Triggers
+  if (elements.btnUserAuthTrigger) {
+    elements.btnUserAuthTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (elements.userProfileDropdown) {
+        elements.userProfileDropdown.classList.toggle('hidden');
+      }
+    });
+  }
+
+  // Close profile dropdown on outside click
+  document.addEventListener('click', (e) => {
+    if (elements.userProfileDropdown && !elements.userProfileDropdown.classList.contains('hidden')) {
+      if (!e.target.closest('#user-profile-menu-container')) {
+        elements.userProfileDropdown.classList.add('hidden');
+      }
+    }
+  });
+
+  if (elements.btnCloudSyncStatus) {
+    elements.btnCloudSyncStatus.addEventListener('click', () => {
+      cloudAuth.getCurrentUser().then(user => {
+        if (user && cloudAuth.isConfigured()) openCloudResumesModal();
+        else if (user) showCloudConfigurationError();
+        else openAuthModal();
+      });
+    });
+  }
+
+  if (elements.btnDropdownSignin) {
+    elements.btnDropdownSignin.addEventListener('click', () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      openAuthModal();
+    });
+  }
+
+  if (elements.btnDropdownSignout) {
+    elements.btnDropdownSignout.addEventListener('click', async () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      await cloudAuth.signOut();
+      if (activeAuthUserId || activeStorageUserId) handleSignedOutUser();
+      showToast('Signed out successfully.', 'info');
+    });
+  }
+
+  if (elements.btnDropdownManageAccount) {
+    elements.btnDropdownManageAccount.addEventListener('click', async () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      try {
+        await cloudAuth.openUserProfile();
+      } catch (error) {
+        showToast('Could not open account settings: ' + error.message, 'error');
+      }
+    });
+  }
+
+  if (elements.btnDropdownMyResumes) {
+    elements.btnDropdownMyResumes.addEventListener('click', () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      openCloudResumesModal();
+    });
+  }
+
+  if (elements.btnDropdownNewResume) {
+    elements.btnDropdownNewResume.addEventListener('click', () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      createNewCloudResume();
+    });
+  }
+
+  if (elements.btnDropdownSyncNow) {
+    elements.btnDropdownSyncNow.addEventListener('click', async () => {
+      if (elements.userProfileDropdown) elements.userProfileDropdown.classList.add('hidden');
+      await forceCloudSync();
+    });
+  }
+
+  // Cloud Resumes Modal Listeners
+  if (elements.btnCloseCloudResumesModal) {
+    elements.btnCloseCloudResumesModal.addEventListener('click', () => closeModal(elements.cloudResumesModal));
+  }
+  if (elements.btnCloseCloudResumes) {
+    elements.btnCloseCloudResumes.addEventListener('click', () => closeModal(elements.cloudResumesModal));
+  }
+  if (elements.btnCreateNewCloudResume) {
+    elements.btnCreateNewCloudResume.addEventListener('click', createNewCloudResume);
+  }
+
+  // Auto-Optimize Modal Listeners
+  if (elements.btnAutoOptimize) {
+    elements.btnAutoOptimize.addEventListener('click', triggerAutoOptimize);
+  }
+  if (elements.btnCloseOptModal) {
+    elements.btnCloseOptModal.addEventListener('click', () => closeModal(elements.autoOptimizeModal));
+  }
+  if (elements.btnOptCancel) {
+    elements.btnOptCancel.addEventListener('click', () => closeModal(elements.autoOptimizeModal));
+  }
+  if (elements.btnOptApply) {
+    elements.btnOptApply.addEventListener('click', applySelectedOptimizations);
+  }
+  if (elements.btnOptSelectAll) {
+    elements.btnOptSelectAll.addEventListener('click', () => setAllOptCheckboxes(true));
+  }
+  if (elements.btnOptDeselectAll) {
+    elements.btnOptDeselectAll.addEventListener('click', () => setAllOptCheckboxes(false));
+  }
+  if (elements.btnOptFilterAll) {
+    elements.btnOptFilterAll.addEventListener('click', () => setOptFilter('all'));
+  }
+  if (elements.btnOptFilterBullets) {
+    elements.btnOptFilterBullets.addEventListener('click', () => setOptFilter('bullet'));
+  }
+  if (elements.btnOptFilterSkills) {
+    elements.btnOptFilterSkills.addEventListener('click', () => setOptFilter('skill'));
+  }
+  if (elements.btnOptFilterSummary) {
+    elements.btnOptFilterSummary.addEventListener('click', () => setOptFilter('summary'));
   }
 
   // Navigation Actions
@@ -1269,6 +1557,7 @@ function bindEvents() {
         spacingState[key] = val;
         if (badge) badge.textContent = `${val}${unit}`;
         applySpacing(spacingState, false, 'custom');
+        triggerAutoSave();
       });
     }
   });
@@ -1523,7 +1812,7 @@ function setTemplate(template = 'latex', notify = true) {
   elements.resumePaper.classList.remove('theme-modern', 'theme-classic', 'theme-minimalist');
   elements.resumePaper.classList.add('theme-latex');
   try {
-    localStorage.setItem('jobease_template', 'latex');
+    setAppStorageItem('jobease_template', 'latex');
   } catch (e) {}
 
   check1PageGuardrail();
@@ -1568,9 +1857,9 @@ function setFont(font, notify = true) {
     elements.resumePaperP2.classList.add(`font-${font}`);
   }
 
-  localStorage.setItem('jobease_font', font);
+  setAppStorageItem('jobease_font', font);
   if (notify) {
-    localStorage.setItem('jobease_font_user_explicit', 'true');
+    setAppStorageItem('jobease_font_user_explicit', 'true');
   }
 
   // Sync LaTeX view if open
@@ -1594,6 +1883,7 @@ function setFont(font, notify = true) {
       roboto: 'Roboto (Geometric Sans)'
     };
     showToast(`Switched font to ${fontNames[font] || font}!`, 'info');
+    saveProfileToStorage(false);
   }
 }
 
@@ -1655,7 +1945,7 @@ function applySpacing(settings, notify = false, presetName = null) {
     elements.spacingActiveBadge.textContent = badgeMap[activePreset] || 'Custom';
   }
 
-  localStorage.setItem('jobease_spacing', JSON.stringify(spacingState));
+  setAppStorageItem('jobease_spacing', JSON.stringify(spacingState));
   check1PageGuardrail();
 
   if (activeTab === 'latex') {
@@ -1673,6 +1963,7 @@ function applySpacing(settings, notify = false, presetName = null) {
       relaxed: 'Relaxed'
     };
     showToast(`Applied ${presetNames[activePreset] || 'Custom'} spacing!`, 'info');
+    saveProfileToStorage(false);
   }
 }
 
@@ -1735,7 +2026,7 @@ function updatePreviewScale() {
  */
 function setPaperSize(size, syncLatex = true, notify = false) {
   currentPaperSize = (size === 'letter') ? 'letter' : 'a4';
-  localStorage.setItem('jobease_paper_size', currentPaperSize);
+  setAppStorageItem('jobease_paper_size', currentPaperSize);
 
   // Update button active states
   if (elements.btnPaperA4) {
@@ -1809,6 +2100,7 @@ function setPaperSize(size, syncLatex = true, notify = false) {
 
   if (notify) {
     showToast(`Switched paper standard to ${currentPaperSize.toUpperCase()}!`, 'info');
+    saveProfileToStorage(false);
   }
 }
 
@@ -1878,6 +2170,7 @@ function autoFit1Page() {
       renderPreview();
     }
     const finalRatio = Math.round((getResumeActualContentHeight() / getTargetPageHeight()) * 100);
+    saveProfileToStorage(false);
     showToast(`✨ Auto-fit applied! Page budget: ${finalRatio}% (${currentPaperSize.toUpperCase()} 1 Page Safe)`, 'success');
   }, 90);
 }
@@ -2203,7 +2496,7 @@ function handleRawJsonEdit() {
     if (parsed.sectionTitles && typeof parsed.sectionTitles === 'object') {
       currentSectionTitles = { ...DEFAULT_SECTION_TITLES, ...parsed.sectionTitles };
       try {
-        localStorage.setItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
+        setAppStorageItem('jobease_section_titles', JSON.stringify(currentSectionTitles));
       } catch (e) {}
     }
 
@@ -2218,14 +2511,14 @@ function handleRawJsonEdit() {
     if (Array.isArray(parsed.sectionOrder) && parsed.sectionOrder.length > 0) {
       currentSectionOrder = parsed.sectionOrder;
       try {
-        localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+        setAppStorageItem('jobease_section_order', JSON.stringify(currentSectionOrder));
       } catch (e) {}
     }
 
     if (Array.isArray(parsed.enabledSections)) {
       currentEnabledSections = parsed.enabledSections;
       try {
-        localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+        setAppStorageItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
       } catch (e) {}
     }
 
@@ -3916,7 +4209,7 @@ function toggleSection(sectionId, isEnabled) {
     currentEnabledSections = currentEnabledSections.filter(id => id !== sectionId);
   }
 
-  localStorage.setItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
+  setAppStorageItem('jobease_enabled_sections', JSON.stringify(currentEnabledSections));
 
   updateSectionUIState(sectionId, isEnabled);
   renderPreview();
@@ -3986,7 +4279,7 @@ function moveSection(sectionId, direction) {
   currentSectionOrder[newIndex] = temp;
 
   // Persist order in localStorage
-  localStorage.setItem('jobease_section_order', JSON.stringify(currentSectionOrder));
+  setAppStorageItem('jobease_section_order', JSON.stringify(currentSectionOrder));
 
   // Instantly reorder in DOM (both Paper and Form)
   applySectionOrderToDOM(true);
@@ -6185,16 +6478,11 @@ let currentVaultTab = 'all';
  */
 function loadMasterProfileFromStorage() {
   try {
-    const saved = localStorage.getItem('jobease_master_profile');
+    const saved = getAppStorageItem('jobease_master_profile');
     if (saved) {
-      if (saved.includes('Sumit') || saved.includes('27th.sumit@gmail.com')) {
-        localStorage.removeItem('jobease_master_profile');
-        masterProfile = null;
-      } else {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          masterProfile = parsed;
-        }
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        masterProfile = parsed;
       }
     }
   } catch (e) {
@@ -6204,7 +6492,7 @@ function loadMasterProfileFromStorage() {
   if (!masterProfile) {
     // Initialize Master Profile with deep clone of sample/current resume
     masterProfile = JSON.parse(JSON.stringify(currentResume));
-    saveMasterProfileToStorage(false);
+    saveMasterProfileToStorage(false, { sync: false, markDirty: false });
   }
 
   // Migration & normalization: Ensure masterProfile.skills is an Array
@@ -6248,9 +6536,16 @@ function updateVaultStoredBadge() {
 /**
  * Save Master Profile to localStorage
  */
-function saveMasterProfileToStorage(notify = false) {
+function saveMasterProfileToStorage(notify = false, options = {}) {
   try {
-    localStorage.setItem('jobease_master_profile', JSON.stringify(masterProfile));
+    setAppStorageItem('jobease_master_profile', JSON.stringify(masterProfile));
+    if (options.markDirty !== false) profileLocalRevision += 1;
+    if (activeStorageUserId && options.markDirty !== false) {
+      markAppStorageDirty('jobease_profile_cloud_dirty');
+    }
+    if (!suppressCloudSync && options.sync !== false) {
+      syncMasterProfileToCloudDebounced();
+    }
     updateVaultStoredBadge();
     if (notify) {
       showToast('Master Profile Vault updated successfully!', 'success');
@@ -7262,6 +7557,1323 @@ function importMasterProfileVaultJson(e) {
   };
   reader.readAsText(file);
   e.target.value = '';
+}
+
+// ==========================================================================
+// Clerk Authentication & Supabase Cloud Sync Controllers
+// ==========================================================================
+
+let cloudSyncDebounceTimer = null;
+let profileSyncDebounceTimer = null;
+let activeAuthUserId = null;
+let authStateUnsubscribe = null;
+let authTransitionGeneration = 0;
+let resumeSaveChain = Promise.resolve();
+let profileSaveChain = Promise.resolve();
+let lastAutoOptimizeResult = null;
+let currentOptFilter = 'all';
+
+/**
+ * Initialize Clerk, Supabase, and the current user's workspace.
+ */
+async function handleAuthInit() {
+  const authReady = await cloudAuth.initSupabase();
+  if (!authReady) {
+    updateAuthUI(null);
+    return;
+  }
+
+  authStateUnsubscribe = cloudAuth.onAuthStateChange(async (event, authUser) => {
+    updateAuthUI(authUser);
+    if (event === 'SIGNED_IN' && authUser) {
+      await handleSignedInUser(authUser, true);
+    } else if (event === 'SIGNED_OUT') {
+      handleSignedOutUser();
+    }
+  });
+
+  const user = await cloudAuth.getCurrentUser();
+  updateAuthUI(user);
+  if (user) await handleSignedInUser(user, false);
+
+  const currentUser = await cloudAuth.getCurrentUser();
+  if ((currentUser?.id || null) !== activeAuthUserId) {
+    if (currentUser) await handleSignedInUser(currentUser, false);
+    else handleSignedOutUser();
+  }
+
+  window.addEventListener('pagehide', teardownAuthAndSync);
+}
+
+function teardownAuthAndSync(event) {
+  flushPendingLocalSave();
+  if (event?.persisted) return;
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  if (profileSyncDebounceTimer) clearTimeout(profileSyncDebounceTimer);
+  if (authStateUnsubscribe) authStateUnsubscribe();
+  authStateUnsubscribe = null;
+}
+
+/**
+ * Synchronize UI state with Clerk authentication and cloud availability.
+ */
+function updateAuthUI(user) {
+  const status = cloudAuth.getConfigurationStatus();
+
+  if (user) {
+    const displayName = user.displayName || user.email?.split('@')[0] || 'Account';
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = status.cloudReady ? 'Cloud Ready' : 'Cloud Setup Required';
+    if (elements.cloudSyncIcon) {
+      elements.cloudSyncIcon.textContent = status.cloudReady ? 'cloud_done' : 'cloud_off';
+      elements.cloudSyncIcon.className = `material-symbols-outlined text-[16px] ${status.cloudReady ? 'text-tertiary' : 'text-accent-amber'}`;
+    }
+    if (elements.userDisplayNameLabel) elements.userDisplayNameLabel.textContent = displayName;
+    if (elements.dropdownUserName) elements.dropdownUserName.textContent = displayName;
+    if (elements.dropdownUserEmail) elements.dropdownUserEmail.textContent = user.email || '';
+    if (elements.userAvatarBadge) {
+      elements.userAvatarBadge.innerHTML = '';
+      if (user.imageUrl) {
+        const image = document.createElement('img');
+        image.src = user.imageUrl;
+        image.alt = '';
+        image.referrerPolicy = 'no-referrer';
+        image.className = 'w-full h-full rounded-full object-cover';
+        elements.userAvatarBadge.appendChild(image);
+      } else {
+        elements.userAvatarBadge.textContent = (displayName[0] || 'U').toUpperCase();
+      }
+    }
+    if (elements.userAuthenticatedOptions) elements.userAuthenticatedOptions.style.display = 'flex';
+    if (elements.btnDropdownSignin) elements.btnDropdownSignin.style.display = 'none';
+    if (elements.btnDropdownSignout) elements.btnDropdownSignout.style.display = 'flex';
+  } else {
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = status.authReady ? 'Guest (Local)' : 'Login Setup Required';
+    if (elements.cloudSyncIcon) {
+      elements.cloudSyncIcon.textContent = 'cloud_queue';
+      elements.cloudSyncIcon.className = 'material-symbols-outlined text-[16px] text-text-dim';
+    }
+    if (elements.userDisplayNameLabel) elements.userDisplayNameLabel.textContent = 'Sign In';
+    if (elements.dropdownUserName) elements.dropdownUserName.textContent = 'Guest User';
+    if (elements.dropdownUserEmail) {
+      elements.dropdownUserEmail.textContent = status.authReady
+        ? 'Sign in with Clerk to sync across devices'
+        : 'Add Clerk and Supabase keys to .env';
+    }
+    if (elements.userAvatarBadge) {
+      elements.userAvatarBadge.innerHTML = '<span class="material-symbols-outlined text-white text-[15px]">person</span>';
+    }
+    if (elements.userAuthenticatedOptions) elements.userAuthenticatedOptions.style.display = 'none';
+    if (elements.btnDropdownSignin) elements.btnDropdownSignin.style.display = 'flex';
+    if (elements.btnDropdownSignout) elements.btnDropdownSignout.style.display = 'none';
+  }
+}
+
+function parseStoredJson(key) {
+  const raw = getAppStorageItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function captureLegacyWorkspace() {
+  const values = {};
+  Object.keys(SCOPED_STORAGE_KEYS).forEach(key => {
+    values[key] = localStorage.getItem(key);
+  });
+
+  let resume = null;
+  try {
+    resume = values.jobease_user_resume ? JSON.parse(values.jobease_user_resume) : null;
+  } catch {}
+
+  return {
+    values,
+    hasResume: !!(resume && typeof resume === 'object' && resume.personalInfo)
+  };
+}
+
+function importLegacyWorkspace(snapshot) {
+  Object.entries(snapshot.values).forEach(([key, value]) => {
+    if (value !== null && !key.includes('cloud_dirty')) setAppStorageItem(key, value);
+  });
+  markAppStorageDirty('jobease_cloud_dirty');
+  markAppStorageDirty('jobease_profile_cloud_dirty');
+}
+
+function clearClaimedLegacyWorkspace(userId) {
+  Object.keys(SCOPED_STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+  localStorage.removeItem('jobease:legacy-claim-pending');
+  localStorage.setItem('jobease:legacy-claimed-by', userId);
+}
+
+function restoreWorkspaceFromActiveStorage() {
+  workspaceGeneration += 1;
+  resumeLocalRevision += 1;
+  profileLocalRevision += 1;
+  const savedResume = parseStoredJson('jobease_user_resume');
+  const hasSavedResume = !!(savedResume && typeof savedResume === 'object' && savedResume.personalInfo);
+  currentResume = hasSavedResume
+    ? savedResume
+    : JSON.parse(JSON.stringify(SAMPLE_RESUMES.fullstack));
+
+  if (!Array.isArray(currentResume.achievements)) currentResume.achievements = [];
+  if (!Array.isArray(currentResume.customSections)) currentResume.customSections = [];
+
+  const savedTitles = parseStoredJson('jobease_section_titles');
+  currentSectionTitles = {
+    ...DEFAULT_SECTION_TITLES,
+    ...(currentResume.sectionTitles || {}),
+    ...(savedTitles && typeof savedTitles === 'object' ? savedTitles : {})
+  };
+
+  currentResume.customSections.forEach(section => {
+    if (section?.id && section.title) currentSectionTitles[section.id] = section.title;
+  });
+
+  const customIds = currentResume.customSections.map(section => section.id).filter(Boolean);
+  const validSectionIds = new Set([...ALL_SECTION_IDS, ...customIds]);
+  const storedOrder = parseStoredJson('jobease_section_order');
+  const candidateOrder = Array.isArray(storedOrder) && storedOrder.length
+    ? storedOrder
+    : (Array.isArray(currentResume.sectionOrder) ? currentResume.sectionOrder : DEFAULT_SECTION_ORDER);
+  currentSectionOrder = candidateOrder.filter(id => validSectionIds.has(id));
+  [...ALL_SECTION_IDS, ...customIds].forEach(id => {
+    if (!currentSectionOrder.includes(id)) currentSectionOrder.push(id);
+  });
+
+  const storedEnabled = parseStoredJson('jobease_enabled_sections');
+  const candidateEnabled = Array.isArray(storedEnabled)
+    ? storedEnabled
+    : (Array.isArray(currentResume.enabledSections) ? currentResume.enabledSections : [...ALL_SECTION_IDS, ...customIds]);
+  currentEnabledSections = candidateEnabled.filter(id => validSectionIds.has(id));
+
+  currentFont = getAppStorageItem('jobease_font') || 'lmodern';
+  currentPaperSize = getAppStorageItem('jobease_paper_size') || 'a4';
+  spacingState = {
+    ...SPACING_PRESETS.standard,
+    ...(parseStoredJson('jobease_spacing') || {})
+  };
+
+  masterProfile = null;
+  loadMasterProfileFromStorage();
+  applyWorkspaceToUI();
+  return hasSavedResume;
+}
+
+function applyWorkspaceToUI() {
+  loadResumeIntoForm(currentResume);
+  applySectionOrderToDOM();
+  syncAllSectionCheckboxesFromState();
+  setTemplate('latex', false);
+  setFont(currentFont, false);
+  applySpacing(spacingState, false);
+  setPaperSize(currentPaperSize, false);
+  renderPreview();
+  check1PageGuardrail();
+  if (activeTab === 'json' && elements.rawJsonTextarea) {
+    elements.rawJsonTextarea.value = JSON.stringify(currentResume, null, 2);
+  }
+}
+
+function activateFreshResumeWorkspace(resume = SAMPLE_RESUMES.fullstack) {
+  workspaceGeneration += 1;
+  resumeLocalRevision += 1;
+  resumeSaveChain = Promise.resolve();
+  currentResume = JSON.parse(JSON.stringify(resume));
+  if (!Array.isArray(currentResume.achievements)) currentResume.achievements = [];
+  if (!Array.isArray(currentResume.customSections)) currentResume.customSections = [];
+  currentSectionOrder = [...DEFAULT_SECTION_ORDER];
+  currentEnabledSections = [...ALL_SECTION_IDS];
+  currentSectionTitles = { ...DEFAULT_SECTION_TITLES };
+  spacingState = { ...SPACING_PRESETS.standard };
+  currentFont = 'lmodern';
+  currentPaperSize = 'a4';
+  applyWorkspaceToUI();
+  saveProfileToStorage(false, { sync: false, markDirty: false });
+  removeAppStorageItem('jobease_cloud_dirty');
+}
+
+async function handleSignedInUser(user, showWelcome) {
+  if (!user || (activeAuthUserId === user.id && activeStorageUserId === user.id)) return;
+
+  const transitionGeneration = ++authTransitionGeneration;
+  resumeSaveChain = Promise.resolve();
+  profileSaveChain = Promise.resolve();
+  flushPendingLocalSave();
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  if (profileSyncDebounceTimer) clearTimeout(profileSyncDebounceTimer);
+  if (elements.cloudResumesModal?.classList.contains('active')) closeModal(elements.cloudResumesModal);
+
+  const legacySnapshot = activeStorageUserId ? null : captureLegacyWorkspace();
+  const legacyDecisionKey = `jobease:legacy-decision:${user.id}`;
+  suppressCloudSync = true;
+  activeAuthUserId = user.id;
+  activeStorageUserId = user.id;
+  restoreActiveResumeContext(user.id);
+
+  const hadUserResume = !!getAppStorageItem('jobease_user_resume');
+  const hadUserProfile = !!getAppStorageItem('jobease_master_profile');
+  const legacyIsUnclaimed = !localStorage.getItem('jobease:legacy-claimed-by');
+  const pendingLegacyOwner = localStorage.getItem('jobease:legacy-claim-pending');
+  const canImportLegacy = !hadUserResume && legacySnapshot?.hasResume && legacyIsUnclaimed &&
+    (!pendingLegacyOwner || pendingLegacyOwner === user.id);
+  const shouldImportLegacy = canImportLegacy && localStorage.getItem(legacyDecisionKey) !== 'ignored' && confirm(
+    `This browser has a guest resume. Import it into ${user.email || 'this Clerk account'} and remove the guest copy after cloud backup?`
+  );
+  if (canImportLegacy && !shouldImportLegacy) {
+    localStorage.setItem(legacyDecisionKey, 'ignored');
+  }
+  if (shouldImportLegacy) {
+    localStorage.setItem('jobease:legacy-claim-pending', user.id);
+    importLegacyWorkspace(legacySnapshot);
+  }
+
+  const hasLocalResume = restoreWorkspaceFromActiveStorage();
+  const profileRevisionAtHydrationStart = profileLocalRevision;
+  const hasLocalProfile = hadUserProfile || shouldImportLegacy;
+
+  try {
+    if (!cloudAuth.isConfigured()) {
+      showCloudConfigurationError();
+      return;
+    }
+
+    const [resumes, cloudProfile] = await Promise.all([
+      cloudAuth.listUserResumes(),
+      cloudAuth.fetchMasterProfileFromCloud()
+    ]);
+    if (!isAuthTransitionCurrent(transitionGeneration, user.id)) return;
+
+    const activeResumeId = cloudAuth.getActiveCloudResumeId();
+    const matchingResume = resumes.find(resume => resume.id === activeResumeId) || null;
+    const fallbackResume = matchingResume || resumes[0] || null;
+    const localResumeDirty = isAppStorageDirty('jobease_cloud_dirty');
+    const hasCurrentLocalResume = hasLocalResume || !!getAppStorageItem('jobease_user_resume');
+    let keepLocalData = false;
+
+    if (shouldImportLegacy) {
+      keepLocalData = true;
+      await saveCurrentResumeToCloud({ forceNew: true, name: 'Imported Local Resume' });
+    } else if (hasCurrentLocalResume && localResumeDirty) {
+      if (matchingResume) {
+        keepLocalData = confirm(
+          'This browser has unsynced resume changes.\n\nPress OK to upload them. Press Cancel to load the latest cloud copy.'
+        );
+        if (keepLocalData) {
+          await saveCurrentResumeToCloud({
+            resumeId: matchingResume.id,
+            expectedVersion: activeDraftResumeVersion
+          });
+        } else {
+          await loadCloudResume(matchingResume.id, { silent: true, transitionGeneration, userId: user.id });
+        }
+      } else {
+        keepLocalData = confirm(
+          'This local draft is not linked to an existing cloud resume.\n\nPress OK to save it as a new cloud resume. Press Cancel to load the latest cloud copy.'
+        );
+        if (keepLocalData) {
+          await saveCurrentResumeToCloud({ forceNew: true });
+        } else if (fallbackResume) {
+          await loadCloudResume(fallbackResume.id, { silent: true, transitionGeneration, userId: user.id });
+        }
+      }
+    } else if (fallbackResume) {
+      await loadCloudResume(fallbackResume.id, { silent: true, transitionGeneration, userId: user.id });
+    } else if (hasCurrentLocalResume && activeResumeId) {
+      setActiveResumeContext(null);
+      saveProfileToStorage(false, { sync: false, markDirty: false });
+    }
+    if (!isAuthTransitionCurrent(transitionGeneration, user.id)) return;
+    if (shouldImportLegacy || localStorage.getItem('jobease:legacy-claim-pending') === user.id) {
+      clearClaimedLegacyWorkspace(user.id);
+    }
+
+    const localProfileDirty = isAppStorageDirty('jobease_profile_cloud_dirty');
+    const hasCurrentLocalProfile = hasLocalProfile || profileLocalRevision !== profileRevisionAtHydrationStart;
+    if (cloudProfile?.master_profile) {
+      let uploadLocalProfile = keepLocalData && shouldImportLegacy;
+      if (!shouldImportLegacy && hasCurrentLocalProfile && localProfileDirty) {
+        uploadLocalProfile = confirm(
+          'This browser has unsynced Master Profile changes.\n\nPress OK to upload them. Press Cancel to use the cloud copy.'
+        );
+      }
+
+      if (uploadLocalProfile) {
+        await saveCurrentMasterProfileToCloud();
+      } else {
+        if (!isAuthTransitionCurrent(transitionGeneration, user.id)) return;
+        masterProfile = cloudProfile.master_profile;
+        saveMasterProfileToStorage(false, { sync: false, markDirty: false });
+        removeAppStorageItem('jobease_profile_cloud_dirty');
+      }
+    } else if (hasCurrentLocalProfile) {
+      await saveCurrentMasterProfileToCloud();
+    }
+
+    if (!isAuthTransitionCurrent(transitionGeneration, user.id)) return;
+    updateVaultStoredBadge();
+    updateAuthUI(user);
+    if (showWelcome) showToast(`Welcome, ${user.displayName || user.email || 'back'}!`, 'success');
+  } catch (error) {
+    if (!isAuthTransitionCurrent(transitionGeneration, user.id)) return;
+    console.error('Could not initialize the signed-in workspace:', error);
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = error.code === 'SYNC_CONFLICT' ? 'Sync Conflict' : 'Sync Failed';
+    showToast('Signed in, but cloud data could not be loaded: ' + error.message, 'error');
+  } finally {
+    if (transitionGeneration === authTransitionGeneration) suppressCloudSync = false;
+  }
+}
+
+function isAuthTransitionCurrent(generation, userId) {
+  return generation === authTransitionGeneration &&
+    activeAuthUserId === userId &&
+    activeStorageUserId === userId;
+}
+
+function handleSignedOutUser() {
+  if (!activeAuthUserId && !activeStorageUserId) {
+    updateAuthUI(null);
+    return;
+  }
+  authTransitionGeneration += 1;
+  resumeSaveChain = Promise.resolve();
+  profileSaveChain = Promise.resolve();
+  flushPendingLocalSave();
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  if (profileSyncDebounceTimer) clearTimeout(profileSyncDebounceTimer);
+  if (elements.cloudResumesModal?.classList.contains('active')) closeModal(elements.cloudResumesModal);
+
+  suppressCloudSync = true;
+  activeAuthUserId = null;
+  activeStorageUserId = null;
+  activeDraftResumeId = null;
+  activeDraftResumeVersion = null;
+  restoreWorkspaceFromActiveStorage();
+  suppressCloudSync = false;
+  updateAuthUI(null);
+}
+
+function getResumeCloudOptions(overrides = {}) {
+  return {
+    sectionOrder: [...currentSectionOrder],
+    enabledSections: [...currentEnabledSections],
+    sectionTitles: { ...currentSectionTitles },
+    spacingConfig: { ...spacingState },
+    font: currentFont,
+    paperSize: currentPaperSize,
+    ...overrides
+  };
+}
+
+function getResumeSyncFingerprint(resume, options) {
+  return JSON.stringify({
+    resume,
+    sectionOrder: options.sectionOrder || [],
+    enabledSections: options.enabledSections || [],
+    sectionTitles: options.sectionTitles || {},
+    spacingConfig: options.spacingConfig || {},
+    font: options.font || 'lmodern',
+    paperSize: options.paperSize || 'a4'
+  });
+}
+
+function getStoredResumeSyncFingerprint() {
+  const storedResume = parseStoredJson('jobease_user_resume');
+  if (!storedResume) return null;
+  return getResumeSyncFingerprint(storedResume, {
+    sectionOrder: parseStoredJson('jobease_section_order') || storedResume.sectionOrder || [],
+    enabledSections: parseStoredJson('jobease_enabled_sections') || storedResume.enabledSections || [],
+    sectionTitles: parseStoredJson('jobease_section_titles') || storedResume.sectionTitles || {},
+    spacingConfig: parseStoredJson('jobease_spacing') || {},
+    font: getAppStorageItem('jobease_font') || 'lmodern',
+    paperSize: getAppStorageItem('jobease_paper_size') || 'a4'
+  });
+}
+
+async function saveCurrentResumeToCloud(overrides = {}) {
+  const context = {
+    userId: activeStorageUserId,
+    workspaceGeneration,
+    revision: resumeLocalRevision,
+    resumeId: activeDraftResumeId,
+    dirtyToken: getAppStorageItem('jobease_cloud_dirty')
+  };
+  const resumeSnapshot = JSON.parse(JSON.stringify(currentResume));
+  return enqueueResumeSave(resumeSnapshot, getResumeCloudOptions(overrides), context);
+}
+
+function enqueueResumeSave(resumeSnapshot, options, context) {
+  const snapshotFingerprint = getResumeSyncFingerprint(resumeSnapshot, options);
+  const run = async () => {
+    if (!isResumeContextCurrent(context, false)) throw createStaleSyncError();
+
+    const finalOptions = { ...options };
+    if (!finalOptions.forceNew && !Object.prototype.hasOwnProperty.call(finalOptions, 'resumeId')) {
+      finalOptions.resumeId = cloudAuth.getActiveCloudResumeId();
+      finalOptions.expectedVersion = cloudAuth.getActiveCloudResumeVersion();
+    }
+
+    const record = await cloudAuth.saveResumeToCloud(resumeSnapshot, finalOptions);
+    if (isResumeContextCurrent(context, false)) {
+      const resumeChanged = activeDraftResumeId !== record.id;
+      const sourceDirtyToken = getAppStorageItem('jobease_cloud_dirty');
+      setActiveResumeContext(record.id, record.version || 1);
+      if (resumeChanged) {
+        saveProfileToStorage(false, { sync: false, markDirty: false });
+        if (sourceDirtyToken) setAppStorageItem('jobease_cloud_dirty', sourceDirtyToken);
+      }
+      const storedSnapshotMatches = getStoredResumeSyncFingerprint() === snapshotFingerprint;
+      if (
+        resumeLocalRevision === context.revision &&
+        storedSnapshotMatches &&
+        getAppStorageItem('jobease_cloud_dirty') === context.dirtyToken
+      ) {
+        removeAppStorageItem('jobease_cloud_dirty');
+      } else {
+        if (!isAppStorageDirty('jobease_cloud_dirty')) markAppStorageDirty('jobease_cloud_dirty');
+      }
+    }
+    return record;
+  };
+
+  const save = resumeSaveChain.then(run, run);
+  resumeSaveChain = save.catch(() => {});
+  return save;
+}
+
+function isResumeContextCurrent(context, requireSameRevision = true) {
+  return !!context.userId &&
+    context.userId === activeStorageUserId &&
+    context.workspaceGeneration === workspaceGeneration &&
+    (!requireSameRevision || context.revision === resumeLocalRevision);
+}
+
+function createStaleSyncError() {
+  const error = new Error('A newer workspace replaced this pending save.');
+  error.code = 'STALE_SYNC';
+  return error;
+}
+
+function syncResumeToCloudDebounced() {
+  if (!cloudAuth.isConfigured() || !activeStorageUserId) return;
+
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  const context = {
+    userId: activeStorageUserId,
+    workspaceGeneration,
+    revision: resumeLocalRevision,
+    resumeId: activeDraftResumeId,
+    dirtyToken: getAppStorageItem('jobease_cloud_dirty')
+  };
+  const resumeSnapshot = JSON.parse(JSON.stringify(currentResume));
+  const optionsSnapshot = getResumeCloudOptions();
+
+  cloudSyncDebounceTimer = setTimeout(async () => {
+    if (!isResumeContextCurrent(context, false)) return;
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = 'Syncing...';
+    if (elements.cloudSyncIcon) elements.cloudSyncIcon.textContent = 'sync';
+
+    try {
+      await enqueueResumeSave(resumeSnapshot, optionsSnapshot, context);
+      if (isResumeContextCurrent(context)) {
+        const hasPendingChanges = isAppStorageDirty('jobease_cloud_dirty');
+        if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = hasPendingChanges ? 'Local Changes Pending' : 'Cloud Synced';
+        if (elements.cloudSyncIcon) elements.cloudSyncIcon.textContent = hasPendingChanges ? 'cloud_upload' : 'cloud_done';
+      }
+    } catch (error) {
+      if (error.code === 'STALE_SYNC') return;
+      console.warn('Cloud sync error:', error);
+      if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = error.code === 'SYNC_CONFLICT' ? 'Sync Conflict' : 'Sync Failed';
+      if (elements.cloudSyncIcon) elements.cloudSyncIcon.textContent = 'cloud_off';
+    }
+  }, 1500);
+}
+
+function syncMasterProfileToCloudDebounced() {
+  if (!cloudAuth.isConfigured() || !activeStorageUserId || !masterProfile) return;
+
+  if (profileSyncDebounceTimer) clearTimeout(profileSyncDebounceTimer);
+  const context = {
+    userId: activeStorageUserId,
+    workspaceGeneration,
+    revision: profileLocalRevision,
+    dirtyToken: getAppStorageItem('jobease_profile_cloud_dirty')
+  };
+  const profileSnapshot = JSON.parse(JSON.stringify(masterProfile));
+
+  profileSyncDebounceTimer = setTimeout(async () => {
+    if (!isProfileContextCurrent(context, false)) return;
+    try {
+      await enqueueProfileSave(profileSnapshot, context);
+    } catch (error) {
+      if (error.code === 'STALE_SYNC') return;
+      console.warn('Master Profile sync error:', error);
+      if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = error.code === 'PROFILE_SYNC_CONFLICT' ? 'Profile Conflict' : 'Sync Failed';
+    }
+  }, 1500);
+}
+
+function saveCurrentMasterProfileToCloud() {
+  const context = {
+    userId: activeStorageUserId,
+    workspaceGeneration,
+    revision: profileLocalRevision,
+    dirtyToken: getAppStorageItem('jobease_profile_cloud_dirty')
+  };
+  return enqueueProfileSave(JSON.parse(JSON.stringify(masterProfile)), context);
+}
+
+function enqueueProfileSave(profileSnapshot, context) {
+  const snapshotFingerprint = JSON.stringify(profileSnapshot);
+  const run = async () => {
+    if (!isProfileContextCurrent(context, false)) throw createStaleSyncError();
+    const record = await cloudAuth.saveMasterProfileToCloud(profileSnapshot);
+    if (
+      isProfileContextCurrent(context) &&
+      getAppStorageItem('jobease_profile_cloud_dirty') === context.dirtyToken &&
+      JSON.stringify(parseStoredJson('jobease_master_profile')) === snapshotFingerprint
+    ) {
+      removeAppStorageItem('jobease_profile_cloud_dirty');
+    } else if (isProfileContextCurrent(context, false)) {
+      if (!isAppStorageDirty('jobease_profile_cloud_dirty')) markAppStorageDirty('jobease_profile_cloud_dirty');
+    }
+    return record;
+  };
+
+  const save = profileSaveChain.then(run, run);
+  profileSaveChain = save.catch(() => {});
+  return save;
+}
+
+function isProfileContextCurrent(context, requireSameRevision = true) {
+  return !!context.userId &&
+    context.userId === activeStorageUserId &&
+    context.workspaceGeneration === workspaceGeneration &&
+    (!requireSameRevision || context.revision === profileLocalRevision);
+}
+
+async function forceCloudSync() {
+  flushPendingLocalSave();
+  const user = await cloudAuth.getCurrentUser();
+  if (!user) {
+    openAuthModal();
+    return;
+  }
+  if (!cloudAuth.isConfigured()) {
+    showCloudConfigurationError();
+    return;
+  }
+  const actionContext = captureCloudActionContext();
+  if (!isCloudActionCurrent(actionContext, true)) return;
+
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  if (profileSyncDebounceTimer) clearTimeout(profileSyncDebounceTimer);
+
+  try {
+    showToast('Syncing resume and Master Profile...', 'info');
+    await saveCurrentResumeToCloud();
+    actionContext.resumeId = activeDraftResumeId;
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    if (masterProfile) {
+      const profileContext = {
+        userId: activeStorageUserId,
+        workspaceGeneration,
+        revision: profileLocalRevision,
+        dirtyToken: getAppStorageItem('jobease_profile_cloud_dirty')
+      };
+      await enqueueProfileSave(JSON.parse(JSON.stringify(masterProfile)), profileContext);
+    }
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    const hasPendingChanges = isAppStorageDirty('jobease_cloud_dirty') ||
+      isAppStorageDirty('jobease_profile_cloud_dirty');
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = hasPendingChanges ? 'Local Changes Pending' : 'Cloud Synced';
+    if (elements.cloudSyncIcon) elements.cloudSyncIcon.textContent = hasPendingChanges ? 'cloud_upload' : 'cloud_done';
+    showToast(
+      hasPendingChanges
+        ? 'The saved snapshot synced, but newer local changes are still pending.'
+        : 'Resume and Master Profile synced across devices.',
+      hasPendingChanges ? 'info' : 'success'
+    );
+  } catch (error) {
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    if (elements.cloudSyncLabel) elements.cloudSyncLabel.textContent = error.code === 'SYNC_CONFLICT' ? 'Sync Conflict' : 'Sync Failed';
+    if (error.code === 'SYNC_CONFLICT') {
+      const saveCopy = confirm('This resume changed on another device. Save your local version as a new cloud copy?');
+      if (saveCopy) {
+        try {
+          const copyName = `${currentResume.personalInfo?.name || 'Resume'} - Conflict Copy`;
+          await saveCurrentResumeToCloud({ forceNew: true, name: copyName });
+          showToast('Saved the local version as a separate cloud copy.', 'success');
+          return;
+        } catch (copyError) {
+          showToast('Could not save a conflict copy: ' + copyError.message, 'error');
+          return;
+        }
+      }
+    }
+    if (error.code === 'PROFILE_SYNC_CONFLICT') {
+      const reloadProfile = confirm('The Master Profile changed on another device. Reload the cloud copy and discard local Vault changes?');
+      if (reloadProfile) {
+        try {
+          const cloudProfile = await cloudAuth.fetchMasterProfileFromCloud();
+          if (cloudProfile?.master_profile) {
+            masterProfile = cloudProfile.master_profile;
+            saveMasterProfileToStorage(false, { sync: false, markDirty: false });
+            removeAppStorageItem('jobease_profile_cloud_dirty');
+            updateVaultStoredBadge();
+            showToast('Reloaded the cloud Master Profile.', 'success');
+            return;
+          }
+        } catch (profileError) {
+          showToast('Could not reload the Master Profile: ' + profileError.message, 'error');
+          return;
+        }
+      }
+    }
+    showToast('Failed to sync to cloud: ' + error.message, 'error');
+  }
+}
+
+async function openAuthModal() {
+  try {
+    await cloudAuth.openSignIn();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+function showCloudConfigurationError() {
+  const status = cloudAuth.getConfigurationStatus();
+  if (!status.hasClerkKey) {
+    showToast('Add CLERK_PUBLISHABLE_KEY to .env and restart the server.', 'error');
+  } else if (!status.hasSupabaseConfig) {
+    showToast('Add SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY to .env.', 'error');
+  } else {
+    showToast('Cloud sync could not initialize. Verify the Clerk-Supabase integration and RLS migration.', 'error');
+  }
+}
+
+function captureCloudActionContext() {
+  return {
+    userId: activeAuthUserId,
+    transitionGeneration: authTransitionGeneration,
+    workspaceGeneration,
+    resumeRevision: resumeLocalRevision,
+    resumeId: activeDraftResumeId
+  };
+}
+
+function isCloudActionCurrent(context, requireWorkspace = false) {
+  const sameAuth = !!context.userId &&
+    context.userId === activeAuthUserId &&
+    context.transitionGeneration === authTransitionGeneration;
+  if (!sameAuth || !requireWorkspace) return sameAuth;
+  return context.workspaceGeneration === workspaceGeneration &&
+    context.resumeRevision === resumeLocalRevision &&
+    context.resumeId === activeDraftResumeId;
+}
+
+/**
+ * Open Cloud Resumes List Modal
+ */
+async function openCloudResumesModal() {
+  if (!cloudAuth.isConfigured()) {
+    showCloudConfigurationError();
+    return;
+  }
+  openModal(elements.cloudResumesModal);
+  await renderCloudResumesList();
+}
+
+/**
+ * Render List of Cloud Resumes
+ */
+async function renderCloudResumesList() {
+  if (!elements.cloudResumesListContainer) return;
+  const actionContext = captureCloudActionContext();
+  if (!isCloudActionCurrent(actionContext)) return;
+  const container = elements.cloudResumesListContainer;
+  container.innerHTML = '<div class="text-center py-8 text-text-dim text-body-sm">Loading your cloud resumes...</div>';
+
+  try {
+    const resumes = await cloudAuth.listUserResumes();
+    if (!isCloudActionCurrent(actionContext)) return;
+    if (!resumes || resumes.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-8 flex flex-col items-center gap-2">
+          <span class="material-symbols-outlined text-[36px] text-text-dim">description</span>
+          <p class="font-body-sm text-body-sm text-text-muted">No cloud resumes saved yet.</p>
+          <button class="btn btn-secondary px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-body-sm text-body-sm border border-border-subtle cursor-pointer mt-1" id="btn-save-current-as-first">
+            Save Current Resume to Cloud
+          </button>
+        </div>
+      `;
+      const btn = container.querySelector('#btn-save-current-as-first');
+      if (btn) {
+        btn.addEventListener('click', async () => {
+          await forceCloudSync();
+          await renderCloudResumesList();
+        });
+      }
+      return;
+    }
+
+    const activeId = cloudAuth.getActiveCloudResumeId();
+    container.innerHTML = '';
+
+    resumes.forEach(r => {
+      const isActive = r.id === activeId;
+      const formattedDate = new Date(r.updated_at || r.created_at).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const item = document.createElement('div');
+      item.className = `cloud-resume-item ${isActive ? 'is-active' : ''}`;
+      item.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-8 h-8 rounded-lg ${isActive ? 'bg-primary-container text-white' : 'bg-surface-container text-text-dim'} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px]">description</span>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-headline-sm text-headline-sm text-text-main font-semibold truncate">${escapeHtml(r.name || 'Resume')}</span>
+              ${isActive ? '<span class="font-label-sm text-[10px] px-1.5 py-0.2 rounded-full bg-primary-container/30 text-primary font-bold">ACTIVE</span>' : ''}
+            </div>
+            <div class="font-body-sm text-[11px] text-text-dim">Last updated: ${formattedDate}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          ${!isActive ? `
+            <button class="btn btn-secondary btn-sm px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer btn-load-cloud-resume" data-resume-id="${r.id}">
+              Load
+            </button>
+          ` : `
+            <button class="btn btn-secondary btn-sm px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-border-subtle cursor-pointer btn-reload-cloud-resume" data-resume-id="${r.id}">
+              Reload
+            </button>
+          `}
+          <button class="p-1.5 text-text-dim hover:text-accent-rose rounded bg-transparent border-0 cursor-pointer btn-delete-cloud-resume" data-resume-id="${r.id}" data-resume-name="${escapeHtml(r.name)}" title="Delete Resume">
+            <span class="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+        </div>
+      `;
+
+      // Load button
+      const loadBtn = item.querySelector('.btn-load-cloud-resume');
+      if (loadBtn) {
+        loadBtn.addEventListener('click', () => loadCloudResume(r.id));
+      }
+      const reloadBtn = item.querySelector('.btn-reload-cloud-resume');
+      if (reloadBtn) {
+        reloadBtn.addEventListener('click', () => {
+          const confirmed = confirm('Reload the cloud copy and discard unsynced local changes for this resume?');
+          if (confirmed) loadCloudResume(r.id, { discardLocal: true });
+        });
+      }
+
+      // Delete button
+      const delBtn = item.querySelector('.btn-delete-cloud-resume');
+      if (delBtn) {
+        delBtn.addEventListener('click', () => deleteCloudResume(r.id, r.name));
+      }
+
+      container.appendChild(item);
+    });
+  } catch (err) {
+    if (!isCloudActionCurrent(actionContext)) return;
+    container.innerHTML = `<div class="p-4 text-center text-accent-rose text-body-sm">Error loading cloud resumes: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+/**
+ * Load a resume from Supabase Cloud
+ */
+async function loadCloudResume(resumeId, options = {}) {
+  flushPendingLocalSave();
+  if (!options.silent && !options.discardLocal && isAppStorageDirty('jobease_cloud_dirty')) {
+    const shouldSave = confirm('Save the current resume to cloud before switching? Press Cancel to keep editing it.');
+    if (!shouldSave) return null;
+    try {
+      await saveCurrentResumeToCloud();
+    } catch (error) {
+      showToast('Could not save the current resume: ' + error.message, 'error');
+      return null;
+    }
+  }
+
+  const loadContext = {
+    userId: options.userId || activeStorageUserId,
+    transitionGeneration: options.transitionGeneration ?? authTransitionGeneration,
+    workspaceGeneration,
+    revision: resumeLocalRevision,
+    dirtyToken: getAppStorageItem('jobease_cloud_dirty'),
+    draftFingerprint: getStoredResumeSyncFingerprint()
+  };
+  if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  const previousSuppression = suppressCloudSync;
+  suppressCloudSync = true;
+
+  try {
+    if (!options.silent) showToast('Loading resume from cloud...', 'info');
+    const cloudRecord = await cloudAuth.fetchResumeById(resumeId);
+    if (!cloudRecord || !cloudRecord.resume_data) {
+      throw new Error('Could not load resume data from cloud.');
+    }
+    if (
+      loadContext.userId !== activeStorageUserId ||
+      loadContext.transitionGeneration !== authTransitionGeneration ||
+      loadContext.workspaceGeneration !== workspaceGeneration ||
+      loadContext.revision !== resumeLocalRevision ||
+      loadContext.dirtyToken !== getAppStorageItem('jobease_cloud_dirty') ||
+      loadContext.draftFingerprint !== getStoredResumeSyncFingerprint()
+    ) {
+      throw createStaleSyncError();
+    }
+
+    workspaceGeneration += 1;
+    resumeLocalRevision += 1;
+    resumeSaveChain = Promise.resolve();
+    setActiveResumeContext(resumeId, cloudRecord.version || 1);
+    currentResume = cloudRecord.resume_data;
+    if (!Array.isArray(currentResume.achievements)) currentResume.achievements = [];
+    if (!Array.isArray(currentResume.customSections)) currentResume.customSections = [];
+    const customIds = currentResume.customSections.map(section => section.id).filter(Boolean);
+    currentSectionOrder = Array.isArray(cloudRecord.section_order) && cloudRecord.section_order.length > 0
+      ? [...cloudRecord.section_order]
+      : [...DEFAULT_SECTION_ORDER, ...customIds];
+    const validSectionIds = new Set([...ALL_SECTION_IDS, ...customIds]);
+    currentSectionOrder = currentSectionOrder.filter(id => validSectionIds.has(id));
+    [...ALL_SECTION_IDS, ...customIds].forEach(id => {
+      if (!currentSectionOrder.includes(id)) currentSectionOrder.push(id);
+    });
+    currentEnabledSections = Array.isArray(cloudRecord.enabled_sections)
+      ? [...cloudRecord.enabled_sections]
+      : [...ALL_SECTION_IDS, ...customIds];
+    currentEnabledSections = currentEnabledSections.filter(id => validSectionIds.has(id));
+    currentSectionTitles = {
+      ...DEFAULT_SECTION_TITLES,
+      ...(cloudRecord.section_titles && typeof cloudRecord.section_titles === 'object' ? cloudRecord.section_titles : {})
+    };
+    currentResume.customSections.forEach(section => {
+      if (section?.id && section.title && !currentSectionTitles[section.id]) {
+        currentSectionTitles[section.id] = section.title;
+      }
+    });
+    currentFont = cloudRecord.font || 'lmodern';
+    currentPaperSize = cloudRecord.paper_size === 'letter' ? 'letter' : 'a4';
+    spacingState = {
+      ...SPACING_PRESETS.standard,
+      ...(cloudRecord.spacing_config && typeof cloudRecord.spacing_config === 'object' ? cloudRecord.spacing_config : {})
+    };
+    setFont(currentFont, false);
+    setPaperSize(currentPaperSize, false);
+    applySpacing(spacingState, false);
+
+    // Update form and preview
+    loadResumeIntoForm(currentResume);
+    applySectionOrderToDOM();
+    syncAllSectionCheckboxesFromState();
+    renderPreview();
+    check1PageGuardrail();
+    saveProfileToStorage(false, { sync: false, markDirty: false });
+    removeAppStorageItem('jobease_cloud_dirty');
+    closeModal(elements.cloudResumesModal);
+
+    if (!options.silent) showToast(`Loaded "${cloudRecord.name || 'Cloud Resume'}".`, 'success');
+
+    if (currentJD && currentJD.length > 20) {
+      evaluateMatch();
+    }
+    return cloudRecord;
+  } catch (err) {
+    if (err.code === 'STALE_SYNC') {
+      if (!options.silent) showToast('Resume switch canceled because newer local changes were detected.', 'info');
+      if (options.silent) throw err;
+      return null;
+    }
+    if (options.silent) throw err;
+    showToast('Failed to load resume: ' + err.message, 'error');
+    return null;
+  } finally {
+    suppressCloudSync = previousSuppression;
+  }
+}
+
+/**
+ * Delete a resume from Cloud
+ */
+async function deleteCloudResume(resumeId, name) {
+  flushPendingLocalSave();
+  const confirmed = confirm(`Are you sure you want to delete "${name || 'this resume'}" from your cloud account? This cannot be undone.`);
+  if (!confirmed) return;
+  const actionContext = captureCloudActionContext();
+  if (!isCloudActionCurrent(actionContext, true)) return;
+
+  let deleteCompleted = false;
+  try {
+    const wasActive = cloudAuth.getActiveCloudResumeId() === resumeId;
+    if (wasActive) {
+      workspaceGeneration += 1;
+      resumeSaveChain = Promise.resolve();
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
+      if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+      actionContext.workspaceGeneration = workspaceGeneration;
+    }
+    await cloudAuth.deleteResumeFromCloud(resumeId);
+    deleteCompleted = true;
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    if (wasActive) {
+      setActiveResumeContext(null);
+      activateFreshResumeWorkspace();
+      actionContext.workspaceGeneration = workspaceGeneration;
+      actionContext.resumeRevision = resumeLocalRevision;
+      actionContext.resumeId = activeDraftResumeId;
+      const remaining = await cloudAuth.listUserResumes();
+      if (!isCloudActionCurrent(actionContext, true)) return;
+      if (remaining.length > 0) {
+        await loadCloudResume(remaining[0].id, { silent: true });
+      }
+    }
+    showToast(`Deleted "${name || 'resume'}" from cloud.`, 'info');
+    await renderCloudResumesList();
+  } catch (err) {
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    showToast(
+      deleteCompleted
+        ? 'Resume was deleted, but the next cloud resume could not be loaded: ' + err.message
+        : 'Failed to delete resume: ' + err.message,
+      'error'
+    );
+  }
+}
+
+/**
+ * Create a new resume in Cloud
+ */
+async function createNewCloudResume() {
+  if (!cloudAuth.isConfigured()) {
+    showCloudConfigurationError();
+    return;
+  }
+  flushPendingLocalSave();
+  if (isAppStorageDirty('jobease_cloud_dirty')) {
+    const shouldSave = confirm('Save the current resume to cloud before creating a new one? Press Cancel to keep editing it.');
+    if (!shouldSave) return;
+    try {
+      await saveCurrentResumeToCloud();
+    } catch (error) {
+      showToast('Could not save the current resume: ' + error.message, 'error');
+      return;
+    }
+  }
+
+  const name = prompt('Enter a name for the new resume:', 'New Tailored Resume');
+  if (!name) return;
+  const actionContext = captureCloudActionContext();
+  if (!isCloudActionCurrent(actionContext, true)) return;
+
+  try {
+    const newResumeData = JSON.parse(JSON.stringify(SAMPLE_RESUMES.fullstack));
+    const record = await cloudAuth.saveResumeToCloud(newResumeData, {
+      forceNew: true,
+      name,
+      sectionOrder: DEFAULT_SECTION_ORDER,
+      enabledSections: ALL_SECTION_IDS,
+      sectionTitles: { ...DEFAULT_SECTION_TITLES }
+    });
+    if (!isCloudActionCurrent(actionContext, true)) return;
+
+    if (record?.id) {
+      setActiveResumeContext(record.id, record.version || 1);
+      activateFreshResumeWorkspace(newResumeData);
+      closeModal(elements.cloudResumesModal);
+      showToast(`Created "${name}".`, 'success');
+    }
+  } catch (err) {
+    if (!isCloudActionCurrent(actionContext, true)) return;
+    showToast('Failed to create new resume: ' + err.message, 'error');
+  }
+}
+
+// ==========================================================================
+// 1-Click AI Auto-Optimize Engine Controller
+// ==========================================================================
+
+/**
+ * Trigger AI Auto-Optimize Engine
+ */
+async function triggerAutoOptimize() {
+  const jdText = elements.jdInput?.value.trim();
+  if (!jdText) {
+    showToast('Please paste a target Job Description first to auto-optimize.', 'warning');
+    elements.jdInput?.focus();
+    return;
+  }
+
+  if (elements.btnAutoOptimize) {
+    elements.btnAutoOptimize.disabled = true;
+    elements.btnAutoOptimize.innerHTML = `
+      <span class="material-symbols-outlined text-[18px] text-accent-amber animate-spin">refresh</span>
+      <span>Auto-Optimizing Resume with AI...</span>
+    `;
+  }
+
+  try {
+    const res = await fetch('/api/auto-optimize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resume: currentResume,
+        jobDescription: jdText
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Server responded with ${res.status}`);
+    }
+
+    const data = await res.json();
+    lastAutoOptimizeResult = data;
+
+    const leap = Math.max(1, (data.scoreAfter || 92) - (data.scoreBefore || 60));
+    if (elements.optScoreLeapBadge) {
+      elements.optScoreLeapBadge.textContent = `Score: ${data.scoreBefore || 60}% ➔ ${data.scoreAfter || 92}% (+${leap}%)`;
+    }
+    if (elements.optSummaryText) {
+      elements.optSummaryText.textContent = data.summaryOfChanges || 'Automated ATS optimization generated.';
+    }
+
+    currentOptFilter = 'all';
+    renderAutoOptimizeDiffs('all');
+    openModal(elements.autoOptimizeModal);
+  } catch (err) {
+    console.error('Auto-optimize error:', err);
+    showToast('Auto-optimize failed: ' + (err.message || 'Server error'), 'error');
+  } finally {
+    if (elements.btnAutoOptimize) {
+      elements.btnAutoOptimize.disabled = false;
+      elements.btnAutoOptimize.innerHTML = `
+        <span class="material-symbols-outlined text-[18px] text-accent-amber animate-pulse">bolt</span>
+        <span>Auto-Optimize Resume (1-Click)</span>
+        <span class="font-label-sm text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/30 text-amber-300 font-bold ml-auto">90%+ ATS</span>
+      `;
+    }
+  }
+}
+
+/**
+ * Render Interactive Diff Changes in Auto-Optimize Modal
+ */
+function renderAutoOptimizeDiffs(filter = 'all') {
+  if (!elements.optChangesContainer || !lastAutoOptimizeResult) return;
+  const container = elements.optChangesContainer;
+  container.innerHTML = '';
+
+  const allChanges = lastAutoOptimizeResult.changes || [];
+  const filtered = allChanges.filter(c => {
+    if (filter === 'all') return true;
+    return c.type === filter;
+  });
+
+  // Update Tab Counts
+  const bulletCount = allChanges.filter(c => c.type === 'bullet').length;
+  const skillCount = allChanges.filter(c => c.type === 'skill').length;
+  const summaryCount = allChanges.filter(c => c.type === 'summary').length;
+
+  if (elements.btnOptFilterAll) elements.btnOptFilterAll.textContent = `All Changes (${allChanges.length})`;
+  if (elements.btnOptFilterBullets) elements.btnOptFilterBullets.textContent = `Bullets (${bulletCount})`;
+  if (elements.btnOptFilterSkills) elements.btnOptFilterSkills.textContent = `Skills (${skillCount})`;
+  if (elements.btnOptFilterSummary) elements.btnOptFilterSummary.textContent = `Summary (${summaryCount})`;
+
+  document.querySelectorAll('#opt-filter-tabs .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.optFilter === filter);
+    btn.classList.toggle('bg-surface-container-high', btn.dataset.optFilter === filter);
+    btn.classList.toggle('text-primary', btn.dataset.optFilter === filter);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="p-8 text-center text-text-dim text-body-sm">No changes under this filter.</div>`;
+    updateOptSelectedCount();
+    return;
+  }
+
+  filtered.forEach(change => {
+    const card = document.createElement('div');
+    card.className = 'diff-card is-checked';
+    card.id = `card-${change.id}`;
+
+    let sectionLabel = capitalize(change.section || 'General');
+    if (change.section === 'experience' && typeof change.itemIndex === 'number') {
+      const exp = currentResume.experience?.[change.itemIndex];
+      sectionLabel = `Experience: ${exp?.company || `Role #${change.itemIndex + 1}`}`;
+    } else if (change.section === 'projects' && typeof change.itemIndex === 'number') {
+      const proj = currentResume.projects?.[change.itemIndex];
+      sectionLabel = `Project: ${proj?.name || `Project #${change.itemIndex + 1}`}`;
+    } else if (change.section === 'skills') {
+      sectionLabel = `Skills: ${change.category || 'Technical'}`;
+    }
+
+    const impactClass = change.impact === 'High' ? 'impact-high' : (change.impact === 'Medium' ? 'impact-medium' : 'impact-low');
+
+    card.innerHTML = `
+      <div class="diff-header">
+        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" class="opt-change-chk accent-indigo-500 w-4 h-4 cursor-pointer" data-change-id="${change.id}" checked>
+          <span class="font-headline-sm text-[14px] text-text-main font-semibold">${escapeHtml(sectionLabel)}</span>
+        </label>
+        <span class="impact-badge ${impactClass}">${escapeHtml(change.impact || 'High')} Impact</span>
+      </div>
+
+      ${change.original ? `
+        <div class="diff-original" title="Original text being replaced">
+          ${escapeHtml(change.original)}
+        </div>
+      ` : ''}
+
+      <div class="diff-optimized" title="Optimized high-impact ATS version">
+        ${escapeHtml(change.optimized)}
+      </div>
+
+      <div class="diff-reason">
+        <span class="material-symbols-outlined text-[14px] text-accent-amber">lightbulb</span>
+        <span>${escapeHtml(change.reason || 'Optimized for target JD alignment.')}</span>
+      </div>
+    `;
+
+    const chk = card.querySelector('.opt-change-chk');
+    chk.addEventListener('change', () => {
+      card.classList.toggle('is-checked', chk.checked);
+      updateOptSelectedCount();
+    });
+
+    container.appendChild(card);
+  });
+
+  updateOptSelectedCount();
+}
+
+/**
+ * Update Selected Count Readout
+ */
+function updateOptSelectedCount() {
+  const checked = document.querySelectorAll('.opt-change-chk:checked').length;
+  if (elements.optSelectedCount) {
+    elements.optSelectedCount.textContent = checked;
+  }
+}
+
+/**
+ * Select / Deselect All Changes
+ */
+function setAllOptCheckboxes(checked) {
+  document.querySelectorAll('.opt-change-chk').forEach(chk => {
+    chk.checked = checked;
+    const card = chk.closest('.diff-card');
+    if (card) card.classList.toggle('is-checked', checked);
+  });
+  updateOptSelectedCount();
+}
+
+/**
+ * Filter Changes (All / Bullets / Skills / Summary)
+ */
+function setOptFilter(filter) {
+  currentOptFilter = filter;
+  renderAutoOptimizeDiffs(filter);
+}
+
+/**
+ * Apply Checked Optimizations to Active Resume
+ */
+function applySelectedOptimizations() {
+  if (!lastAutoOptimizeResult || !Array.isArray(lastAutoOptimizeResult.changes)) return;
+
+  const checkedIds = new Set(
+    Array.from(document.querySelectorAll('.opt-change-chk:checked')).map(c => c.dataset.changeId)
+  );
+
+  if (checkedIds.size === 0) {
+    showToast('No changes selected to apply.', 'warning');
+    return;
+  }
+
+  // Clone current resume
+  const targetResume = JSON.parse(JSON.stringify(currentResume));
+  let appliedCount = 0;
+
+  lastAutoOptimizeResult.changes.forEach(change => {
+    if (!checkedIds.has(change.id)) return;
+
+    if (change.type === 'summary') {
+      ensureSectionEnabled('summary');
+      targetResume.summary = change.optimized;
+      appliedCount++;
+    } else if (change.type === 'bullet') {
+      if (change.section === 'experience' && Array.isArray(targetResume.experience)) {
+        ensureSectionEnabled('experience');
+        const exp = targetResume.experience[change.itemIndex];
+        if (exp && Array.isArray(exp.bullets)) {
+          if (change.bulletIndex >= 0 && change.bulletIndex < exp.bullets.length) {
+            exp.bullets[change.bulletIndex] = change.optimized;
+          } else {
+            exp.bullets.unshift(change.optimized);
+          }
+          appliedCount++;
+        }
+      } else if (change.section === 'projects' && Array.isArray(targetResume.projects)) {
+        ensureSectionEnabled('projects');
+        const proj = targetResume.projects[change.itemIndex];
+        if (proj && Array.isArray(proj.bullets)) {
+          if (change.bulletIndex >= 0 && change.bulletIndex < proj.bullets.length) {
+            proj.bullets[change.bulletIndex] = change.optimized;
+          } else {
+            proj.bullets.unshift(change.optimized);
+          }
+          appliedCount++;
+        }
+      }
+    } else if (change.type === 'skill') {
+      ensureSectionEnabled('skills');
+      if (!Array.isArray(targetResume.skills)) targetResume.skills = [];
+
+      const catLabel = change.category || 'Languages';
+      let catObj = targetResume.skills.find(s => s.category?.toLowerCase() === catLabel.toLowerCase());
+      if (!catObj) {
+        catObj = { category: catLabel, items: '' };
+        targetResume.skills.push(catObj);
+      }
+
+      const existing = (catObj.items || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!existing.some(s => s.toLowerCase() === change.skill.toLowerCase())) {
+        existing.push(change.skill);
+        catObj.items = existing.join(', ');
+        appliedCount++;
+      }
+    }
+  });
+
+  currentResume = targetResume;
+  loadResumeIntoForm(currentResume);
+  renderPreview();
+  check1PageGuardrail();
+  saveProfileToStorage(false);
+  closeModal(elements.autoOptimizeModal);
+
+  showToast(`✨ Successfully applied ${appliedCount} AI optimizations! Re-evaluating match...`, 'success');
+
+  // Trigger evaluation to show new high score
+  setTimeout(() => {
+    evaluateMatch();
+  }, 300);
 }
 
 function capitalize(str) {

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parsePdfResume, parseResumeText, createEmptyResume } from './services/pdfParser.js';
-import { analyzeMatch } from './services/aiEngine.js';
+import { analyzeMatch, autoOptimizeResume } from './services/aiEngine.js';
 import { generateLatexResume, compileLatexToPdf } from './services/latexGenerator.js';
 
 // Load .env manually if exists, without requiring dotenv package
@@ -19,6 +19,11 @@ loadEnvFile(path.join(__dirname, '.env'));
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const APP_ORIGIN = (process.env.APP_ORIGIN || `http://localhost:${PORT}`).replace(/\/+$/, '');
+const CLERK_PUBLISHABLE_KEY = getPublicClerkKey(process.env.CLERK_PUBLISHABLE_KEY || '');
+const SUPABASE_PUBLISHABLE_KEY = getPublicSupabaseKey(
+  process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || ''
+);
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -31,13 +36,29 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+const JSON_API_ROUTES = new Set([
+  '/api/analyze-match',
+  '/api/auto-optimize',
+  '/api/parse-text',
+  '/api/export-latex',
+  '/api/compile'
+]);
+
 const server = http.createServer(async (req, res) => {
-  // Global CORS Headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const requestOrigin = (req.headers.origin || '').replace(/\/+$/, '');
+  if (requestOrigin === APP_ORIGIN) {
+    res.setHeader('Access-Control-Allow-Origin', APP_ORIGIN);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
+    if (requestOrigin && requestOrigin !== APP_ORIGIN) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
     res.writeHead(204);
     res.end();
     return;
@@ -46,10 +67,36 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
 
+  if (pathname.startsWith('/api/') && requestOrigin && requestOrigin !== APP_ORIGIN) {
+    sendJson(res, 403, { error: 'Origin not allowed' });
+    return;
+  }
+
+  if (req.method === 'POST' && JSON_API_ROUTES.has(pathname)) {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      sendJson(res, 415, { error: 'Content-Type must be application/json' });
+      return;
+    }
+  }
+
   try {
     // -------------------------------------------------------------
     // API Routes
     // -------------------------------------------------------------
+
+    // 0. Public client config. Only publishable browser keys belong here.
+    if (req.method === 'GET' && pathname === '/api/config') {
+      sendJson(res, 200, {
+        clerkPublishableKey: CLERK_PUBLISHABLE_KEY,
+        supabaseUrl: process.env.SUPABASE_URL || '',
+        supabasePublishableKey: SUPABASE_PUBLISHABLE_KEY,
+        hasGroq: !!process.env.GROQ_API_KEY,
+        hasGemini: !!process.env.GEMINI_API_KEY,
+        hasOpenai: !!process.env.OPENAI_API_KEY
+      });
+      return;
+    }
 
     // 1. Health Check
     if (req.method === 'GET' && pathname === '/api/health') {
@@ -77,6 +124,21 @@ const server = http.createServer(async (req, res) => {
 
       const analysis = await analyzeMatch(resume || createEmptyResume(), jobDescription);
       sendJson(res, 200, { success: true, analysis });
+      return;
+    }
+
+    // 2b. AI One-Click Auto-Optimize Engine
+    if (req.method === 'POST' && pathname === '/api/auto-optimize') {
+      const body = await readJsonBody(req);
+      const { resume, jobDescription, options } = body || {};
+
+      if (!jobDescription || typeof jobDescription !== 'string' || !jobDescription.trim()) {
+        sendJson(res, 400, { error: 'Target Job Description is required for auto-optimization' });
+        return;
+      }
+
+      const result = await autoOptimizeResume(resume || createEmptyResume(), jobDescription, options || {});
+      sendJson(res, 200, { success: true, ...result });
       return;
     }
 
@@ -283,6 +345,33 @@ function sendJson(res, statusCode, obj) {
   res.end(JSON.stringify(obj));
 }
 
+function getPublicClerkKey(value) {
+  if (!value) return '';
+  if (/^pk_(test|live)_/.test(value)) return value;
+  console.error('CLERK_PUBLISHABLE_KEY is not a Clerk publishable key; it will not be exposed.');
+  return '';
+}
+
+function getPublicSupabaseKey(value) {
+  if (!value) return '';
+  if (value.startsWith('sb_publishable_')) return value;
+  if (value.startsWith('sb_secret_')) {
+    console.error('A Supabase secret key was placed in a public-key variable; it will not be exposed.');
+    return '';
+  }
+
+  try {
+    const payloadPart = value.split('.')[1];
+    const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
+    if (payload.role === 'anon') return value;
+  } catch {
+    // Fall through to the safe rejection below.
+  }
+
+  console.error('SUPABASE_PUBLISHABLE_KEY is not a recognized publishable or legacy anon key; it will not be exposed.');
+  return '';
+}
+
 /**
  * Simple .env file parser (zero-dependency)
  */
@@ -294,8 +383,9 @@ function loadEnvFile(envPath) {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('#')) {
           const [key, ...values] = trimmed.split('=');
-          if (key && values.length > 0) {
-            process.env[key.trim()] = values.join('=').trim().replace(/^["']|["']$/g, '');
+          const cleanKey = key?.trim();
+          if (cleanKey && values.length > 0 && process.env[cleanKey] === undefined) {
+            process.env[cleanKey] = values.join('=').trim().replace(/^["']|["']$/g, '');
           }
         }
       });

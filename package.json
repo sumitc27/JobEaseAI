@@ -24,5 +24,8 @@
     "tectonic-compiler"
   ],
   "author": "JobEaseAI Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@clerk/clerk-js": "^6.42.3"
+  }
 }

@@ -54,6 +54,7 @@ export const FONT_PACKAGES = {
 export function generateLatexResume(resumeData, options = {}) {
   const fontKey = (options && options.font) || 'lmodern';
   const fontPackage = fontKey === 'lmodern' ? '\\usepackage{lmodern}' : (FONT_PACKAGES[fontKey] || '\\usepackage{lmodern}');
+  const paperSize = options.paperSize === 'letter' ? 'letterpaper' : 'a4paper';
 
   const secTitles = (options && options.sectionTitles) || resumeData.sectionTitles || {};
   const getSecTitle = (id, fallback) => secTitles[id] || fallback;
