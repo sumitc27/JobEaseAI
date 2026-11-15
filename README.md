@@ -42,11 +42,11 @@ All providers use the same server-calculated score and skill classifications. Ed
 
 To apply an improvement:
 
-1. Open **Review AI Improvements**, a recommendation card, or a missing-skill tag.
+1. Use **Review AI Improvements**, Evaluate Match, or a missing-skill tag to show inline recommendation cards.
 2. Inspect the JD requirement and source text. Missing evidence is identified explicitly.
 3. Enter actual work/results when requested. Generated skills or numbers unsupported by the source become requests for factual input rather than completed claims.
-4. Select the changes and confirm each skill, metric, and overall factual accuracy. Bulk selection does not confirm claims. Editing text clears its confirmations.
-5. Review the server-calculated score for those exact confirmed changes, then apply them. The score can increase, remain unchanged, or decrease.
+4. Use **Edit** and **Save edit** directly on a card to adjust its text. Expand **Confirm facts before adding** to confirm its skills, metrics, and factual accuracy. Editing clears previous confirmations.
+5. Click **Add to resume** on the card. The server applies the confirmed text and recalculates the score, which can increase, remain unchanged, or decrease. No approval modal is opened.
 
 Offline recommendations ask for real details; they do not invent results or create placeholder employers/projects. Changes to the resume, JD, or source text invalidate an open review. Restarting the server also invalidates existing proposal signatures; generate a new review afterward.
 

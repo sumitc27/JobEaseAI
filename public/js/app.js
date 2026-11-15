@@ -7,6 +7,7 @@
 import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 import * as cloudAuth from './supabaseAuth.js';
 import { createAtsReview } from './atsReview.js';
+import { formatSkill } from './skillLabels.js';
 import { enhanceVault, captureVaultSelection, itemIdentity } from './vaultManager.js';
 const vaultSelection = new Map();
 
@@ -648,7 +649,6 @@ const elements = {
   scoreText: document.getElementById('score-text'),
   scoreStatus: document.getElementById('score-status'),
   scoreSummary: document.getElementById('score-summary'),
-  scoreProvider: document.getElementById('score-provider'),
   missingSkillsTags: document.getElementById('missing-skills-tags'),
   foundSkillsTags: document.getElementById('found-skills-tags'),
   suggestionsContainer: document.getElementById('suggestions-container'),
@@ -853,7 +853,6 @@ const elements = {
   scoreMetricSemantic: document.getElementById('score-metric-semantic'),
   scoreMetricKeywords: document.getElementById('score-metric-keywords'),
   scoreMetricImpact: document.getElementById('score-metric-impact'),
-  scoreBadgeHeadline: document.getElementById('score-badge-headline'),
   guardrailBadgeContainer: document.getElementById('guardrail-badge-container'),
   guardrailBadgeText: document.getElementById('guardrail-badge-text'),
   paperStatusDot: document.getElementById('paper-status-dot'),
@@ -1016,6 +1015,15 @@ function init() {
  * Event Listeners Registration
  */
 function bindEvents() {
+  // Dynamic form builders have different handlers. Refresh after their state
+  // updates have finished, including newly added inputs and date fields.
+  const formPanel = document.getElementById('editor-form-view');
+  for (const eventName of ['input', 'change']) {
+    formPanel?.addEventListener(eventName, event => {
+      if (!event.target.matches('input, textarea, select')) return;
+      queueMicrotask(() => atsController.changed());
+    });
+  }
   // Theme Toggle Action
   if (elements.btnThemeToggle) {
     elements.btnThemeToggle.addEventListener('click', toggleTheme);
@@ -4733,15 +4741,16 @@ function renderAnalysisResults(analysis) {
   elements.scoreMetricImpact.textContent = analysis.quantifiableImpactScore + '%';
   document.getElementById('score-metric-domain').textContent = analysis.domainKeywordsScore + '%';
   elements.scoreStatus.textContent = score >= 80 ? 'Strong alignment' : score >= 65 ? 'Moderate match' : 'Review requirement gaps';
-  if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Resume-to-job match';
-  elements.scoreSummary.textContent = analysis.summary || 'Scores use included resume content. Evaluate Match to generate evidence-based recommendations.';
-  if (elements.scoreProvider) elements.scoreProvider.textContent = 'Scoring: ' + analysis.scoringVersion + ' · Suggestions: ' + (analysis.providerUsed || 'not refreshed');
+  const foundCount = analysis.hardSkillsFound?.length || 0;
+  const missingCount = analysis.missingHardSkills?.length || 0;
+  elements.scoreSummary.textContent = foundCount + ' of ' + (foundCount + missingCount) + ' recognized job skills matched.' + (missingCount ? ' Review ' + missingCount + ' missing below.' : ' No skill gaps detected.');
+  if (!foundCount && !missingCount) elements.scoreSummary.textContent = 'No recognized technical skills in this job description.';
   elements.missingSkillsTags.replaceChildren();
   for (const skill of analysis.missingHardSkills || []) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'skill-tag missing inject-skill-btn';
-    button.textContent = '+ Review ' + skill;
+    button.textContent = '+ Review ' + formatSkill(skill);
     button.title = 'Review evidence and confirm experience before adding';
     button.addEventListener('click', () => atsController.reviewSkill(skill));
     elements.missingSkillsTags.append(button);
@@ -4751,30 +4760,11 @@ function renderAnalysisResults(analysis) {
   for (const skill of analysis.hardSkillsFound || []) {
     const tag = document.createElement('span');
     tag.className = 'skill-tag found';
-    tag.textContent = '✓ ' + skill;
+    tag.textContent = '✓ ' + formatSkill(skill);
     tag.title = (analysis.evidence || []).find(item => item.skill === skill)?.sources.map(source => source.path + ': ' + source.text).join('\n') || 'Found in included resume content';
     elements.foundSkillsTags.append(tag);
   }
-  elements.suggestionsContainer.replaceChildren();
-  const weights = { High: 3, Medium: 2, Low: 1 };
-  for (const proposal of [...(analysis.suggestions || [])].sort((a, b) => (weights[b.impact] || 0) - (weights[a.impact] || 0))) {
-    const card = document.createElement('div');
-    card.className = 'suggestion-item ats-suggestion-card';
-    const title = document.createElement('strong');
-    title.textContent = proposal.title + ' · ' + proposal.impact;
-    const reason = document.createElement('p');
-    reason.textContent = proposal.reason;
-    const evidence = document.createElement('p');
-    evidence.textContent = proposal.evidence.length ? 'Evidence: ' + proposal.evidence.map(source => source.text).join(' | ') : 'Experience needs your confirmation.';
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn btn-secondary';
-    button.textContent = proposal.needsInput ? 'Provide factual details' : 'Review and confirm';
-    button.addEventListener('click', () => atsController.open([proposal]));
-    card.append(title, reason, evidence, button);
-    elements.suggestionsContainer.append(card);
-  }
-  if (!analysis.suggestions?.length) elements.suggestionsContainer.textContent = 'Evaluate Match to refresh recommendations for this resume.';
+  atsController.renderCards(analysis.suggestions || []);
 }
 
 /**

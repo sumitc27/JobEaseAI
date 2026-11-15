@@ -16,6 +16,7 @@ class Element {
   append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } }
   replaceChildren(...children) { this.children.forEach(child => { child.parent = null; }); this.children = []; this.append(...children); }
   setAttribute(name, value) { this.attributes[name] = value; }
+  focus() {}
   addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); }
   async dispatch(type) { await Promise.all((this.listeners[type] || []).map(listener => listener({ target: this }))); await settle(); }
 }
@@ -100,6 +101,35 @@ test('editing revokes UI confirmations and filters do not lose a pending edited 
     assert.equal(h.elements.btnOptApply.disabled, false);
     await h.elements.btnOptApply.dispatch('click');
     assert.equal(h.applied[0].experience[0].bullets[0], editor.value);
+  } finally { h.cleanup(); }
+});
+
+test('inline suggestion cards edit and add confirmed text without opening a modal', async () => {
+  const h = harness();
+  const container = new Element(); container.root = true;
+  try {
+    h.controller.renderCards([h.proposals[1]], container);
+    const card = container.children[0];
+    assert.equal(card.children[0].textContent, 'Work experience');
+    assert.equal(card.children[2].textContent, 'Evidence found in the resume.');
+    assert.match(card.children[2].className, /ats-evidence-found/);
+    const buttons = descendants(card, node => node.tagName === 'button');
+    const save = buttons.find(node => node.textContent === 'Save edit');
+    const edit = buttons.find(node => node.textContent === 'Edit');
+    const add = buttons.find(node => node.textContent === 'Add to resume');
+    assert.equal(add.disabled, false);
+    await edit.dispatch('click');
+    const editor = descendants(card, node => node.tagName === 'textarea')[0];
+    assert.equal(editor.hidden, false);
+    editor.value = 'Built Python services, reducing latency by 17%.';
+    await editor.dispatch('input'); await save.dispatch('click');
+    assert.equal(editor.hidden, true);
+    assert.equal(card.children[1].textContent, editor.value);
+    assert.equal(descendants(card, node => node.className === 'ats-inline-facts')[0].hidden, true);
+    assert.equal(add.disabled, false);
+    await add.dispatch('click');
+    assert.equal(h.applied[0].experience[0].bullets[0], editor.value);
+    assert.equal(h.elements.optChangesContainer.children.length, 0);
   } finally { h.cleanup(); }
 });
 

@@ -4438,3 +4438,16 @@ body.theme-light .cloud-resume-item.is-active {
 #profile-vault-modal .vault-edit-form textarea { min-height: 110px; resize: vertical; }
 #profile-vault-modal .vault-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 @media(max-width:640px) { #profile-vault-modal .vault-edit-form { grid-template-columns: 1fr; } #profile-vault-modal .vault-modal-header { padding: 12px; } #profile-vault-modal .vault-footer { padding: 10px; } }
+.ats-inline-card .ats-category { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 4px 9px; border-radius: 20px; color: var(--text-main); background: var(--bg-input); border: 1px solid var(--border-subtle); }
+.ats-inline-card .ats-recommended-line { font-size: 14px; line-height: 1.6; margin: 0; }
+.ats-inline-card .ats-evidence-line, .ats-inline-card .ats-inline-status { font-size: 12px; line-height: 1.5; color: var(--text-muted); margin: 0; }
+.ats-inline-actions { display: flex; justify-content: space-between; gap: 8px; }
+.ats-inline-facts summary { font-size: 12px; cursor: pointer; padding: 6px 0; }
+.ats-inline-card button:disabled { opacity: .45; cursor: not-allowed; }
+.ats-inline-card [hidden] { display: none !important; }
+.ats-inline-card .ats-evidence-found { color: #15803d; }
+.ats-inline-card .ats-evidence-missing { color: #b91c1c; }
+.dark .ats-inline-card .ats-evidence-found, body.theme-dark .ats-inline-card .ats-evidence-found { color: #4ade80; }
+.dark .ats-inline-card .ats-evidence-missing, body.theme-dark .ats-inline-card .ats-evidence-missing { color: #f87171; }
+#ats-score-box #score-summary { line-height: 1.6; margin: 0; overflow: visible; display: block; -webkit-line-clamp: unset; }
+#ats-score-box #score-status { max-width: 145px; text-align: right; font-size: 11px; }

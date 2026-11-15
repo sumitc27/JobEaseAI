@@ -198,6 +198,27 @@ test('browser discards score responses for an older resume/workspace', async () 
   assert.deepEqual(rendered, []);
 });
 
+test('form edits automatically refresh score and found/missing skills in both directions', async () => {
+  let input = { resume: { skills: [{ category: 'Languages', items: 'Python' }], experience: [], projects: [] }, jobDescription: 'Python Docker' };
+  const rendered = [];
+  const controller = createAtsReview({ elements: {}, getInput: () => structuredClone(input), getContext: () => 1, renderAnalysis: value => rendered.push(value), setResume() {}, toast() {}, openModal() {}, closeModal() {}, fetchImpl: async (url, options) => {
+    const body = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ success: true, analysis: scoreResume(body.resume, body.jobDescription) }) };
+  } });
+  await controller.refreshScore();
+  const initial = rendered.at(-1).matchScore;
+  input.resume.skills[0].items = 'Python, Docker'; controller.changed();
+  await new Promise(resolve => setTimeout(resolve, 520));
+  assert.deepEqual(rendered.at(-1).hardSkillsFound, ['python', 'docker']);
+  assert.deepEqual(rendered.at(-1).missingHardSkills, []);
+  assert.ok(rendered.at(-1).matchScore > initial);
+  input.resume.skills[0].items = ''; controller.changed();
+  await new Promise(resolve => setTimeout(resolve, 520));
+  assert.deepEqual(rendered.at(-1).hardSkillsFound, []);
+  assert.deepEqual(rendered.at(-1).missingHardSkills, ['python', 'docker']);
+  assert.ok(rendered.at(-1).matchScore < initial);
+});
+
 test('server outage preserves a stale score label without generating a browser score', async () => {
   let online = true;
   const status = { textContent: '' };

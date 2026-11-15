@@ -308,7 +308,7 @@
         <!-- ATS Score Engine Box -->
         <div class="bg-bg-card p-space-md rounded-xl shadow-md flex flex-col gap-space-sm relative overflow-hidden border border-border-subtle ats-score-card" id="ats-score-box">
           <div class="flex items-center justify-between">
-            <span class="font-label-md text-label-md text-text-muted uppercase tracking-wider font-semibold">Resume-to-Job Match</span>
+            <span class="font-label-md text-label-md text-text-muted font-semibold">Job match</span>
             <span class="font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium" id="score-status" aria-live="polite">Awaiting evaluation</span>
           </div>
 
@@ -317,17 +317,11 @@
             <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: var(--score-ring-track, #2e3545);">
               <div class="w-16 h-16 rounded-full bg-bg-elevated flex flex-col items-center justify-center">
                 <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tighter score-value" id="score-text">—</span>
-                <span class="font-label-sm text-label-sm text-text-dim text-[9px] -mt-1">SCORE</span>
               </div>
             </div>
             
             <div class="flex flex-col gap-1 min-w-0">
-              <div class="flex items-center gap-1.5 text-accent-emerald font-body-sm text-body-sm font-medium">
-                <span class="material-symbols-outlined text-[16px]">verified</span>
-                <span id="score-badge-headline">Evaluate your resume</span>
-              </div>
-              <p class="font-body-sm text-body-sm text-text-muted line-clamp-2 leading-tight score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</p>
-              <div id="score-provider" style="margin-top: 2px;"></div>
+              <p class="font-body-sm text-body-sm text-text-muted score-desc" id="score-summary">Evaluate your resume to see how it matches this job.</p>
             </div>
           </div>
 
@@ -338,15 +332,15 @@
               <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-semantic">--%</div>
             </div>
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Exp Depth</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Experience</div>
               <div class="font-label-md text-label-md text-secondary-cyan-light font-bold" id="score-metric-keywords">--%</div>
             </div>
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Metrics/KPIs</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Measurable impact</div>
               <div class="font-label-md text-label-md text-accent-amber font-bold" id="score-metric-impact">--%</div>
             </div>
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
-              <div class="font-label-sm text-label-sm text-text-dim">Domain Words</div>
+              <div class="font-label-sm text-label-sm text-text-dim">Job keywords</div>
               <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-domain">--%</div>
             </div>
           </div>

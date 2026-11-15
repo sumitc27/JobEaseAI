@@ -12,8 +12,6 @@ No values from the real `.env` file are included here. Never add secret keys, se
 
 ## Current ATS Scoring and Recommendation Contract
 
-Profile Vault usability update: compact expandable sections and bullets; guided field/category editing and additions; per-item resume membership badges; resume-only comparison; persistent selections across search and section navigation; original filtered indexes; summary/achievement imports; and custom-section imports into the canonical nested schema. Merging selected bullets preserves existing bullets. Verification includes 3 Vault regressions in addition to the 78 baseline checks and 22 ATS regressions. Visual browser verification remains unavailable in this session.
-
 Implemented on 2026-11-15 following approval of deterministic scoring and evidence-based recommendation review.
 
 ### Authoritative scoring

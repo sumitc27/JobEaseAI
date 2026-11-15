@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { formatSkill } from '../public/js/skillLabels.js';
 import { COMMON_TECH_SKILLS, classifySkill, SKILL_CATEGORIES } from './skillTaxonomy.js';
 import { scoreResume, snapshotId, visibleResume, contentText, textContainsSkill } from './atsScorer.js';
 
@@ -58,7 +59,7 @@ export function normalizeSuggestions(raw, resume, jd) {
     const values = type === 'skill' ? (entry.skill ? [entry.skill] : Array.isArray(entry.action?.value) ? entry.action.value : [entry.action?.value]) : [null];
     for (const value of values.slice(0, 10)) {
       if (output.length >= 30) return output;
-      const skill = clean(value);
+      const skill = formatSkill(clean(value));
       if (type === 'skill' && (!skill || !audit.jdHardSkills.some(s => s.toLowerCase() === skill.toLowerCase()))) continue;
       // Skills already listed need no duplicate addition. Skills demonstrated only
       // in work can still be offered for the dedicated Skills section.
@@ -98,6 +99,7 @@ export function prepareDraft(token, text, resume, jd) {
   text = clean(text);
   if (!text || text.length > 4000 || hasPlaceholder(text)) throw new Error('Enter complete, factual text without placeholders (maximum 4,000 characters).');
   if (proposal.type === 'skill' && text.toLowerCase() !== proposal.skill.toLowerCase()) throw new Error('Review each suggested skill separately.');
+  if (proposal.type === 'skill') text = formatSkill(text);
   const { token: unused, ...draft } = proposal;
   return sign({ ...draft, optimized: text, needsInput: false, inputReason: '', userEdited: text !== proposal.optimized || proposal.userEdited === true, claims: claimsFor(text, proposal) });
 }

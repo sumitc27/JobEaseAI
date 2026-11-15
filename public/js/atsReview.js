@@ -27,7 +27,8 @@ export function createAtsReview({ elements: e, getInput, getContext, renderAnaly
   let previewReady = false;
   let applying = false;
   const timers = new Map();
-  const fingerprint = () => JSON.stringify({ input: getInput(), context: getContext() });
+  const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+  const fingerprint = () => JSON.stringify(stable({ input: getInput(), context: getContext() }));
   const isCurrent = captured => captured === fingerprint();
   const text = (element, value) => { if (element) element.textContent = value; };
 
@@ -133,7 +134,7 @@ export function createAtsReview({ elements: e, getInput, getContext, renderAnaly
     if (e.btnAutoOptimize) e.btnAutoOptimize.disabled = true;
     try {
       const result = await request('/api/auto-optimize', input);
-      open(result.changes, captured);
+      if (isCurrent(captured)) renderCards(result.changes);
     } catch (error) { if (isCurrent(captured)) toast(error.message, 'error'); }
     finally { if (e.btnAutoOptimize) e.btnAutoOptimize.disabled = false; }
   }
@@ -142,7 +143,7 @@ export function createAtsReview({ elements: e, getInput, getContext, renderAnaly
     const captured = fingerprint();
     try {
       const result = await request('/api/skill-suggestion', { ...getInput(), skill });
-      open(result.proposals, captured);
+      if (isCurrent(captured)) renderCards(result.proposals);
     } catch (error) { if (isCurrent(captured)) toast(error.message, 'error'); }
   }
 
@@ -151,6 +152,76 @@ export function createAtsReview({ elements: e, getInput, getContext, renderAnaly
     if (value != null) element.textContent = value;
     if (className) element.className = className;
     return element;
+  }
+
+  function renderCards(proposals, container = e.suggestionsContainer) {
+    if (!container) return;
+    container.replaceChildren();
+    const captured = fingerprint();
+    const labels = { skills: 'Skills', education: 'Education', projects: 'Project', experience: 'Work experience', summary: 'Professional summary' };
+    for (const initial of proposals) {
+      let proposal = initial;
+      let revision = 0;
+      let busy = false;
+      let ready = !proposal.needsInput;
+      const confirmations = new Set();
+      const card = create('article', null, 'ats-suggestion-card ats-inline-card');
+      card.append(create('span', labels[proposal.section] || proposal.section || 'Resume', 'ats-category'));
+      const line = create('p', proposal.optimized || proposal.original || 'Provide the factual details you want to add.', 'ats-recommended-line');
+      card.append(line);
+      const sources = proposal.evidence || [];
+      const evidence = create('p', sources.length ? 'Evidence found in the resume.' : 'No evidence found in the resume.', 'ats-evidence-line ' + (sources.length ? 'ats-evidence-found' : 'ats-evidence-missing'));
+      if (sources.length) evidence.title = sources.map(source => source.text).join(' · ');
+      card.append(evidence);
+      const editor = create('textarea'); editor.value = proposal.optimized || ''; editor.rows = 3; editor.maxLength = 4000;
+      editor.className = 'suggestion-textarea'; editor.hidden = !proposal.needsInput;
+      editor.setAttribute('aria-label', 'Edit recommended ' + (labels[proposal.section] || 'resume text'));
+      const saveEdit = create('button', 'Save edit', 'btn btn-secondary'); saveEdit.type = 'button'; saveEdit.hidden = editor.hidden;
+      const facts = create('details', null, 'ats-inline-facts'); facts.hidden = true;
+      const claimList = create('div', null, 'ats-claim-list'); facts.append(claimList);
+      const status = create('p', proposal.needsInput ? 'Enter your actual work or result, then save your edit.' : '', 'ats-inline-status'); status.setAttribute('aria-live', 'polite');
+      const actions = create('div', null, 'ats-inline-actions');
+      const edit = create('button', 'Edit', 'btn btn-secondary'); edit.type = 'button';
+      const add = create('button', 'Add to resume', 'btn btn-primary'); add.type = 'button';
+      const update = () => { add.disabled = busy || !ready || !isCurrent(captured); saveEdit.disabled = busy; };
+      const drawClaims = () => {
+        claimList.replaceChildren();
+        if (!ready) { update(); return; }
+        for (const claim of proposal.claims) {
+          const label = create('label', null, 'ats-claim'); const checkbox = create('input'); checkbox.type = 'checkbox';
+          checkbox.addEventListener('change', () => { revision += 1; if (checkbox.checked) confirmations.add(claim.id); else confirmations.delete(claim.id); update(); });
+          label.append(checkbox, create('span', claim.label)); claimList.append(label);
+        }
+        update();
+      };
+      edit.addEventListener('click', () => { editor.hidden = false; saveEdit.hidden = false; editor.focus(); });
+      editor.addEventListener('input', () => { revision += 1; ready = false; confirmations.clear(); drawClaims(); status.textContent = 'Save your edit before adding.'; });
+      saveEdit.addEventListener('click', async () => {
+        const version = revision; busy = true; update();
+        try {
+          const result = await request('/api/review-changes', { ...getInput(), action: 'prepare', token: proposal.token, text: editor.value });
+          if (!isCurrent(captured) || version !== revision) return;
+          proposal = result.proposal; ready = true; confirmations.clear(); line.textContent = proposal.optimized;
+          editor.hidden = true; saveEdit.hidden = true; drawClaims(); status.textContent = 'Edit saved. Ready to add.';
+        } catch (error) { if (isCurrent(captured)) status.textContent = error.message; }
+        finally { busy = false; update(); }
+      });
+      add.addEventListener('click', async () => {
+        if (add.disabled) return;
+        const version = revision; busy = true; update(); status.textContent = 'Adding to resume…';
+        try {
+          const result = await request('/api/review-changes', { ...getInput(), action: 'apply', selections: [{ token: proposal.token, confirmedText: proposal.optimized, confirmedClaims: proposal.claims.map(claim => claim.id) }] });
+          if (!isCurrent(captured) || version !== revision) return;
+          scoreGeneration += 1; analysisGeneration += 1;
+          setResume(result.resume); clearTimeout(scoreTimer);
+          acceptAnalysis({ ...result.analysis, suggestions: [], providerUsed: 'Deterministic scorer' }, fingerprint());
+          toast('Added confirmed content and recalculated the score.', 'success');
+        } catch (error) { if (isCurrent(captured)) status.textContent = error.message; }
+        finally { busy = false; update(); }
+      });
+      actions.append(edit, add); card.append(editor, saveEdit, facts, status, actions); drawClaims(); container.append(card);
+    }
+    if (!proposals.length) container.append(create('p', 'No applicable suggestions. Evaluate Match to refresh recommendations.'));
   }
 
   function render() {
@@ -274,5 +345,5 @@ export function createAtsReview({ elements: e, getInput, getContext, renderAnaly
     e.jdInput?.addEventListener('input', changed);
   }
 
-  return { analyze, changed, refreshScore, open, reviewSkill, optimize, bind, close };
+  return { analyze, changed, refreshScore, open, reviewSkill, optimize, renderCards, bind, close };
 }
