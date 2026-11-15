@@ -47,8 +47,8 @@ const FIELDS = {
   personalInfo: ['name', 'title', 'email', 'phone', 'location', 'linkedin', 'github', 'website'],
   skills: ['category', 'items'], experience: ['title', 'company', 'location', 'period', 'bullets'],
   projects: ['name', 'roleOrTech', 'description', 'link', 'bullets'], education: ['institution', 'degree', 'year', 'gpa'],
-  certifications: ['title', 'issuer', 'year', 'linkUrl'], publications: ['title', 'publisher', 'year', 'linkUrl'],
-  achievements: ['title', 'description', 'year'], volunteer: ['role', 'organization', 'date', 'bullets'], customSections: ['title', 'subtitle', 'date', 'bullets']
+  certifications: ['title', 'issuer', 'year', 'linkText', 'linkUrl'], publications: ['title', 'publisher', 'year', 'linkUrl'],
+  achievements: ['title', 'details', 'year', 'linkText', 'linkUrl'], volunteer: ['role', 'organization', 'date', 'bullets'], customSections: ['title', 'subtitle', 'date', 'bullets']
 };
 
 export function enhanceVault({ container, profile, resume, tab, query, save, saveCurrent, rerender, selection }) {

@@ -795,7 +795,7 @@
           <div class="flex items-center gap-1.5 shrink-0">
             <span class="font-label-sm text-label-sm text-text-dim">Font:</span>
             <select class="font-dropdown bg-surface-container text-on-surface font-label-sm text-label-sm px-2 py-1 rounded border border-border-subtle focus:outline-none max-w-[145px] truncate cursor-pointer" id="font-select" aria-label="Select Resume Font">
-              <option value="lmodern" selected>Latin Modern (TeX)</option>
+              <option value="lmodern" selected>Latin Modern Roman (Default)</option>
               <option value="charter">Charter (Serif)</option>
               <option value="sourcesanspro">Source Sans</option>
               <option value="inter">Inter (Sans)</option>
@@ -836,6 +836,12 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <label for="slider-divider-thickness" class="flex justify-between font-label-sm text-label-sm text-text-dim">
+                <span>Section line thickness</span><span id="val-divider-thickness">0.2pt</span>
+              </label>
+              <input class="h-1 accent-secondary-cyan-light cursor-pointer spacing-range" id="slider-divider-thickness" min="0" max="2" step="0.01" type="range" value="0.2">
+            </div>
             <div class="flex flex-col gap-1">
               <div class="flex justify-between font-label-sm text-label-sm text-text-dim">
                 <span>Section Gap</span>

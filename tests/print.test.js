@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { printPageStyle } from '../public/js/printLayout.js';
+import { generateLatexResume } from '../services/latexGenerator.js';
+
+test('section divider thickness supports hidden, thick, default and bounded export settings', () => {
+  for (const [value, expected] of [[0, 0], [0.01, 0.01], [0.05, 0.05], [1.2, 1.2], [9, 2], [-1, 0], [undefined, 0.2], ['bad', 0.2]]) {
+    const latex = generateLatexResume({ personalInfo: {} }, { spacing: { dividerThickness: value } });
+    assert.ok(latex.includes('\\titlerule[' + expected + 'pt]'));
+  }
+});
 
 test('print format follows selected paper and assigns margins to the document only', () => {
   const a4 = printPageStyle('a4');

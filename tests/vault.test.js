@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateLatexResume } from '../services/latexGenerator.js';
 import { itemIdentity, vaultStatus, resumeOnlyEntries, captureVaultSelection, restoreVaultSelection } from '../public/js/vaultManager.js';
 
 test('Vault distinguishes matching records, edited versions and archive-only content', () => {
@@ -16,6 +17,15 @@ test('comparison finds resume-only skills and records without duplicates from sk
   const resume = { skills: [{ items: 'python, Docker' }], projects: [{ name: 'New' }] };
   assert.deepEqual(resumeOnlyEntries(saved, resume, 'skills'), [{ section: 'skills', label: 'Docker' }]);
   assert.deepEqual(resumeOnlyEntries(saved, resume, 'projects'), [{ section: 'projects', label: 'New' }]);
+});
+
+test('achievement and certification links retain custom underlined labels after a pipe', () => {
+  const resume = { personalInfo: {}, achievements: [{ title: 'Runner-Up, Duality AI Track', details: 'HackByte 3.0 -- Trained AI vision models.', linkText: 'Certificate', linkUrl: 'https://example.com/award' }], certifications: [{ title: 'Cloud Certification', issuer: 'Example', linkText: 'View Credential', linkUrl: 'https://example.com/cert' }] };
+  const latex = generateLatexResume(resume);
+  assert.ok(latex.includes('$|$ \\href{https://example.com/award}{\\underline{Certificate}}'));
+  assert.ok(latex.includes('$|$ \\href{https://example.com/cert}{\\underline{View Credential}}'));
+  delete resume.achievements[0].linkUrl;
+  assert.ok(!generateLatexResume(resume).includes('underline{Certificate}'));
 });
 
 test('selections survive filtered rendering and use original item indexes', () => {

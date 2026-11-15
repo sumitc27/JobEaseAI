@@ -2398,7 +2398,7 @@ label:has(.section-toggle-checkbox):hover {
 
 .resume-paper.theme-latex .rp-name {
   font-size: calc(2.05 * var(--base-font-size));
-  font-weight: 800;
+  font-weight: 700;
   font-variant: small-caps;
   color: #000000;
   letter-spacing: 0.04em;
@@ -2443,7 +2443,8 @@ label:has(.section-toggle-checkbox):hover {
   font-weight: 700;
   font-variant: small-caps;
   color: #000000;
-  border-bottom: 0.75px solid #000000;
+  border-bottom: 0 !important;
+  position: relative;
   padding-bottom: 1px;
   margin-top: calc(var(--sec-gap, 2px) * 2 + 3px);
   margin-bottom: calc(var(--sec-gap, 2px) + 2px);
@@ -2452,6 +2453,34 @@ label:has(.section-toggle-checkbox):hover {
 }
 
 /* 0.15in LaTeX Itemize Indentation (~13px) */
+/* Use the font's real small-cap glyphs for the default classic resume style. */
+.resume-paper.theme-latex.font-lmodern .rp-name {
+  font-family: 'LMRomanCaps10', 'Latin Modern Roman', serif !important;
+  font-variant: normal;
+  text-transform: none;
+}
+
+.resume-paper.theme-latex.font-lmodern .rp-section-title {
+  font-family: 'LMRoman10', 'Latin Modern Roman', serif !important;
+  font-weight: 700 !important;
+  font-variant: small-caps;
+}
+
+/* Border widths are rounded up by browsers. Scale a rule instead so even
+   sub-pixel thicknesses remain visibly lighter in preview and print. */
+.resume-paper.theme-latex .rp-section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1pt;
+  background: #000;
+  transform: scaleY(var(--section-rule-scale, 0.2));
+  transform-origin: bottom;
+  pointer-events: none;
+}
+
 .resume-paper.theme-latex #rp-education-container,
 .resume-paper.theme-latex #rp-experience-container,
 .resume-paper.theme-latex #rp-projects-container,

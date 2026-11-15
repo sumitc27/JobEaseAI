@@ -497,6 +497,7 @@ function getResumeActualContentHeight() {
 // Spacing & Compactness State & Presets
 const SPACING_PRESETS = {
   standard: {
+    dividerThickness: 0.2,
     sectionGap: 2,
     itemGap: 2,
     lineHeight: 1.28,
@@ -815,6 +816,8 @@ const elements = {
 
   // Spacing Sliders & Readout Badges
   sliderSectionGap: document.getElementById('slider-section-gap'),
+  sliderDividerThickness: document.getElementById('slider-divider-thickness'),
+  valDividerThickness: document.getElementById('val-divider-thickness'),
   valSectionGap: document.getElementById('val-section-gap'),
   sliderItemGap: document.getElementById('slider-item-gap'),
   valItemGap: document.getElementById('val-item-gap'),
@@ -1540,6 +1543,7 @@ function bindEvents() {
 
   // Granular Sliders Live Binding
   const sliderMappings = [
+    { slider: elements.sliderDividerThickness, key: 'dividerThickness', badge: elements.valDividerThickness, unit: 'pt', parse: v => parseFloat(v) },
     { slider: elements.sliderSectionGap, key: 'sectionGap', badge: elements.valSectionGap, unit: 'px', parse: v => parseInt(v, 10) },
     { slider: elements.sliderItemGap, key: 'itemGap', badge: elements.valItemGap, unit: 'px', parse: v => parseInt(v, 10) },
     { slider: elements.sliderLineHeight, key: 'lineHeight', badge: elements.valLineHeight, unit: '', parse: v => parseFloat(v) },
@@ -1823,6 +1827,9 @@ function setTemplate(template = 'latex', notify = true) {
 function applySpacingToPaperElement(paperEl, s) {
   if (!paperEl) return;
   paperEl.style.setProperty('--sec-gap', `${s.sectionGap}px`);
+  const thickness = Number.isFinite(s.dividerThickness) ? Math.max(0, Math.min(2, s.dividerThickness)) : 0.2;
+  paperEl.style.setProperty('--section-rule-thickness', `${thickness}pt`);
+  paperEl.style.setProperty('--section-rule-scale', String(thickness));
   paperEl.style.setProperty('--item-gap', `${s.itemGap}px`);
   paperEl.style.setProperty('--line-height', `${s.lineHeight}`);
   paperEl.style.setProperty('--bullet-gap', `${s.bulletGap}px`);
@@ -1873,7 +1880,7 @@ function setFont(font, notify = true) {
   if (notify) {
     const fontNames = {
       charter: 'Bitstream Charter (Modern Serif)',
-      lmodern: 'Latin Modern (Classic TeX)',
+      lmodern: 'Latin Modern Roman (Default)',
       sourcesanspro: 'Source Sans Pro (Tech Sans)',
       inter: 'Inter (Clean UI Sans)',
       palatino: 'Palatino / Mathpazo (Executive Serif)',
@@ -1902,6 +1909,9 @@ function setDensity(density) {
  */
 function applySpacing(settings, notify = false, presetName = null) {
   Object.assign(spacingState, settings);
+  spacingState.dividerThickness = Number.isFinite(spacingState.dividerThickness) ? Math.max(0, Math.min(2, spacingState.dividerThickness)) : 0.2;
+  if (elements.sliderDividerThickness) elements.sliderDividerThickness.value = spacingState.dividerThickness;
+  if (elements.valDividerThickness) elements.valDividerThickness.textContent = `${spacingState.dividerThickness}pt`;
 
   if (elements.resumePaper) {
     applySpacingToPaperElement(elements.resumePaper, spacingState);
@@ -3595,6 +3605,8 @@ function renderAchievementsFormList() {
     const isLast = aIdx === achList.length - 1;
     const title = typeof ach === 'string' ? ach : (ach.title || '');
     const details = typeof ach === 'string' ? '' : (ach.details || '');
+    const linkText = typeof ach === 'string' ? '' : (ach.linkText || '');
+    const linkUrl = typeof ach === 'string' ? '' : (ach.linkUrl || '');
     const item = document.createElement('div');
     item.className = 'edu-item p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col gap-2 border border-border-subtle';
     item.innerHTML = `
@@ -3622,6 +3634,16 @@ function renderAchievementsFormList() {
       </div>
     `;
     elements.achievementsListContainer.appendChild(item);
+    const linkFields = document.createElement('div');
+    linkFields.className = 'form-row-2';
+    linkFields.innerHTML = `
+      <label class="form-group">Link text
+        <input type="text" class="form-input" aria-label="Achievement link text" placeholder="Certificate" value="${escapeHtml(linkText)}" data-ach-field="linkText" data-idx="${aIdx}">
+      </label>
+      <label class="form-group">Link URL
+        <input type="url" class="form-input" aria-label="Achievement link URL" placeholder="https://..." value="${escapeHtml(linkUrl)}" data-ach-field="linkUrl" data-idx="${aIdx}">
+      </label>`;
+    item.appendChild(linkFields);
   });
 
   elements.achievementsListContainer.querySelectorAll('input').forEach(el => {
@@ -3688,7 +3710,9 @@ function addNewAchievementItem() {
   if (!currentResume.achievements) currentResume.achievements = [];
   currentResume.achievements.push({
     title: 'New Award / Certification',
-    details: 'Details and credentials'
+    details: 'Details and credentials',
+    linkText: '',
+    linkUrl: ''
   });
   renderAchievementsFormList();
   renderPreview();
@@ -4598,7 +4622,7 @@ function renderPreview() {
         let text = `<strong>${escapeHtml(cert.title || cert.name || '')}</strong>`;
         if (cert.issuer || cert.details) text += ` -- ${escapeHtml(cert.issuer || cert.details)}`;
         if (cert.linkUrl) {
-          text += ` | <a href="${escapeHtml(cert.linkUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">${escapeHtml(cert.linkText || 'Credential')}</a>`;
+          text += ` | <a href="${escapeHtml(cert.linkUrl)}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${escapeHtml(cert.linkText || 'Credential')}</a>`;
         }
         return `<li>${text}</li>`;
       }).join('');
@@ -4644,7 +4668,7 @@ function renderPreview() {
           text = `<strong>${escapeHtml(ach.title)}</strong> -- ${escapeHtml(ach.details)}`;
         }
         if (ach.linkUrl) {
-          text += ` | <a href="${escapeHtml(ach.linkUrl)}" target="_blank" style="color: inherit; text-decoration: underline;">${escapeHtml(ach.linkText || 'Link')}</a>`;
+          text += ` | <a href="${escapeHtml(ach.linkUrl)}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${escapeHtml(ach.linkText || 'Link')}</a>`;
         }
         return `<li>${text}</li>`;
       }).join('');
@@ -5378,7 +5402,7 @@ ${projs}
         text += ` -- ${escapeClientLatex(cert.issuer || cert.details)}`;
       }
       if (cert.linkUrl) {
-        text += ` $|$ \\href{${escapeClientLatex(cert.linkUrl)}}{${escapeClientLatex(cert.linkText || 'Credential')}}`;
+        text += ` $|$ \\href{${escapeClientLatex(cert.linkUrl)}}{\\underline{${escapeClientLatex(cert.linkText || 'Credential')}}}`;
       }
       return `    \\resumeItem{${text}}`;
     }).join('\n');
@@ -5428,7 +5452,7 @@ ${pubItems}
         text = `\\textbf{${escapeClientLatex(ach.title)}} -- ${escapeClientLatex(ach.details)}`;
       }
       if (ach.linkUrl) {
-        text += ` $|$ \\href{${escapeClientLatex(ach.linkUrl)}}{${escapeClientLatex(ach.linkText || 'Link')}}`;
+        text += ` $|$ \\href{${escapeClientLatex(ach.linkUrl)}}{\\underline{${escapeClientLatex(ach.linkText || 'Link')}}}`;
       }
       return `    \\resumeItem{${text}}`;
     }).join('\n');
@@ -5491,6 +5515,7 @@ ${volItems}
   const fontKey = font || currentFont || 'lmodern';
   const fontPackage = fontKey === 'lmodern' ? '\\usepackage{lmodern}' : (CLIENT_FONT_PACKAGES[fontKey] || '\\usepackage{lmodern}');
   const spacing = spacingOpt || spacingState || {};
+  const dividerThickness = Number.isFinite(spacing.dividerThickness) ? Math.max(0, Math.min(2, spacing.dividerThickness)) : 0.2;
   const fontScale = typeof spacing.fontScale === 'number' ? spacing.fontScale : 100;
   const docFontSize = fontScale <= 92 ? '9pt' : '10pt';
 
@@ -5580,11 +5605,11 @@ ${fontPackage}
 %---------------------------
 % Section formatting
 \\titleformat{\\section}
-  {\\vspace{${secVspaceTop}}\\scshape\\raggedright\\large}
+  {\\vspace{${secVspaceTop}}\\scshape\\bfseries\\raggedright\\large}
   {}
   {0em}
   {}
-  [\\color{black}\\titlerule\\vspace{${secVspaceBottom}}]
+  [\\color{black}\\titlerule[${dividerThickness}pt]\\vspace{${secVspaceBottom}}]
 
 %---------------------------
 % Custom Commands

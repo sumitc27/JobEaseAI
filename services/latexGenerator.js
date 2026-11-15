@@ -264,7 +264,7 @@ ${projs}
         text += ` -- ${escapeLatex(cert.issuer || cert.details)}`;
       }
       if (cert.linkUrl) {
-        text += ` $|$ \\href{${escapeLatex(cert.linkUrl)}}{${escapeLatex(cert.linkText || 'Credential')}}`;
+        text += ` $|$ \\href{${escapeLatex(cert.linkUrl)}}{\\underline{${escapeLatex(cert.linkText || 'Credential')}}}`;
       }
       return `    \\resumeItem{${text}}`;
     }).join('\n');
@@ -314,7 +314,7 @@ ${pubItems}
         text = `\\textbf{${escapeLatex(ach.title)}} -- ${escapeLatex(ach.details)}`;
       }
       if (ach.linkUrl) {
-        text += ` $|$ \\href{${escapeLatex(ach.linkUrl)}}{${escapeLatex(ach.linkText || 'Link')}}`;
+        text += ` $|$ \\href{${escapeLatex(ach.linkUrl)}}{\\underline{${escapeLatex(ach.linkText || 'Link')}}}`;
       }
       return `    \\resumeItem{${text}}`;
     }).join('\n');
@@ -391,6 +391,7 @@ ${renderedItems}
 
   // Spacing & Compactness Configuration
   const spacing = options.spacing || {};
+  const dividerThickness = Number.isFinite(spacing.dividerThickness) ? Math.max(0, Math.min(2, spacing.dividerThickness)) : 0.2;
   const fontScale = typeof spacing.fontScale === 'number' ? spacing.fontScale : 100;
   const docFontSize = fontScale <= 92 ? '9pt' : '10pt';
 
@@ -492,11 +493,11 @@ ${fontPackage}
 %---------------------------
 % Section formatting
 \\titleformat{\\section}
-  {\\vspace{${secVspaceTop}}\\scshape\\raggedright\\large}
+  {\\vspace{${secVspaceTop}}\\scshape\\bfseries\\raggedright\\large}
   {}
   {0em}
   {}
-  [\\color{black}\\titlerule\\vspace{${secVspaceBottom}}]
+  [\\color{black}\\titlerule[${dividerThickness}pt]\\vspace{${secVspaceBottom}}]
 
 %---------------------------
 % Custom Commands
