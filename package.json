@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node test.js"
+    "test": "node test.js && node --test tests/ats.test.js tests/atsUi.test.js tests/vault.test.js"
   },
   "keywords": [
     "resume-tailor",

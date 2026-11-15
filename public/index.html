@@ -299,24 +299,24 @@
         </button>
 
         <!-- 1-Click AI Auto-Optimize CTA Button -->
-        <button class="group relative w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-primary-container/25 to-tertiary/20 hover:from-amber-500/30 hover:to-tertiary/30 text-text-main font-body-sm text-body-sm font-semibold border border-amber-500/40 shadow-sm transition-all transform active:scale-[0.99] cursor-pointer" id="btn-auto-optimize" type="button" title="Automatically rewrite bullets, inject missing keywords, and tailor resume for 90%+ ATS match">
+        <button class="group relative w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-primary-container/25 to-tertiary/20 hover:from-amber-500/30 hover:to-tertiary/30 text-text-main font-body-sm text-body-sm font-semibold border border-amber-500/40 shadow-sm transition-all transform active:scale-[0.99] cursor-pointer" id="btn-auto-optimize" type="button" title="Review factual improvements and confirm changes before applying">
           <span class="material-symbols-outlined text-[18px] text-accent-amber animate-pulse">bolt</span>
-          <span>Auto-Optimize Resume (1-Click)</span>
-          <span class="font-label-sm text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/30 text-amber-300 font-bold ml-auto">90%+ ATS</span>
+          <span>Review AI Improvements</span>
+          <span class="font-label-sm text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/30 text-amber-300 font-bold ml-auto">Review first</span>
         </button>
 
         <!-- ATS Score Engine Box -->
         <div class="bg-bg-card p-space-md rounded-xl shadow-md flex flex-col gap-space-sm relative overflow-hidden border border-border-subtle ats-score-card" id="ats-score-box">
           <div class="flex items-center justify-between">
-            <span class="font-label-md text-label-md text-text-muted uppercase tracking-wider font-semibold">ATS Score Engine</span>
-            <span class="font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium" id="score-status">Strong Alignment</span>
+            <span class="font-label-md text-label-md text-text-muted uppercase tracking-wider font-semibold">Resume-to-Job Match</span>
+            <span class="font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium" id="score-status" aria-live="polite">Awaiting evaluation</span>
           </div>
 
           <div class="flex items-center gap-4 my-1">
             <!-- Conic Score Ring -->
-            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: conic-gradient(#10B981 0% 75%, var(--score-ring-track, #2e3545) 75% 100%);">
+            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full score-circle" id="score-circle" style="background: var(--score-ring-track, #2e3545);">
               <div class="w-16 h-16 rounded-full bg-bg-elevated flex flex-col items-center justify-center">
-                <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tighter score-value" id="score-text">75%</span>
+                <span class="font-headline-sm text-headline-sm text-text-main font-bold tracking-tighter score-value" id="score-text">—</span>
                 <span class="font-label-sm text-label-sm text-text-dim text-[9px] -mt-1">SCORE</span>
               </div>
             </div>
@@ -324,7 +324,7 @@
             <div class="flex flex-col gap-1 min-w-0">
               <div class="flex items-center gap-1.5 text-accent-emerald font-body-sm text-body-sm font-medium">
                 <span class="material-symbols-outlined text-[16px]">verified</span>
-                <span id="score-badge-headline">Ready for Top Tech ATS</span>
+                <span id="score-badge-headline">Evaluate your resume</span>
               </div>
               <p class="font-body-sm text-body-sm text-text-muted line-clamp-2 leading-tight score-desc" id="score-summary">Click "Evaluate Match" to analyze your resume against the target role.</p>
               <div id="score-provider" style="margin-top: 2px;"></div>
@@ -332,7 +332,7 @@
           </div>
 
           <!-- Micro Bar Metrics Grid -->
-          <div class="grid grid-cols-3 gap-2 pt-2 text-center">
+          <div class="grid grid-cols-2 gap-2 pt-2 text-center">
             <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
               <div class="font-label-sm text-label-sm text-text-dim">Tech Skills</div>
               <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-semantic">--%</div>
@@ -345,6 +345,10 @@
               <div class="font-label-sm text-label-sm text-text-dim">Metrics/KPIs</div>
               <div class="font-label-md text-label-md text-accent-amber font-bold" id="score-metric-impact">--%</div>
             </div>
+            <div class="bg-surface-container p-2 rounded-lg border border-border-subtle">
+              <div class="font-label-sm text-label-sm text-text-dim">Domain Words</div>
+              <div class="font-label-md text-label-md text-tertiary font-bold" id="score-metric-domain">--%</div>
+            </div>
           </div>
         </div>
 
@@ -354,7 +358,7 @@
             <span class="font-label-sm text-label-sm text-accent-amber uppercase tracking-wider flex items-center gap-1 font-semibold">
               <span class="material-symbols-outlined text-[14px]">warning</span> Missing Hard Skills
             </span>
-            <span class="font-label-sm text-label-sm text-text-dim">Click to Inject</span>
+            <span class="font-label-sm text-label-sm text-text-dim">Click to Review</span>
           </div>
           <div class="flex flex-wrap gap-1.5 tags-wrap" id="missing-skills-tags">
             <span style="color: var(--text-dim); font-size: 0.8rem;">Evaluate a job description to detect missing skills.</span>
@@ -1150,6 +1154,7 @@
         <div class="vault-section-tabs flex items-center gap-1 overflow-x-auto py-0.5" id="vault-section-tabs">
           <button class="vault-tab-pill active px-2.5 py-1 rounded-full font-label-sm text-label-sm bg-surface-container-high text-primary font-medium border border-border-subtle cursor-pointer" data-tab-sec="all">All Sections</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="personalInfo">Personal Info</button>
+          <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="summary">Summary</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="skills">Skills</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="experience">Experience</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="projects">Projects</button>
@@ -1157,6 +1162,7 @@
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="certifications">Certifications</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="publications">Publications</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="volunteer">Volunteer</button>
+          <button class="vault-tab-pill" data-tab-sec="achievements" type="button">Achievements</button>
           <button class="vault-tab-pill px-2.5 py-1 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container cursor-pointer border-0 bg-transparent" data-tab-sec="customSections">Custom Sections</button>
         </div>
 
@@ -1235,7 +1241,7 @@
   </div>
 
   <!-- 4. One-Click AI Auto-Optimize & Diff Review Modal -->
-  <div class="modal-overlay" id="auto-optimize-modal">
+  <div class="modal-overlay" id="auto-optimize-modal" role="dialog" aria-modal="true" aria-label="Review resume improvements">
     <div class="modal-card bg-surface-container-low border border-border-subtle rounded-2xl shadow-2xl max-w-4xl w-[95%] h-[85vh] flex flex-col overflow-hidden">
       <!-- Modal Header -->
       <div class="p-5 border-b border-border-subtle flex justify-between items-center bg-gradient-to-r from-amber-500/10 via-surface/90 to-surface/90">
@@ -1245,11 +1251,11 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="font-headline-sm text-headline-sm text-text-main font-bold">1-Click AI Auto-Optimize</h2>
-              <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald font-semibold border border-emerald-500/40" id="opt-score-leap-badge">Score: 60% ➔ 92% (+32%)</span>
+              <h2 class="font-headline-sm text-headline-sm text-text-main font-bold">Review Resume Improvements</h2>
+              <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-accent-emerald/20 text-accent-emerald font-semibold border border-emerald-500/40" id="opt-score-leap-badge" aria-live="polite">Select and confirm changes to preview</span>
             </div>
             <p class="font-body-sm text-body-sm text-text-muted mt-0.5" id="opt-summary-text">
-              Review and cherry-pick automated bullet rewrites, metric injections, and keyword enhancements.
+              Review source evidence and confirm actual skills and results before applying.
             </p>
           </div>
         </div>

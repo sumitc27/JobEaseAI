@@ -6,6 +6,9 @@
 
 import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 import * as cloudAuth from './supabaseAuth.js';
+import { createAtsReview } from './atsReview.js';
+import { enhanceVault, captureVaultSelection, itemIdentity } from './vaultManager.js';
+const vaultSelection = new Map();
 
 const SCOPED_STORAGE_KEYS = {
   jobease_user_resume: 'resume',
@@ -438,6 +441,7 @@ function startRenamingSection(secId) {
 }
 
 function triggerAutoSave() {
+  atsController.changed();
   resumeLocalRevision += 1;
   pendingLocalChanges = true;
   if (activeStorageUserId) markAppStorageDirty('jobease_cloud_dirty');
@@ -903,6 +907,21 @@ const elements = {
   btnOptDeselectAll: document.getElementById('btn-opt-deselect-all')
 };
 
+const atsController = createAtsReview({
+  elements,
+  getInput: () => ({ resume: structuredClone({ ...currentResume, enabledSections: [...currentEnabledSections], sectionOrder: [...currentSectionOrder], sectionTitles: { ...currentSectionTitles } }), jobDescription: elements.jdInput.value.trim() }),
+  getContext: () => [workspaceGeneration, activeStorageUserId, activeDraftResumeId],
+  renderAnalysis: renderAnalysisResults,
+  setResume: resume => {
+    currentResume = resume;
+    loadResumeIntoForm(currentResume);
+    renderPreview();
+    check1PageGuardrail();
+    triggerAutoSave();
+  },
+  toast: showToast, openModal, closeModal
+});
+
 /**
  * Theme Management (Light / Dark Mode)
  */
@@ -935,7 +954,7 @@ function setTheme(theme, save = true) {
   }
 
   // Synchronize ATS Score Circle track color
-  const curScore = currentAnalysis?.matchScore || (elements.scoreText ? parseInt(elements.scoreText.textContent || '75', 10) : 75);
+  const curScore = currentAnalysis?.matchScore ?? 0;
   updateScoreCircle(curScore);
 
   if (save) {
@@ -1090,37 +1109,7 @@ function bindEvents() {
     elements.btnCreateNewCloudResume.addEventListener('click', createNewCloudResume);
   }
 
-  // Auto-Optimize Modal Listeners
-  if (elements.btnAutoOptimize) {
-    elements.btnAutoOptimize.addEventListener('click', triggerAutoOptimize);
-  }
-  if (elements.btnCloseOptModal) {
-    elements.btnCloseOptModal.addEventListener('click', () => closeModal(elements.autoOptimizeModal));
-  }
-  if (elements.btnOptCancel) {
-    elements.btnOptCancel.addEventListener('click', () => closeModal(elements.autoOptimizeModal));
-  }
-  if (elements.btnOptApply) {
-    elements.btnOptApply.addEventListener('click', applySelectedOptimizations);
-  }
-  if (elements.btnOptSelectAll) {
-    elements.btnOptSelectAll.addEventListener('click', () => setAllOptCheckboxes(true));
-  }
-  if (elements.btnOptDeselectAll) {
-    elements.btnOptDeselectAll.addEventListener('click', () => setAllOptCheckboxes(false));
-  }
-  if (elements.btnOptFilterAll) {
-    elements.btnOptFilterAll.addEventListener('click', () => setOptFilter('all'));
-  }
-  if (elements.btnOptFilterBullets) {
-    elements.btnOptFilterBullets.addEventListener('click', () => setOptFilter('bullet'));
-  }
-  if (elements.btnOptFilterSkills) {
-    elements.btnOptFilterSkills.addEventListener('click', () => setOptFilter('skill'));
-  }
-  if (elements.btnOptFilterSummary) {
-    elements.btnOptFilterSummary.addEventListener('click', () => setOptFilter('summary'));
-  }
+  atsController.bind();
 
   // Navigation Actions
   elements.btnLoadSample.addEventListener('click', toggleSampleProfile);
@@ -4730,891 +4719,62 @@ function renderPreview() {
  * AI Match Engine: Evaluates Resume against Job Description
  */
 async function evaluateMatch() {
-  const jdText = elements.jdInput.value.trim();
-  if (!jdText) {
-    showToast('Please paste a target Job Description to analyze.', 'warning');
-    return;
-  }
-
-  elements.btnAnalyze.disabled = true;
-  elements.btnAnalyze.innerHTML = `
-    <span class="material-symbols-outlined text-[18px] text-tertiary animate-spin">refresh</span>
-    <span>Evaluating Match & Tailoring...</span>
-  `;
-
-  try {
-    const res = await fetch('/api/analyze-match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        resume: currentResume,
-        jobDescription: jdText
-      })
-    });
-
-    let data;
-    if (res.ok) {
-      data = await res.json();
-    } else {
-      // Fallback heuristic evaluation in client if server is offline
-      data = { success: true, analysis: clientHeuristicMatch(currentResume, jdText) };
-    }
-
-    currentAnalysis = data.analysis;
-    renderAnalysisResults(currentAnalysis);
-    showToast('Resume evaluated against target job description!', 'success');
-  } catch (err) {
-    console.warn('Backend unavailable, running browser heuristic engine:', err);
-    const analysis = clientHeuristicMatch(currentResume, jdText);
-    currentAnalysis = analysis;
-    renderAnalysisResults(currentAnalysis);
-    showToast('Evaluated using intelligent heuristic engine.', 'info');
-  } finally {
-    elements.btnAnalyze.disabled = false;
-    elements.btnAnalyze.innerHTML = `
-      <span class="material-symbols-outlined text-[18px] text-tertiary" id="btn-analyze-icon">auto_awesome</span>
-      <span id="btn-analyze-text">Evaluate Match & Tailor Resume</span>
-    `;
-  }
+  return atsController.analyze();
 }
 
-/**
- * Display AI Analysis, ATS Score, and Actionable Suggestions
- */
+/** Server-authoritative score and review-only recommendation actions. */
 function renderAnalysisResults(analysis) {
   currentAnalysis = analysis;
-  const score = analysis.matchScore || 75;
+  const score = analysis.matchScore;
   updateScoreCircle(score);
-  elements.scoreText.textContent = `${score}%`;
-
-  const techSkillsScore = typeof analysis.hardSkillsCoverage === 'number'
-    ? analysis.hardSkillsCoverage
-    : Math.min(Math.round(score * 0.95), 98);
-  const expDepthScore = typeof analysis.experienceDepthScore === 'number'
-    ? analysis.experienceDepthScore
-    : Math.min(Math.round(score * 0.88), 95);
-  const quantifiableScore = typeof analysis.quantifiableImpactScore === 'number'
-    ? analysis.quantifiableImpactScore
-    : Math.min(Math.round(score * 0.82), 95);
-
-  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${techSkillsScore}%`;
-  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${expDepthScore}%`;
-  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${quantifiableScore}%`;
-
-  if (score >= 80) {
-    elements.scoreStatus.textContent = 'Strong Alignment';
-    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium';
-    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Ready for Top Tech ATS';
-  } else if (score >= 65) {
-    elements.scoreStatus.textContent = 'Moderate Match';
-    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-secondary-cyan-light/10 text-secondary-cyan-light px-2 py-0.5 rounded-full font-medium';
-    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Competitive Alignment';
-  } else {
-    elements.scoreStatus.textContent = 'Keyword Gap Detected';
-    elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded-full font-medium';
-    if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Keywords Need Refinement';
+  elements.scoreText.textContent = score + '%';
+  elements.scoreMetricSemantic.textContent = analysis.hardSkillsCoverage + '%';
+  elements.scoreMetricKeywords.textContent = analysis.experienceDepthScore + '%';
+  elements.scoreMetricImpact.textContent = analysis.quantifiableImpactScore + '%';
+  document.getElementById('score-metric-domain').textContent = analysis.domainKeywordsScore + '%';
+  elements.scoreStatus.textContent = score >= 80 ? 'Strong alignment' : score >= 65 ? 'Moderate match' : 'Review requirement gaps';
+  if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Resume-to-job match';
+  elements.scoreSummary.textContent = analysis.summary || 'Scores use included resume content. Evaluate Match to generate evidence-based recommendations.';
+  if (elements.scoreProvider) elements.scoreProvider.textContent = 'Scoring: ' + analysis.scoringVersion + ' · Suggestions: ' + (analysis.providerUsed || 'not refreshed');
+  elements.missingSkillsTags.replaceChildren();
+  for (const skill of analysis.missingHardSkills || []) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'skill-tag missing inject-skill-btn';
+    button.textContent = '+ Review ' + skill;
+    button.title = 'Review evidence and confirm experience before adding';
+    button.addEventListener('click', () => atsController.reviewSkill(skill));
+    elements.missingSkillsTags.append(button);
   }
-
-  elements.scoreSummary.textContent = analysis.summary || 'Review the suggestions below to tailor your resume.';
-
-  // Render Active Engine Badge
-  if (elements.scoreProvider) {
-    const provider = analysis.providerUsed || 'Built-in Heuristic Engine';
-    let icon = '⚙️';
-    if (provider.toLowerCase().includes('groq')) icon = '⚡';
-    else if (provider.toLowerCase().includes('gemini')) icon = '✨';
-    else if (provider.toLowerCase().includes('openai')) icon = '🤖';
-
-    elements.scoreProvider.innerHTML = `
-      <span class="provider-pill" title="Optimized via ${escapeHtml(provider)}">
-        <span>${icon}</span>
-        <span>${escapeHtml(provider)}</span>
-      </span>
-    `;
-  }
-
-  // Render Missing Hard Skills with Dynamic Category Routing & Picker
-  elements.missingSkillsTags.innerHTML = '';
-  const missing = analysis.missingHardSkills || [];
-  if (missing.length === 0) {
-    elements.missingSkillsTags.innerHTML = '<span style="color: #34D399; font-size: 0.8rem;">All core technical skills matched!</span>';
-  } else {
-    missing.forEach(skill => {
-      const matchedCat = findOrMatchSkillCategory(skill);
-      const catLabel = matchedCat ? matchedCat.category : (SKILL_CATEGORIES[classifySkill(skill)]?.label || 'Skills');
-      const catKey = classifySkill(skill);
-      const catMeta = SKILL_CATEGORIES[catKey] || SKILL_CATEGORIES.languages;
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'skill-picker-wrapper';
-
-      // Build options dynamically from candidate's actual editable categories
-      const activeCats = (Array.isArray(currentResume.skills) && currentResume.skills.length > 0)
-        ? currentResume.skills.map(s => s.category).filter(Boolean)
-        : ['Languages', 'AI, LLM & Agentic Systems', 'ML/DL & CV', 'Cloud, DevOps & MLOps'];
-
-      const optionsHtml = activeCats.map(catName => `
-        <div class="skill-picker-option" data-cat="${escapeHtml(catName)}">
-          <span class="opt-dot" style="background:#38BDF8;"></span>${escapeHtml(catName)}
-        </div>
-      `).join('');
-
-      wrapper.innerHTML = `
-        <span class="skill-tag missing inject-skill-btn group flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-accent-amber hover:bg-accent-amber/20 font-label-sm text-label-sm transition-colors border border-border-subtle cursor-pointer shadow-sm" title="Click to add ${escapeHtml(skill)} to ${escapeHtml(catLabel)}">
-          <span class="material-symbols-outlined text-[14px]">add</span>
-          <span class="skill-add-label font-medium">${escapeHtml(skill)}</span>
-          <span class="skill-cat-pill ${catMeta.cssClass}">${escapeHtml(catLabel)}</span>
-          <span class="skill-picker-toggle ml-1" title="Change destination category">▾</span>
-        </span>
-        <div class="skill-picker-menu">
-          <div style="font-size: 0.65rem; color: var(--text-dim); padding: 3px 8px; text-transform: uppercase; font-weight: 700;">Add to category:</div>
-          ${optionsHtml}
-        </div>
-      `;
-
-      const tagEl = wrapper.querySelector('.skill-tag.missing');
-      const menuEl = wrapper.querySelector('.skill-picker-menu');
-      const toggleEl = wrapper.querySelector('.skill-picker-toggle');
-
-      tagEl.addEventListener('click', (e) => {
-        if (e.target === toggleEl || toggleEl.contains(e.target)) {
-          e.stopPropagation();
-          document.querySelectorAll('.skill-picker-menu.active').forEach(m => {
-            if (m !== menuEl) m.classList.remove('active');
-          });
-          menuEl.classList.toggle('active');
-          return;
-        }
-        addSkillToResume(skill, catLabel);
-      });
-
-      wrapper.querySelectorAll('.skill-picker-option').forEach(opt => {
-        opt.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const chosenCat = opt.dataset.cat;
-          menuEl.classList.remove('active');
-          addSkillToResume(skill, chosenCat);
-        });
-      });
-
-      elements.missingSkillsTags.appendChild(wrapper);
-    });
-  }
-
-  // Render Found Skills
-  elements.foundSkillsTags.innerHTML = '';
-  const found = analysis.hardSkillsFound || [];
-  found.slice(0, 14).forEach(skill => {
+  if (!analysis.missingHardSkills?.length) elements.missingSkillsTags.textContent = 'No recognized technical skill gaps.';
+  elements.foundSkillsTags.replaceChildren();
+  for (const skill of analysis.hardSkillsFound || []) {
     const tag = document.createElement('span');
-    tag.className = 'skill-tag found inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-accent-emerald/10 text-accent-emerald font-label-sm text-label-sm border border-emerald-500/20';
-    tag.innerHTML = `✓ ${escapeHtml(skill)}`;
-    elements.foundSkillsTags.appendChild(tag);
-  });
-
-  // Render Suggestions sorted by Impact (High -> Medium -> Low)
-  elements.suggestionsContainer.innerHTML = '';
-  const suggestions = analysis.suggestions || [];
-  if (suggestions.length === 0) {
-    elements.suggestionsContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 12px;">No suggestions available.</div>';
-  } else {
-    const impactWeight = { high: 3, medium: 2, low: 1 };
-    const sortedSuggestions = [...suggestions].sort((a, b) => {
-      const wA = impactWeight[(a.impact || 'medium').toLowerCase()] || 2;
-      const wB = impactWeight[(b.impact || 'medium').toLowerCase()] || 2;
-      return wB - wA;
-    });
-
-    sortedSuggestions.forEach(sug => {
-      const card = document.createElement('div');
-      card.className = `p-3 rounded-xl bg-bg-card shadow-sm flex flex-col gap-2 hover:bg-surface-container transition-colors border border-border-subtle suggestion-item ${sug.applied ? 'is-applied' : ''}`;
-      card.dataset.sugCardId = sug.id;
-
-      const rawImpact = (sug.impact || 'Medium').toLowerCase();
-      const impactLabel = sug.applied 
-        ? 'Applied ✓' 
-        : (rawImpact === 'high' ? 'High Impact' : (rawImpact === 'low' ? 'Low Impact' : 'Medium Impact'));
-      const impactClass = sug.applied 
-        ? 'impact-applied' 
-        : `impact-${rawImpact === 'high' ? 'high' : (rawImpact === 'low' ? 'low' : 'medium')}`;
-
-      // Default Preview Text
-      const previewText = sug.recommendedBullet || sug.recommendedSummary || (Array.isArray(sug.action?.value) ? sug.action.value.join(', ') : (sug.action?.value || sug.title));
-
-      // Build target options if experience or project
-      let targetSelectHtml = '';
-      if (sug.type === 'experience_bullet' && Array.isArray(currentResume.experience) && currentResume.experience.length > 0) {
-        const expOptions = currentResume.experience.map((exp, i) => `
-          <option value="${i}" ${i === (sug.targetIndex || 0) ? 'selected' : ''}>
-            ${escapeHtml(exp.title || 'Role')} at ${escapeHtml(exp.company || 'Company')}
-          </option>
-        `).join('');
-        targetSelectHtml = `
-          <div class="flex items-center gap-1.5 pt-1">
-            <span class="text-[11px] text-text-dim whitespace-nowrap">Target Role:</span>
-            <select class="suggestion-select flex-1" data-sug-target-exp="${sug.id}">
-              ${expOptions}
-            </select>
-          </div>
-        `;
-      } else if (sug.type === 'project_bullet' && Array.isArray(currentResume.projects) && currentResume.projects.length > 0) {
-        const projOptions = currentResume.projects.map((proj, i) => `
-          <option value="${i}" ${i === (sug.targetIndex || 0) ? 'selected' : ''}>
-            ${escapeHtml(proj.title || 'Project')}
-          </option>
-        `).join('');
-        targetSelectHtml = `
-          <div class="flex items-center gap-1.5 pt-1">
-            <span class="text-[11px] text-text-dim whitespace-nowrap">Target Project:</span>
-            <select class="suggestion-select flex-1" data-sug-target-proj="${sug.id}">
-              ${projOptions}
-            </select>
-          </div>
-        `;
-      }
-
-      card.innerHTML = `
-        <div class="flex items-center justify-between text-secondary-cyan-light font-label-sm text-label-sm font-semibold gap-2">
-          <span class="truncate">${escapeHtml(sug.title)}</span>
-          <span class="impact-badge ${impactClass} flex-shrink-0">${impactLabel}</span>
-        </div>
-        <p class="font-body-sm text-body-sm text-text-muted leading-relaxed">${escapeHtml(sug.detail)}</p>
-        
-        <!-- Standard View Container -->
-        <div class="sug-view-container flex flex-col gap-1.5">
-          <div class="suggestion-preview-box text-[12px] bg-bg-input p-2 rounded-lg border border-border-subtle text-on-surface leading-relaxed">
-            "${escapeHtml(previewText)}"
-          </div>
-          <div class="flex items-center justify-between pt-1 sug-action-row">
-            <div class="flex items-center gap-1">
-              <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer flex items-center gap-1" data-copy-sug="${escapeHtml(previewText)}" title="Copy recommendation text">
-                <span class="material-symbols-outlined text-[13px]">content_copy</span> Copy
-              </button>
-              <button class="btn btn-outline text-[11px] px-2 py-0.5 rounded bg-surface-container text-text-dim hover:text-secondary-cyan-light border border-border-subtle cursor-pointer flex items-center gap-1" data-edit-sug="${sug.id}" title="Edit this insight before applying to resume">
-                <span class="material-symbols-outlined text-[13px]">edit_note</span> Edit
-              </button>
-            </div>
-            <button class="text-[11px] font-label-sm text-primary hover:text-white flex items-center gap-1 border-0 bg-transparent cursor-pointer font-medium" data-apply-sug="${sug.id}">
-              <span class="material-symbols-outlined text-[13px]">bolt</span> Auto-Apply Suggestion
-            </button>
-          </div>
-        </div>
-
-        <!-- Inline Edit Container (Hidden by default) -->
-        <div class="sug-edit-container suggestion-edit-container" style="display: none;">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-secondary-cyan-light flex items-center gap-1">
-              <span class="material-symbols-outlined text-[13px]">edit</span> Edit insight before applying:
-            </span>
-            <button class="text-[11px] text-text-dim hover:text-text-main bg-transparent border-0 cursor-pointer" data-cancel-edit="${sug.id}" title="Cancel editing">✕</button>
-          </div>
-          <textarea class="suggestion-textarea" data-sug-textarea="${sug.id}" rows="3" placeholder="Customize this recommendation...">${escapeHtml(previewText)}</textarea>
-          ${targetSelectHtml}
-          <div class="flex items-center justify-end gap-2 pt-1">
-            <button class="btn btn-outline text-[11px] px-2.5 py-1 rounded bg-surface-container text-text-dim hover:text-text-main border border-border-subtle cursor-pointer" data-cancel-edit="${sug.id}">Cancel</button>
-            <button class="btn text-[11px] px-3 py-1 rounded bg-primary text-white font-medium hover:bg-primary/80 cursor-pointer flex items-center gap-1 shadow-sm" data-apply-custom-sug="${sug.id}">
-              <span class="material-symbols-outlined text-[13px]">done</span> Apply Customized Fix
-            </button>
-          </div>
-        </div>
-      `;
-
-      const viewContainer = card.querySelector('.sug-view-container');
-      const editContainer = card.querySelector('.sug-edit-container');
-
-      // 1. Copy
-      card.querySelector('[data-copy-sug]')?.addEventListener('click', (e) => {
-        navigator.clipboard.writeText(e.target.dataset.copySug || previewText);
-        showToast('Copied recommendation to clipboard!', 'success');
-      });
-
-      // 2. Open Edit Mode
-      card.querySelector('[data-edit-sug]')?.addEventListener('click', () => {
-        viewContainer.style.display = 'none';
-        editContainer.style.display = 'flex';
-        const ta = editContainer.querySelector('[data-sug-textarea]');
-        if (ta) {
-          ta.focus();
-          ta.setSelectionRange(ta.value.length, ta.value.length);
-        }
-      });
-
-      // 3. Cancel Edit Mode
-      card.querySelectorAll('[data-cancel-edit]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          editContainer.style.display = 'none';
-          viewContainer.style.display = 'flex';
-        });
-      });
-
-      // 4. Auto-Apply
-      card.querySelector('[data-apply-sug]')?.addEventListener('click', () => {
-        applyAiSuggestion(sug);
-      });
-
-      // 5. Apply Customized
-      card.querySelector('[data-apply-custom-sug]')?.addEventListener('click', () => {
-        const customText = editContainer.querySelector('[data-sug-textarea]')?.value || '';
-        let targetOverride = null;
-        const expSelect = editContainer.querySelector(`[data-sug-target-exp="${sug.id}"]`);
-        if (expSelect) targetOverride = parseInt(expSelect.value, 10);
-        const projSelect = editContainer.querySelector(`[data-sug-target-proj="${sug.id}"]`);
-        if (projSelect) targetOverride = parseInt(projSelect.value, 10);
-
-        applyAiSuggestion(sug, customText, targetOverride);
-      });
-
-      elements.suggestionsContainer.appendChild(card);
-    });
+    tag.className = 'skill-tag found';
+    tag.textContent = '✓ ' + skill;
+    tag.title = (analysis.evidence || []).find(item => item.skill === skill)?.sources.map(source => source.path + ': ' + source.text).join('\n') || 'Found in included resume content';
+    elements.foundSkillsTags.append(tag);
   }
-}
-
-function ensureSectionEnabled(secId) {
-  if (Array.isArray(currentEnabledSections) && !currentEnabledSections.includes(secId)) {
-    toggleSection(secId, true);
+  elements.suggestionsContainer.replaceChildren();
+  const weights = { High: 3, Medium: 2, Low: 1 };
+  for (const proposal of [...(analysis.suggestions || [])].sort((a, b) => (weights[b.impact] || 0) - (weights[a.impact] || 0))) {
+    const card = document.createElement('div');
+    card.className = 'suggestion-item ats-suggestion-card';
+    const title = document.createElement('strong');
+    title.textContent = proposal.title + ' · ' + proposal.impact;
+    const reason = document.createElement('p');
+    reason.textContent = proposal.reason;
+    const evidence = document.createElement('p');
+    evidence.textContent = proposal.evidence.length ? 'Evidence: ' + proposal.evidence.map(source => source.text).join(' | ') : 'Experience needs your confirmation.';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-secondary';
+    button.textContent = proposal.needsInput ? 'Provide factual details' : 'Review and confirm';
+    button.addEventListener('click', () => atsController.open([proposal]));
+    card.append(title, reason, evidence, button);
+    elements.suggestionsContainer.append(card);
   }
-}
-
-/**
- * Matches a skill to the candidate's existing dynamic/editable category names
- */
-function findOrMatchSkillCategory(skill, targetCategoryHint = null) {
-  const currentSkills = Array.isArray(currentResume.skills) ? currentResume.skills : [];
-  if (currentSkills.length === 0) {
-    return null;
-  }
-
-  // 1. If explicit targetCategoryHint is provided
-  if (targetCategoryHint && typeof targetCategoryHint === 'string') {
-    const hintLower = targetCategoryHint.toLowerCase().trim();
-    // Exact match on category title
-    const directMatch = currentSkills.find(s => (s.category || '').toLowerCase().trim() === hintLower);
-    if (directMatch) return directMatch;
-
-    // Partial match on category title
-    const partialMatch = currentSkills.find(s => {
-      const cat = (s.category || '').toLowerCase().trim();
-      return cat.includes(hintLower) || hintLower.includes(cat);
-    });
-    if (partialMatch) return partialMatch;
-
-    // Check if targetCategoryHint is a known key (languages, aiAgentic, mlCv, cloudDevOps)
-    const keyMeta = SKILL_CATEGORIES[targetCategoryHint];
-    if (keyMeta) {
-      const labelLower = keyMeta.label.toLowerCase();
-      const metaMatch = currentSkills.find(s => {
-        const cat = (s.category || '').toLowerCase();
-        return cat.includes(labelLower) || labelLower.includes(cat);
-      });
-      if (metaMatch) return metaMatch;
-    }
-  }
-
-  // 2. Classify skill using canonical classifier
-  const defaultKey = classifySkill(skill); // 'languages', 'aiAgentic', 'mlCv', 'cloudDevOps'
-  
-  const keywordsMap = {
-    languages: ['language', 'prog', 'core', 'code', 'script', 'tech'],
-    aiAgentic: ['ai', 'llm', 'agent', 'rag', 'genai', 'prompt', 'model'],
-    mlCv: ['ml', 'dl', 'vision', 'learn', 'data', 'cv'],
-    cloudDevOps: ['cloud', 'devops', 'ops', 'tool', 'infra', 'backend', 'framework', 'database', 'db']
-  };
-
-  const targetKeywords = keywordsMap[defaultKey] || [];
-  for (const s of currentSkills) {
-    const catName = (s.category || '').toLowerCase();
-    if (targetKeywords.some(kw => catName.includes(kw))) {
-      return s;
-    }
-  }
-
-  // Fallback to first available category
-  return currentSkills[0];
-}
-
-/**
- * Dynamic Multi-Factor ATS Score Recalculator
- */
-function recalcAnalysisScore() {
-  if (!currentAnalysis) return;
-  const hCoverage = typeof currentAnalysis.hardSkillsCoverage === 'number' ? currentAnalysis.hardSkillsCoverage : 50;
-  const expDepth = typeof currentAnalysis.experienceDepthScore === 'number' ? currentAnalysis.experienceDepthScore : 50;
-  const quantKpi = typeof currentAnalysis.quantifiableImpactScore === 'number' ? currentAnalysis.quantifiableImpactScore : 50;
-  const domainKw = typeof currentAnalysis.domainKeywordsScore === 'number' ? currentAnalysis.domainKeywordsScore : 50;
-
-  currentAnalysis.matchScore = Math.max(15, Math.min(98, Math.round(
-    (hCoverage * 0.45) +
-    (expDepth * 0.25) +
-    (quantKpi * 0.15) +
-    (domainKw * 0.15)
-  )));
-
-  // Update Score Circle & Sub-metrics in real-time
-  const score = currentAnalysis.matchScore;
-  updateScoreCircle(score);
-  if (elements.scoreText) elements.scoreText.textContent = `${score}%`;
-  if (elements.scoreMetricSemantic) elements.scoreMetricSemantic.textContent = `${hCoverage}%`;
-  if (elements.scoreMetricKeywords) elements.scoreMetricKeywords.textContent = `${expDepth}%`;
-  if (elements.scoreMetricImpact) elements.scoreMetricImpact.textContent = `${quantKpi}%`;
-
-  if (elements.scoreStatus) {
-    if (score >= 80) {
-      elements.scoreStatus.textContent = 'Strong Alignment';
-      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-emerald/10 text-accent-emerald px-2 py-0.5 rounded-full font-medium';
-      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Ready for Top Tech ATS';
-    } else if (score >= 65) {
-      elements.scoreStatus.textContent = 'Moderate Match';
-      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-secondary-cyan-light/10 text-secondary-cyan-light px-2 py-0.5 rounded-full font-medium';
-      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Competitive Alignment';
-    } else {
-      elements.scoreStatus.textContent = 'Keyword Gap Detected';
-      elements.scoreStatus.className = 'font-label-sm text-label-sm bg-accent-amber/10 text-accent-amber px-2 py-0.5 rounded-full font-medium';
-      if (elements.scoreBadgeHeadline) elements.scoreBadgeHeadline.textContent = 'Keywords Need Refinement';
-    }
-  }
-}
-
-/**
- * Dismisses an applied or unwanted suggestion card with smooth animation
- */
-function dismissSuggestionCard(sugId) {
-  const cardEl = document.querySelector(`[data-sug-card-id="${sugId}"]`);
-  if (cardEl) {
-    cardEl.classList.add('fading-out');
-    setTimeout(() => {
-      cardEl.remove();
-      if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
-        currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sugId);
-        if (currentAnalysis.suggestions.length === 0 && elements.suggestionsContainer) {
-          elements.suggestionsContainer.innerHTML = `
-            <div class="p-4 rounded-xl bg-accent-emerald/10 border border-accent-emerald/30 text-center flex flex-col items-center gap-1.5 my-2">
-              <span class="material-symbols-outlined text-[24px] text-accent-emerald">verified</span>
-              <span class="font-label-md text-label-md text-accent-emerald font-bold">All Gap Fixes Applied!</span>
-              <p class="font-body-sm text-body-sm text-text-muted">Your resume now comprehensively addresses target JD requirements.</p>
-            </div>
-          `;
-        }
-      }
-    }, 450);
-  } else {
-    if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
-      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sugId);
-    }
-  }
-}
-
-/**
- * 1-Click Suggestion Applicator with Custom Content Support & Live ATS Recalculation
- */
-function applyAiSuggestion(sug, customContent = null, targetIndexOverride = null) {
-  if (!sug) return;
-  const isCustom = typeof customContent === 'string' && customContent.trim().length > 0;
-
-  if (sug.type === 'skill') {
-    ensureSectionEnabled('skills');
-    const targetCat = sug.targetCategory || sug.action?.category || null;
-    let skillsList = [];
-    if (isCustom) {
-      skillsList = parseCommaList(customContent);
-    } else if (Array.isArray(sug.action?.value)) {
-      skillsList = sug.action.value;
-    } else if (sug.action?.value) {
-      skillsList = [sug.action.value];
-    } else if (Array.isArray(sug.skills)) {
-      skillsList = sug.skills;
-    }
-    skillsList.forEach(sk => addSkillToResume(sk, targetCat));
-    const secTitle = getSectionTitle('skills');
-    showToast(`✨ Added ${skillsList.join(', ')} to ${secTitle}!`, 'success');
-  } else if (sug.type === 'experience_bullet') {
-    ensureSectionEnabled('experience');
-    if (!currentResume.experience) currentResume.experience = [];
-    const bulletToApply = isCustom ? customContent.trim() : (sug.recommendedBullet || sug.detail);
-    const expIdx = (typeof targetIndexOverride === 'number') 
-      ? targetIndexOverride 
-      : ((typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.experience.length) ? sug.targetIndex : 0);
-
-    const secTitle = getSectionTitle('experience');
-    if (currentResume.experience.length > 0) {
-      if (!Array.isArray(currentResume.experience[expIdx].bullets)) {
-        currentResume.experience[expIdx].bullets = [];
-      }
-      currentResume.experience[expIdx].bullets.unshift(bulletToApply);
-      loadResumeIntoForm(currentResume);
-      highlightPreviewElement(elements.rpExperienceContainer);
-      const roleName = currentResume.experience[expIdx].title || 'experience';
-      showToast(`✨ Applied bullet to ${roleName} in ${secTitle}!`, 'success');
-    } else {
-      currentResume.experience.push({
-        title: sug.targetTitle || 'Software Engineer',
-        company: 'Technology Corp',
-        location: 'Remote',
-        period: '2022 - Present',
-        bullets: [bulletToApply]
-      });
-      loadResumeIntoForm(currentResume);
-      highlightPreviewElement(elements.rpExperienceContainer);
-      showToast(`✨ Created role with bullet in ${secTitle}!`, 'success');
-    }
-
-    // Boost experience depth and quantifiable impact in ATS evaluation
-    if (currentAnalysis) {
-      currentAnalysis.experienceDepthScore = Math.min(98, (currentAnalysis.experienceDepthScore || 45) + 12);
-      currentAnalysis.quantifiableImpactScore = Math.min(98, (currentAnalysis.quantifiableImpactScore || 40) + 15);
-      recalcAnalysisScore();
-    }
-  } else if (sug.type === 'project_bullet') {
-    ensureSectionEnabled('projects');
-    if (!currentResume.projects) currentResume.projects = [];
-    const bulletToApply = isCustom ? customContent.trim() : (sug.recommendedBullet || sug.detail);
-    const projIdx = (typeof targetIndexOverride === 'number')
-      ? targetIndexOverride
-      : ((typeof sug.targetIndex === 'number' && sug.targetIndex >= 0 && sug.targetIndex < currentResume.projects.length) ? sug.targetIndex : 0);
-
-    const secTitle = getSectionTitle('projects');
-    if (currentResume.projects.length > 0) {
-      if (!Array.isArray(currentResume.projects[projIdx].bullets)) {
-        currentResume.projects[projIdx].bullets = [];
-      }
-      currentResume.projects[projIdx].bullets.unshift(bulletToApply);
-      loadResumeIntoForm(currentResume);
-      highlightPreviewElement(elements.rpProjectsContainer);
-      const projName = currentResume.projects[projIdx].title || 'project';
-      showToast(`✨ Applied bullet to ${projName} in ${secTitle}!`, 'success');
-    } else {
-      currentResume.projects.push({
-        title: sug.targetTitle || 'Featured Technical Project',
-        tech: 'Python, Docker, Kubernetes, AWS',
-        link: 'https://github.com/example/project',
-        bullets: [bulletToApply]
-      });
-      loadResumeIntoForm(currentResume);
-      highlightPreviewElement(elements.rpProjectsContainer);
-      showToast(`✨ Added project with bullet to ${secTitle}!`, 'success');
-    }
-
-    // Boost experience depth and domain keywords in ATS evaluation
-    if (currentAnalysis) {
-      currentAnalysis.experienceDepthScore = Math.min(98, (currentAnalysis.experienceDepthScore || 45) + 10);
-      currentAnalysis.domainKeywordsScore = Math.min(98, (currentAnalysis.domainKeywordsScore || 45) + 8);
-      recalcAnalysisScore();
-    }
-  } else if (sug.type === 'summary') {
-    ensureSectionEnabled('summary');
-    const summaryToApply = isCustom ? customContent.trim() : (sug.recommendedSummary || sug.detail);
-    currentResume.summary = summaryToApply;
-    if (elements.resumeSummaryInput) elements.resumeSummaryInput.value = summaryToApply;
-    renderPreview();
-    if (elements.rpSummaryText) highlightPreviewElement(elements.rpSummaryText);
-    const secTitle = getSectionTitle('summary');
-    showToast(`✨ Updated ${secTitle} with tailored keywords!`, 'success');
-
-    // Boost domain keywords in ATS evaluation
-    if (currentAnalysis) {
-      currentAnalysis.domainKeywordsScore = Math.min(98, (currentAnalysis.domainKeywordsScore || 45) + 12);
-      recalcAnalysisScore();
-    }
-  }
-
-  // Mark suggestion as applied
-  sug.applied = true;
-
-  // Visual card transition: Tick applied and remove smoothly
-  const cardEl = document.querySelector(`[data-sug-card-id="${sug.id}"]`);
-  if (cardEl) {
-    cardEl.classList.add('is-applied');
-    const impactEl = cardEl.querySelector('.impact-badge');
-    if (impactEl) {
-      impactEl.className = 'impact-badge impact-applied flex-shrink-0';
-      impactEl.innerHTML = '<span class="material-symbols-outlined text-[12px]">check_circle</span> Applied ✓';
-    }
-
-    const editContainer = cardEl.querySelector('.sug-edit-container');
-    if (editContainer) editContainer.style.display = 'none';
-
-    const viewContainer = cardEl.querySelector('.sug-view-container');
-    if (viewContainer) viewContainer.style.display = 'flex';
-
-    const actionRow = cardEl.querySelector('.sug-action-row');
-    if (actionRow) {
-      actionRow.innerHTML = `
-        <span class="text-accent-emerald text-[11px] font-semibold flex items-center gap-1">
-          <span class="material-symbols-outlined text-[14px]">check</span> Applied to Resume (+Score Updated)
-        </span>
-        <button class="text-[11px] text-text-dim hover:text-accent-rose flex items-center gap-0.5 border-0 bg-transparent cursor-pointer" data-dismiss-sug="${sug.id}" title="Remove from list">
-          <span class="material-symbols-outlined text-[13px]">delete</span> Dismiss
-        </button>
-      `;
-      actionRow.querySelector('[data-dismiss-sug]')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dismissSuggestionCard(sug.id);
-      });
-    }
-
-    // Auto-fade-out after brief celebration so user sees it tick applied then cleanly removed
-    setTimeout(() => {
-      dismissSuggestionCard(sug.id);
-    }, 1200);
-  } else {
-    // If no DOM element, filter immediately
-    if (currentAnalysis && Array.isArray(currentAnalysis.suggestions)) {
-      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(s => s.id !== sug.id);
-    }
-  }
-
-  check1PageGuardrail();
-  triggerAutoSave();
-}
-
-/**
- * Category-Aware Dynamic Skill Addition Engine
- * Supports user-editable custom category names & real-time synchronization
- */
-function addSkillToResume(skill, targetCategory = null) {
-  if (!skill) return;
-  const cleanSkill = skill.trim();
-  if (!cleanSkill) return;
-
-  ensureSectionEnabled('skills');
-
-  if (!Array.isArray(currentResume.skills)) {
-    currentResume.skills = [];
-  }
-
-  // If there are no skill categories yet, initialize with default
-  if (currentResume.skills.length === 0) {
-    const defaultCatKey = classifySkill(cleanSkill);
-    const catMeta = SKILL_CATEGORIES[defaultCatKey] || SKILL_CATEGORIES.languages;
-    currentResume.skills.push({ category: catMeta.label, items: '' });
-  }
-
-  let targetObj = findOrMatchSkillCategory(cleanSkill, targetCategory);
-  
-  if (!targetObj) {
-    const newCatName = (targetCategory && typeof targetCategory === 'string' && !SKILL_CATEGORIES[targetCategory])
-      ? targetCategory
-      : (SKILL_CATEGORIES[classifySkill(cleanSkill)]?.label || 'Technical Skills');
-    targetObj = { category: newCatName, items: '' };
-    currentResume.skills.push(targetObj);
-  }
-
-  // Parse existing items in this category
-  const existingList = parseCommaList(targetObj.items || '');
-  const exists = existingList.some(s => s.toLowerCase() === cleanSkill.toLowerCase());
-  if (!exists) {
-    existingList.push(cleanSkill);
-  }
-  targetObj.items = existingList.join(', ');
-
-  // Update dynamic form inputs in the center editor
-  renderSkillsFormList();
-
-  // Render live preview
-  renderPreview();
-  check1PageGuardrail();
-  triggerAutoSave();
-
-  // Highlight the technical skills preview
-  if (elements.rpSkillsGroup) {
-    highlightPreviewElement(elements.rpSkillsGroup);
-  }
-
-  // Live Sync with AI Analysis Panel: Move from Missing Skills -> Domain Keywords Found
-  if (currentAnalysis) {
-    const cleanLower = cleanSkill.toLowerCase();
-
-    // 1. Remove from missingHardSkills
-    if (Array.isArray(currentAnalysis.missingHardSkills)) {
-      currentAnalysis.missingHardSkills = currentAnalysis.missingHardSkills.filter(
-        s => (s || '').toLowerCase().trim() !== cleanLower
-      );
-    }
-
-    // 2. Add to hardSkillsFound (Domain Keywords Found)
-    if (!Array.isArray(currentAnalysis.hardSkillsFound)) {
-      currentAnalysis.hardSkillsFound = [];
-    }
-    if (!currentAnalysis.hardSkillsFound.some(s => (s || '').toLowerCase().trim() === cleanLower)) {
-      currentAnalysis.hardSkillsFound.unshift(cleanSkill);
-    }
-
-    // 3. Dynamically recalculate match score with genuine ATS multi-factor math
-    const totalSkills = ((currentAnalysis.hardSkillsFound?.length || 0) + (currentAnalysis.missingHardSkills?.length || 0));
-    if (totalSkills > 0) {
-      currentAnalysis.hardSkillsCoverage = Math.round((currentAnalysis.hardSkillsFound.length / totalSkills) * 100);
-      const expDepth = currentAnalysis.experienceDepthScore || 50;
-      const impactKpi = currentAnalysis.quantifiableImpactScore || 50;
-      const domainDensity = currentAnalysis.domainKeywordsScore || 50;
-      currentAnalysis.matchScore = Math.max(15, Math.min(98, Math.round(
-        (currentAnalysis.hardSkillsCoverage * 0.45) +
-        (expDepth * 0.25) +
-        (impactKpi * 0.15) +
-        (domainDensity * 0.15)
-      )));
-    }
-
-    // 4. Update any suggestion cards that recommended this skill
-    if (Array.isArray(currentAnalysis.suggestions)) {
-      currentAnalysis.suggestions = currentAnalysis.suggestions.filter(sug => {
-        if (sug.type === 'skill' && sug.action?.value) {
-          const vals = Array.isArray(sug.action.value) ? sug.action.value : [sug.action.value];
-          const remaining = vals.filter(v => (v || '').toLowerCase().trim() !== cleanLower);
-          if (remaining.length === 0) return false;
-          sug.action.value = remaining;
-          sug.title = `Add ${remaining.join(', ')} to ${sug.targetCategory || 'Skills'}`;
-        }
-        return true;
-      });
-    }
-
-    // Instantly refresh the left analysis panel
-    renderAnalysisResults(currentAnalysis);
-  }
-
-  const secTitle = getSectionTitle('skills');
-  showToast(`✨ Added "${cleanSkill}" to ${secTitle} (${targetObj.category})!`, 'success');
-}
-
-function highlightPreviewElement(el) {
-  if (!el) return;
-  el.classList.remove('applied-highlight');
-  void el.offsetWidth; // trigger reflow
-  el.classList.add('applied-highlight');
-}
-
-/**
- * Browser-side heuristic analysis fallback with category awareness
- */
-function clientHeuristicMatch(resume, jd) {
-  const jdLower = jd.toLowerCase();
-  const resText = JSON.stringify(resume).toLowerCase();
-
-  const techPool = [
-    // Languages
-    'Python', 'TypeScript', 'JavaScript', 'C++', 'SQL', 'Go', 'Rust', 'Java',
-    // AI, LLM & Agentic Systems
-    'LangChain', 'LlamaIndex', 'RAG', 'Vector DB', 'Prompt Engineering', 'OpenAI', 'Gemini', 'CrewAI',
-    // ML/DL & CV
-    'PyTorch', 'TensorFlow', 'scikit-learn', 'OpenCV', 'YOLO', 'Deep Learning', 'Computer Vision',
-    // Cloud, DevOps & MLOps
-    'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Terraform', 'CI/CD', 'Git', 'FastAPI', 'PostgreSQL', 'Redis', 'MLflow'
-  ];
-
-  const missing = techPool.filter(t => jdLower.includes(t.toLowerCase()) && !resText.includes(t.toLowerCase()));
-  const found = techPool.filter(t => jdLower.includes(t.toLowerCase()) && resText.includes(t.toLowerCase()));
-
-  // 1. Hard Skills Coverage (45% weight)
-  const totalSkills = found.length + missing.length;
-  const hardSkillsCoverage = totalSkills > 0
-    ? Math.round((found.length / totalSkills) * 100)
-    : 45;
-
-  // 2. Experience Depth (25% weight)
-  const expBullets = (resume?.experience || []).flatMap(e => e.bullets || []).join(' ').toLowerCase();
-  const projBullets = (resume?.projects || []).flatMap(p => (p.bullets || []).concat(p.tech || '', p.description || '')).join(' ').toLowerCase();
-  const workText = `${expBullets} ${projBullets}`;
-  let expSkillsCount = 0;
-  found.forEach(s => {
-    if (workText.includes(s.toLowerCase())) expSkillsCount++;
-  });
-  const experienceDepthScore = found.length > 0
-    ? Math.round((expSkillsCount / found.length) * 100)
-    : 30;
-
-  // 3. Quantifiable Impact (15% weight)
-  const allBullets = (resume?.experience || []).flatMap(e => e.bullets || [])
-    .concat((resume?.projects || []).flatMap(p => p.bullets || []));
-  const metricRegex = /\b(\d+(\.\d+)?%|\$\d+[\d,]*|\d+\+?k|\d+\+?m|\b\d{2,}\b|\b(reduced|increased|optimized|decreased|accelerated|improved|scaled|saved|cut)\b.*?\b\d+)/i;
-  let metricCount = 0;
-  allBullets.forEach(b => {
-    if (metricRegex.test(b)) metricCount++;
-  });
-  const quantifiableImpactScore = allBullets.length > 0
-    ? Math.round((metricCount / allBullets.length) * 100)
-    : 25;
-
-  // 4. Domain Keywords (15% weight)
-  const domainKeywordsScore = Math.max(20, Math.min(95, Math.round(hardSkillsCoverage * 0.9)));
-
-  // Strict Enterprise ATS Weighted Formula (No Artificial Hikes)
-  const matchScore = Math.max(15, Math.min(98, Math.round(
-    (hardSkillsCoverage * 0.45) +
-    (experienceDepthScore * 0.25) +
-    (quantifiableImpactScore * 0.15) +
-    (domainKeywordsScore * 0.15)
-  )));
-
-  // Group missing skills by candidate's actual editable categories
-  const groupedMissing = {};
-  missing.slice(0, 6).forEach(sk => {
-    const matchedCat = findOrMatchSkillCategory(sk);
-    const catName = matchedCat ? matchedCat.category : (SKILL_CATEGORIES[classifySkill(sk)]?.label || 'Technical Skills');
-    if (!groupedMissing[catName]) groupedMissing[catName] = [];
-    groupedMissing[catName].push(sk);
-  });
-
-  const suggestions = Object.entries(groupedMissing).map(([catName, skills], idx) => {
-    return {
-      id: `sug-hard-skill-${idx}`,
-      type: 'skill',
-      impact: idx < 2 ? 'High' : 'Medium',
-      category: 'hard_skill',
-      targetCategory: catName,
-      title: `Add ${skills.join(', ')} to ${catName}`,
-      detail: `The target job lists these technologies as core requirements for ${catName}.`,
-      action: {
-        target: `skills.${catName}`,
-        category: catName,
-        value: skills
-      }
-    };
-  });
-
-  suggestions.push({
-    id: 'sug-bullet-quantify',
-    type: 'experience_bullet',
-    impact: 'High',
-    targetIndex: 0,
-    category: 'quantify_impact',
-    title: 'Inject Cloud Architecture & Performance Metric',
-    detail: 'Incorporate quantified engineering achievements with high-throughput cloud services.',
-    recommendedBullet: `Architected distributed microservices deployed via Docker on AWS, reducing API response times by 35% for 250k+ daily users.`
-  });
-
-  const projTitle = (resume?.projects?.[0]?.title) || 'Technical Project';
-  suggestions.push({
-    id: 'sug-proj-quantify',
-    type: 'project_bullet',
-    impact: 'Medium',
-    targetIndex: 0,
-    targetTitle: projTitle,
-    category: 'technical_depth',
-    title: `Feature Modern Cloud Stack in ${projTitle}`,
-    detail: 'Demonstrate hands-on experience building systems with containerization and cloud tooling.',
-    recommendedBullet: `Engineered scalable pipeline using Python and Docker, optimizing query performance and reducing processing latency by 28%.`
-  });
-
-  suggestions.push({
-    id: 'sug-summary-align',
-    type: 'summary',
-    impact: 'Low',
-    category: 'keyword_alignment',
-    title: 'Refine Executive Summary with Target Keywords',
-    detail: 'Align the summary statement to highlight primary technical proficiencies for immediate recruiter visibility.',
-    recommendedSummary: `Results-driven Software Engineer with proven expertise building scalable cloud systems and resilient backend services aligned with enterprise delivery standards.`
-  });
-
-  return {
-    matchScore,
-    hardSkillsCoverage,
-    experienceDepthScore,
-    quantifiableImpactScore,
-    domainKeywordsScore,
-    providerUsed: 'Browser Offline Heuristic',
-    summary: `Resume aligns with ${matchScore}% of target requirements based on strict multi-factor ATS evaluation. ${missing.length > 0 ? `Key technical gaps: ${missing.slice(0, 4).join(', ')}.` : 'Strong core alignment.'}`,
-    hardSkillsFound: found,
-    missingHardSkills: missing,
-    suggestions
-  };
+  if (!analysis.suggestions?.length) elements.suggestionsContainer.textContent = 'Evaluate Match to refresh recommendations for this resume.';
 }
 
 /**
@@ -6539,6 +5699,8 @@ function updateVaultStoredBadge() {
 function saveMasterProfileToStorage(notify = false, options = {}) {
   try {
     setAppStorageItem('jobease_master_profile', JSON.stringify(masterProfile));
+    vaultSelection.clear();
+    elements.vaultSectionsContainer?.replaceChildren();
     if (options.markDirty !== false) profileLocalRevision += 1;
     if (activeStorageUserId && options.markDirty !== false) {
       markAppStorageDirty('jobease_profile_cloud_dirty');
@@ -6731,6 +5893,7 @@ function openProfileVaultModal() {
 function renderVaultModalContent(filterText = '') {
   if (!elements.vaultSectionsContainer) return;
   const container = elements.vaultSectionsContainer;
+  captureVaultSelection(container, vaultSelection);
   container.innerHTML = '';
 
   const query = (filterText || '').trim().toLowerCase();
@@ -6788,7 +5951,8 @@ function renderVaultModalContent(filterText = '') {
       const card = document.createElement('div');
       card.className = 'vault-section-card';
       let catsHtml = '';
-      filteredCats.forEach((cat, cIdx) => {
+      filteredCats.forEach(cat => {
+        const cIdx = skillsList.indexOf(cat);
         const chips = (cat.items || '').split(',').map(i => i.trim()).filter(Boolean);
         const chipsHtml = chips.map((chip, chIdx) => {
           const chipMatches = matchesQuery(chip, cat.category);
@@ -6834,7 +5998,7 @@ function renderVaultModalContent(filterText = '') {
   if ((currentVaultTab === 'all' || currentVaultTab === 'experience') && Array.isArray(masterProfile.experience) && masterProfile.experience.length > 0) {
     const expList = masterProfile.experience;
     const filteredExp = expList.map((exp, idx) => {
-      const expMatch = matchesQuery(exp.role, exp.company, exp.location, exp.technologies);
+      const expMatch = matchesQuery(exp.title, exp.role, exp.company, exp.location, exp.technologies);
       const matchingBullets = (exp.bullets || []).filter(b => expMatch || matchesQuery(b));
       return { exp, idx, matches: expMatch || matchingBullets.length > 0, matchingBullets };
     }).filter(e => e.matches);
@@ -6863,7 +6027,7 @@ function renderVaultModalContent(filterText = '') {
               <input type="checkbox" class="vault-item-chk" data-sec="experience" data-itm-idx="${idx}" checked>
               <div class="vault-item-info">
                 <div class="vault-item-main-title">
-                  <span>${escapeHtml(exp.role || 'Role')}</span>
+                  <span>${escapeHtml(exp.title || exp.role || 'Role')}</span>
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.74rem; color: #94A3B8; font-weight: normal;">${escapeHtml(exp.startDate || '')} ${exp.endDate ? '– ' + escapeHtml(exp.endDate) : ''}</span>
                     <button type="button" class="vault-delete-btn" title="Delete this experience from Vault" data-vault-del-item="experience" data-itm-idx="${idx}">Delete</button>
@@ -6967,7 +6131,8 @@ function renderVaultModalContent(filterText = '') {
       card.className = 'vault-section-card';
       let itemsHtml = '';
 
-      eduList.forEach((e, idx) => {
+      eduList.forEach(e => {
+        const idx = masterProfile.education.indexOf(e);
         itemsHtml += `
           <div class="vault-item-card">
             <div class="vault-item-header">
@@ -7011,7 +6176,8 @@ function renderVaultModalContent(filterText = '') {
       card.className = 'vault-section-card';
       let itemsHtml = '';
 
-      certList.forEach((c, idx) => {
+      certList.forEach(c => {
+        const idx = masterProfile.certifications.indexOf(c);
         itemsHtml += `
           <div class="vault-item-card">
             <div class="vault-item-header">
@@ -7055,7 +6221,8 @@ function renderVaultModalContent(filterText = '') {
       card.className = 'vault-section-card';
       let itemsHtml = '';
 
-      pubList.forEach((p, idx) => {
+      pubList.forEach(p => {
+        const idx = masterProfile.publications.indexOf(p);
         itemsHtml += `
           <div class="vault-item-card">
             <div class="vault-item-header">
@@ -7099,7 +6266,8 @@ function renderVaultModalContent(filterText = '') {
       card.className = 'vault-section-card';
       let itemsHtml = '';
 
-      volList.forEach((v, idx) => {
+      volList.forEach(v => {
+        const idx = masterProfile.volunteer.indexOf(v);
         const bulletsHtml = (v.bullets || []).map((b, bIdx) => `
           <label class="vault-bullet-row">
             <input type="checkbox" class="vault-bullet-chk" data-sec="volunteer" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
@@ -7152,7 +6320,8 @@ function renderVaultModalContent(filterText = '') {
         card.className = 'vault-section-card';
         let itemsHtml = '';
 
-        matchingItems.forEach((itm, idx) => {
+        matchingItems.forEach(itm => {
+          const idx = sec.items.indexOf(itm);
           const bulletsHtml = (itm.bullets || []).map((b, bIdx) => `
             <label class="vault-bullet-row">
               <input type="checkbox" class="vault-bullet-chk" data-sec="custom_${sec.id}" data-itm-idx="${idx}" data-b-idx="${bIdx}" checked>
@@ -7211,6 +6380,10 @@ function renderVaultModalContent(filterText = '') {
     elements.vaultRawJsonTextarea.value = JSON.stringify(masterProfile, null, 2);
   }
 
+  enhanceVault({ container, profile: masterProfile, resume: currentResume, tab: currentVaultTab, query: filterText,
+    selection: vaultSelection, save: () => saveMasterProfileToStorage(false),
+    saveCurrent: () => mergeActiveResumeIntoVault(true),
+    rerender: () => renderVaultModalContent(elements.vaultSearchInput?.value || '') });
   attachVaultCheckboxHandlers();
   updateVaultSelectedCount();
 }
@@ -7368,10 +6541,8 @@ function updateVaultSelectedCount() {
   const container = elements.vaultSectionsContainer;
   if (!container || !elements.vaultSelectedCount) return;
 
-  let count = 0;
-  container.querySelectorAll('.vault-item-chk:checked, .vault-skill-chip-chk:checked, .vault-sec-master-chk[data-vault-sec="personalInfo"]:checked').forEach(() => {
-    count++;
-  });
+  captureVaultSelection(container, vaultSelection);
+  const count = [...vaultSelection].filter(([key, checked]) => checked && (key.startsWith('vault-item-chk:') || key.startsWith('vault-skill-chip-chk:') || key.includes('personalInfo'))).length;
 
   elements.vaultSelectedCount.textContent = count;
 }
@@ -7382,6 +6553,12 @@ function updateVaultSelectedCount() {
  */
 function executeVaultImport(mode = 'merge') {
   if (!masterProfile) return;
+  captureVaultSelection(elements.vaultSectionsContainer, vaultSelection);
+  if (![...vaultSelection.values()].some(Boolean)) { showToast('Select the content you want to import first.', 'info'); return; }
+  const previousTab = currentVaultTab;
+  currentVaultTab = 'all';
+  renderVaultModalContent('');
+  currentVaultTab = previousTab;
   const container = elements.vaultSectionsContainer;
   if (!container) return;
 
@@ -7430,6 +6607,16 @@ function executeVaultImport(mode = 'merge') {
   // Helper for cherry-picking items & selective bullets
   function importArraySection(secKey, masterList) {
     if (!Array.isArray(masterList)) return;
+    if (!container.querySelector(`.vault-item-chk[data-sec="${secKey}"]:checked`)) return;
+    let destination = currentResume;
+    let field = secKey;
+    if (secKey.startsWith('custom_')) {
+      const id = secKey.slice(7);
+      if (!Array.isArray(currentResume.customSections)) currentResume.customSections = [];
+      let section = currentResume.customSections.find(s => s.id === id);
+      if (!section) { section = { id, title: masterProfile.customSections.find(s => s.id === id)?.title || 'Custom section', items: [] }; currentResume.customSections.push(section); }
+      destination = section; field = 'items';
+    }
     const selectedItems = [];
 
     container.querySelectorAll(`.vault-item-chk[data-sec="${secKey}"]:checked`).forEach(chk => {
@@ -7450,7 +6637,7 @@ function executeVaultImport(mode = 'merge') {
             }
           });
           // If bullet checkboxes were rendered and selected, use them; otherwise keep existing bullets
-          if (checkedBullets.length > 0) {
+          if (itemCard.querySelector('.vault-bullet-chk')) {
             itemCopy.bullets = checkedBullets;
           }
         }
@@ -7460,29 +6647,20 @@ function executeVaultImport(mode = 'merge') {
     });
 
     if (selectedItems.length > 0) {
-      if (mode === 'replace' || !Array.isArray(currentResume[secKey])) {
-        currentResume[secKey] = selectedItems;
+      if (mode === 'replace' || !Array.isArray(destination[field])) {
+        destination[field] = selectedItems;
       } else {
         // Merge without duplicates
         selectedItems.forEach(sel => {
-          const existIdx = currentResume[secKey].findIndex(e => {
-            if (secKey === 'experience' || secKey === 'volunteer') {
-              return (e.role || '').toLowerCase() === (sel.role || '').toLowerCase() &&
-                     (e.company || e.organization || '').toLowerCase() === (sel.company || sel.organization || '').toLowerCase();
-            }
-            if (secKey === 'projects') return (e.name || '').toLowerCase() === (sel.name || '').toLowerCase();
-            if (secKey === 'education') return (e.institution || '').toLowerCase() === (sel.institution || '').toLowerCase();
-            if (secKey === 'certifications' || secKey === 'publications') return (e.title || '').toLowerCase() === (sel.title || '').toLowerCase();
-            return false;
-          });
+          const existIdx = destination[field].findIndex(e => itemIdentity(secKey, e) === itemIdentity(secKey, sel));
 
           if (existIdx >= 0) {
             // Update existing entry with selected bullets
             if (Array.isArray(sel.bullets)) {
-              currentResume[secKey][existIdx].bullets = sel.bullets;
+              destination[field][existIdx].bullets = [...new Set([...(destination[field][existIdx].bullets || []), ...sel.bullets])];
             }
           } else {
-            currentResume[secKey].push(sel);
+            destination[field].push(sel);
           }
         });
       }
@@ -7494,7 +6672,9 @@ function executeVaultImport(mode = 'merge') {
   importArraySection('education', masterProfile.education);
   importArraySection('certifications', masterProfile.certifications);
   importArraySection('publications', masterProfile.publications);
+  importArraySection('achievements', masterProfile.achievements);
   importArraySection('volunteer', masterProfile.volunteer);
+  if (container.querySelector('.vault-item-chk[data-sec="summary"]:checked')) currentResume.summary = masterProfile.summary;
 
   // Custom Sections import
   if (Array.isArray(masterProfile.customSections)) {
@@ -7570,8 +6750,6 @@ let authStateUnsubscribe = null;
 let authTransitionGeneration = 0;
 let resumeSaveChain = Promise.resolve();
 let profileSaveChain = Promise.resolve();
-let lastAutoOptimizeResult = null;
-let currentOptFilter = 'all';
 
 /**
  * Initialize Clerk, Supabase, and the current user's workspace.
@@ -7764,6 +6942,7 @@ function restoreWorkspaceFromActiveStorage() {
 }
 
 function applyWorkspaceToUI() {
+  atsController.changed();
   loadResumeIntoForm(currentResume);
   applySectionOrderToDOM();
   syncAllSectionCheckboxesFromState();
@@ -8610,271 +7789,6 @@ async function createNewCloudResume() {
 /**
  * Trigger AI Auto-Optimize Engine
  */
-async function triggerAutoOptimize() {
-  const jdText = elements.jdInput?.value.trim();
-  if (!jdText) {
-    showToast('Please paste a target Job Description first to auto-optimize.', 'warning');
-    elements.jdInput?.focus();
-    return;
-  }
-
-  if (elements.btnAutoOptimize) {
-    elements.btnAutoOptimize.disabled = true;
-    elements.btnAutoOptimize.innerHTML = `
-      <span class="material-symbols-outlined text-[18px] text-accent-amber animate-spin">refresh</span>
-      <span>Auto-Optimizing Resume with AI...</span>
-    `;
-  }
-
-  try {
-    const res = await fetch('/api/auto-optimize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        resume: currentResume,
-        jobDescription: jdText
-      })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Server responded with ${res.status}`);
-    }
-
-    const data = await res.json();
-    lastAutoOptimizeResult = data;
-
-    const leap = Math.max(1, (data.scoreAfter || 92) - (data.scoreBefore || 60));
-    if (elements.optScoreLeapBadge) {
-      elements.optScoreLeapBadge.textContent = `Score: ${data.scoreBefore || 60}% ➔ ${data.scoreAfter || 92}% (+${leap}%)`;
-    }
-    if (elements.optSummaryText) {
-      elements.optSummaryText.textContent = data.summaryOfChanges || 'Automated ATS optimization generated.';
-    }
-
-    currentOptFilter = 'all';
-    renderAutoOptimizeDiffs('all');
-    openModal(elements.autoOptimizeModal);
-  } catch (err) {
-    console.error('Auto-optimize error:', err);
-    showToast('Auto-optimize failed: ' + (err.message || 'Server error'), 'error');
-  } finally {
-    if (elements.btnAutoOptimize) {
-      elements.btnAutoOptimize.disabled = false;
-      elements.btnAutoOptimize.innerHTML = `
-        <span class="material-symbols-outlined text-[18px] text-accent-amber animate-pulse">bolt</span>
-        <span>Auto-Optimize Resume (1-Click)</span>
-        <span class="font-label-sm text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/30 text-amber-300 font-bold ml-auto">90%+ ATS</span>
-      `;
-    }
-  }
-}
-
-/**
- * Render Interactive Diff Changes in Auto-Optimize Modal
- */
-function renderAutoOptimizeDiffs(filter = 'all') {
-  if (!elements.optChangesContainer || !lastAutoOptimizeResult) return;
-  const container = elements.optChangesContainer;
-  container.innerHTML = '';
-
-  const allChanges = lastAutoOptimizeResult.changes || [];
-  const filtered = allChanges.filter(c => {
-    if (filter === 'all') return true;
-    return c.type === filter;
-  });
-
-  // Update Tab Counts
-  const bulletCount = allChanges.filter(c => c.type === 'bullet').length;
-  const skillCount = allChanges.filter(c => c.type === 'skill').length;
-  const summaryCount = allChanges.filter(c => c.type === 'summary').length;
-
-  if (elements.btnOptFilterAll) elements.btnOptFilterAll.textContent = `All Changes (${allChanges.length})`;
-  if (elements.btnOptFilterBullets) elements.btnOptFilterBullets.textContent = `Bullets (${bulletCount})`;
-  if (elements.btnOptFilterSkills) elements.btnOptFilterSkills.textContent = `Skills (${skillCount})`;
-  if (elements.btnOptFilterSummary) elements.btnOptFilterSummary.textContent = `Summary (${summaryCount})`;
-
-  document.querySelectorAll('#opt-filter-tabs .tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.optFilter === filter);
-    btn.classList.toggle('bg-surface-container-high', btn.dataset.optFilter === filter);
-    btn.classList.toggle('text-primary', btn.dataset.optFilter === filter);
-  });
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<div class="p-8 text-center text-text-dim text-body-sm">No changes under this filter.</div>`;
-    updateOptSelectedCount();
-    return;
-  }
-
-  filtered.forEach(change => {
-    const card = document.createElement('div');
-    card.className = 'diff-card is-checked';
-    card.id = `card-${change.id}`;
-
-    let sectionLabel = capitalize(change.section || 'General');
-    if (change.section === 'experience' && typeof change.itemIndex === 'number') {
-      const exp = currentResume.experience?.[change.itemIndex];
-      sectionLabel = `Experience: ${exp?.company || `Role #${change.itemIndex + 1}`}`;
-    } else if (change.section === 'projects' && typeof change.itemIndex === 'number') {
-      const proj = currentResume.projects?.[change.itemIndex];
-      sectionLabel = `Project: ${proj?.name || `Project #${change.itemIndex + 1}`}`;
-    } else if (change.section === 'skills') {
-      sectionLabel = `Skills: ${change.category || 'Technical'}`;
-    }
-
-    const impactClass = change.impact === 'High' ? 'impact-high' : (change.impact === 'Medium' ? 'impact-medium' : 'impact-low');
-
-    card.innerHTML = `
-      <div class="diff-header">
-        <label class="flex items-center gap-2.5 cursor-pointer select-none">
-          <input type="checkbox" class="opt-change-chk accent-indigo-500 w-4 h-4 cursor-pointer" data-change-id="${change.id}" checked>
-          <span class="font-headline-sm text-[14px] text-text-main font-semibold">${escapeHtml(sectionLabel)}</span>
-        </label>
-        <span class="impact-badge ${impactClass}">${escapeHtml(change.impact || 'High')} Impact</span>
-      </div>
-
-      ${change.original ? `
-        <div class="diff-original" title="Original text being replaced">
-          ${escapeHtml(change.original)}
-        </div>
-      ` : ''}
-
-      <div class="diff-optimized" title="Optimized high-impact ATS version">
-        ${escapeHtml(change.optimized)}
-      </div>
-
-      <div class="diff-reason">
-        <span class="material-symbols-outlined text-[14px] text-accent-amber">lightbulb</span>
-        <span>${escapeHtml(change.reason || 'Optimized for target JD alignment.')}</span>
-      </div>
-    `;
-
-    const chk = card.querySelector('.opt-change-chk');
-    chk.addEventListener('change', () => {
-      card.classList.toggle('is-checked', chk.checked);
-      updateOptSelectedCount();
-    });
-
-    container.appendChild(card);
-  });
-
-  updateOptSelectedCount();
-}
-
-/**
- * Update Selected Count Readout
- */
-function updateOptSelectedCount() {
-  const checked = document.querySelectorAll('.opt-change-chk:checked').length;
-  if (elements.optSelectedCount) {
-    elements.optSelectedCount.textContent = checked;
-  }
-}
-
-/**
- * Select / Deselect All Changes
- */
-function setAllOptCheckboxes(checked) {
-  document.querySelectorAll('.opt-change-chk').forEach(chk => {
-    chk.checked = checked;
-    const card = chk.closest('.diff-card');
-    if (card) card.classList.toggle('is-checked', checked);
-  });
-  updateOptSelectedCount();
-}
-
-/**
- * Filter Changes (All / Bullets / Skills / Summary)
- */
-function setOptFilter(filter) {
-  currentOptFilter = filter;
-  renderAutoOptimizeDiffs(filter);
-}
-
-/**
- * Apply Checked Optimizations to Active Resume
- */
-function applySelectedOptimizations() {
-  if (!lastAutoOptimizeResult || !Array.isArray(lastAutoOptimizeResult.changes)) return;
-
-  const checkedIds = new Set(
-    Array.from(document.querySelectorAll('.opt-change-chk:checked')).map(c => c.dataset.changeId)
-  );
-
-  if (checkedIds.size === 0) {
-    showToast('No changes selected to apply.', 'warning');
-    return;
-  }
-
-  // Clone current resume
-  const targetResume = JSON.parse(JSON.stringify(currentResume));
-  let appliedCount = 0;
-
-  lastAutoOptimizeResult.changes.forEach(change => {
-    if (!checkedIds.has(change.id)) return;
-
-    if (change.type === 'summary') {
-      ensureSectionEnabled('summary');
-      targetResume.summary = change.optimized;
-      appliedCount++;
-    } else if (change.type === 'bullet') {
-      if (change.section === 'experience' && Array.isArray(targetResume.experience)) {
-        ensureSectionEnabled('experience');
-        const exp = targetResume.experience[change.itemIndex];
-        if (exp && Array.isArray(exp.bullets)) {
-          if (change.bulletIndex >= 0 && change.bulletIndex < exp.bullets.length) {
-            exp.bullets[change.bulletIndex] = change.optimized;
-          } else {
-            exp.bullets.unshift(change.optimized);
-          }
-          appliedCount++;
-        }
-      } else if (change.section === 'projects' && Array.isArray(targetResume.projects)) {
-        ensureSectionEnabled('projects');
-        const proj = targetResume.projects[change.itemIndex];
-        if (proj && Array.isArray(proj.bullets)) {
-          if (change.bulletIndex >= 0 && change.bulletIndex < proj.bullets.length) {
-            proj.bullets[change.bulletIndex] = change.optimized;
-          } else {
-            proj.bullets.unshift(change.optimized);
-          }
-          appliedCount++;
-        }
-      }
-    } else if (change.type === 'skill') {
-      ensureSectionEnabled('skills');
-      if (!Array.isArray(targetResume.skills)) targetResume.skills = [];
-
-      const catLabel = change.category || 'Languages';
-      let catObj = targetResume.skills.find(s => s.category?.toLowerCase() === catLabel.toLowerCase());
-      if (!catObj) {
-        catObj = { category: catLabel, items: '' };
-        targetResume.skills.push(catObj);
-      }
-
-      const existing = (catObj.items || '').split(',').map(s => s.trim()).filter(Boolean);
-      if (!existing.some(s => s.toLowerCase() === change.skill.toLowerCase())) {
-        existing.push(change.skill);
-        catObj.items = existing.join(', ');
-        appliedCount++;
-      }
-    }
-  });
-
-  currentResume = targetResume;
-  loadResumeIntoForm(currentResume);
-  renderPreview();
-  check1PageGuardrail();
-  saveProfileToStorage(false);
-  closeModal(elements.autoOptimizeModal);
-
-  showToast(`✨ Successfully applied ${appliedCount} AI optimizations! Re-evaluating match...`, 'success');
-
-  // Trigger evaluation to show new high score
-  setTimeout(() => {
-    evaluateMatch();
-  }, 300);
-}
 
 function capitalize(str) {
   if (!str) return '';

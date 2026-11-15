@@ -125,17 +125,17 @@ const preAudit = preAuditDeterministic(parsed, targetJobDescription);
 assert(Array.isArray(preAudit.hardSkillsFound) && preAudit.hardSkillsFound.length > 0, `Pre-audit detected matching hard skills: ${preAudit.hardSkillsFound.join(', ')}`);
 assert(Array.isArray(preAudit.missingHardSkills) && preAudit.missingHardSkills.length > 0, `Pre-audit detected missing hard skills: ${preAudit.missingHardSkills.join(', ')}`);
 
-const matchResult = analyzeWithHeuristic(parsed, targetJobDescription);
+const matchResult = analyzeWithHeuristic({ ...parsed, projects: [{ name: 'Sample project', bullets: ['Built a Node.js service.'] }] }, targetJobDescription);
 assert(typeof matchResult.matchScore === 'number' && matchResult.matchScore >= 40 && matchResult.matchScore <= 100, `Match score generated: ${matchResult.matchScore}%`);
 assert(matchResult.providerUsed === 'Built-in Heuristic Engine', `Provider tagged correctly: ${matchResult.providerUsed}`);
 assert(Array.isArray(matchResult.hardSkillsFound), 'Hard skills found is an array');
 assert(Array.isArray(matchResult.missingHardSkills), 'Missing hard skills is an array');
 assert(matchResult.suggestions.length > 0, `Actionable suggestions generated: ${matchResult.suggestions.length} items`);
 
-const hasProjectBullet = matchResult.suggestions.some(s => s.type === 'project_bullet');
-assert(hasProjectBullet, 'Heuristic engine generates project_bullet suggestions');
-const hasExpBullet = matchResult.suggestions.some(s => s.type === 'experience_bullet');
-assert(hasExpBullet, 'Heuristic engine generates experience_bullet suggestions');
+const hasProjectBullet = matchResult.suggestions.some(s => s.type === 'bullet' && s.section === 'projects');
+assert(hasProjectBullet, 'Heuristic engine asks for factual details for an existing project bullet');
+const hasExpBullet = matchResult.suggestions.some(s => s.type === 'bullet' && s.section === 'experience');
+assert(hasExpBullet, 'Heuristic engine asks for factual details for an existing experience bullet');
 
 // 4. Test Skill Categorization & Classification
 console.log('\nTest 4: Skill Categorization & Taxonomy');

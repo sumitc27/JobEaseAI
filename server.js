@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 
 import { parsePdfResume, parseResumeText, createEmptyResume } from './services/pdfParser.js';
 import { analyzeMatch, autoOptimizeResume } from './services/aiEngine.js';
+import { scoreResume } from './services/atsScorer.js';
+import { prepareDraft, applyReviewedChanges, normalizeSuggestions } from './services/suggestionPolicy.js';
 import { generateLatexResume, compileLatexToPdf } from './services/latexGenerator.js';
 
 // Load .env manually if exists, without requiring dotenv package
@@ -37,6 +39,9 @@ const MIME_TYPES = {
 };
 
 const JSON_API_ROUTES = new Set([
+  '/api/score',
+  '/api/review-changes',
+  '/api/skill-suggestion',
   '/api/analyze-match',
   '/api/auto-optimize',
   '/api/parse-text',
@@ -109,6 +114,31 @@ const server = http.createServer(async (req, res) => {
             ? `Google Gemini (${process.env.GEMINI_MODEL || 'gemini-2.0-flash'})` 
             : (process.env.OPENAI_API_KEY ? 'OpenAI' : 'Built-in Heuristic Engine'))
       });
+      return;
+    }
+
+    // Fast scoring, skill review, and validated preview/application never call AI.
+    if (req.method === 'POST' && ['/api/score', '/api/review-changes', '/api/skill-suggestion'].includes(pathname)) {
+      const body = await readJsonBody(req);
+      const { resume, jobDescription } = body || {};
+      if (!resume || typeof resume !== 'object' || Array.isArray(resume) || typeof jobDescription !== 'string' || !jobDescription.trim()) {
+        sendJson(res, 400, { error: 'A resume object and target job description are required.' });
+        return;
+      }
+      try {
+        if (pathname === '/api/score') sendJson(res, 200, { success: true, analysis: scoreResume(resume, jobDescription) });
+        else if (pathname === '/api/skill-suggestion') {
+          const proposals = normalizeSuggestions([{ type: 'skill', skill: body.skill, impact: 'High', reason: 'Confirm your actual experience with this JD requirement.' }], resume, jobDescription);
+          sendJson(res, 200, { success: true, proposals });
+        } else if (body.action === 'prepare') {
+          sendJson(res, 200, { success: true, proposal: prepareDraft(body.token, body.text, resume, jobDescription) });
+        } else if (['preview', 'apply'].includes(body.action)) {
+          const result = applyReviewedChanges(resume, jobDescription, body.selections);
+          sendJson(res, 200, { success: true, ...result, scoreAfter: result.analysis.matchScore });
+        } else sendJson(res, 400, { error: 'Unknown review action.' });
+      } catch (error) {
+        sendJson(res, 409, { error: error.message });
+      }
       return;
     }
 

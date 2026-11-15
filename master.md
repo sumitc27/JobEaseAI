@@ -1,6 +1,6 @@
 # JobEaseAI Project Master Reference
 
-Last verified: 2026-11-14
+Last verified: 2026-11-15
 
 ## Purpose
 
@@ -10,7 +10,53 @@ The implementation status below is the current source of truth. Sections explici
 
 No values from the real `.env` file are included here. Never add secret keys, session tokens, private user data, or production credentials to this file.
 
-## Current Change Set
+## Current ATS Scoring and Recommendation Contract
+
+Profile Vault usability update: compact expandable sections and bullets; guided field/category editing and additions; per-item resume membership badges; resume-only comparison; persistent selections across search and section navigation; original filtered indexes; summary/achievement imports; and custom-section imports into the canonical nested schema. Merging selected bullets preserves existing bullets. Verification includes 3 Vault regressions in addition to the 78 baseline checks and 22 ATS regressions. Visual browser verification remains unavailable in this session.
+
+Implemented on 2026-11-15 following approval of deterministic scoring and evidence-based recommendation review.
+
+### Authoritative scoring
+
+- `services/atsScorer.js` is the single scoring implementation. `preAuditDeterministic` remains an exported compatibility alias in `aiEngine.js`.
+- Scoring version: `ats-1.0.0`. Weights remain 45% hard-skills coverage, 25% demonstrated experience depth, 15% quantifiable impact, and 15% domain-word coverage. Bounds remain 15–98 after rounding.
+- The scorer uses included resume content, not serialized JSON keys. Excluded sections, URLs, and editor settings do not add keyword matches. Boundary-aware matching distinguishes Java/JavaScript and SQL/NoSQL and supports punctuation in C++, C#, and .NET.
+- Results include sub-scores, classifications, source evidence, scoring version, and a SHA-256 snapshot identifier derived from the resume/JD and scorer version. Object-key ordering does not change the identifier.
+- AI responses supply proposed changes only. Provider scores and classifications never override deterministic results.
+- `/api/score` recalculates without an AI call after debounced resume/JD edits. The browser rejects responses for older input/workspace snapshots and shows an outdated/unavailable label during server outages.
+- Fixed score increments and the independent browser heuristic scorer have been removed. Auto-Optimize has no minimum score promise.
+
+### Evidence and confirmation
+
+- `services/suggestionPolicy.js` normalizes provider suggestions into source-bound skill, bullet, or summary proposals. Invalid source indexes and mismatched original text are rejected.
+- Each proposal contains the JD requirement, original text/source path, proposed text, evidence, and explicit confirmation requirements. Existing resume evidence is context, not independent verification of truth.
+- Generated numbers or technologies unsupported by the exact source text cause the generated wording to be withheld and factual input requested. Offline bullet suggestions request real details instead of inventing metrics. No placeholder roles, companies, or projects are created.
+- Skills absent from the source are offered as questions about actual experience. Each detected skill, numeric claim, and overall claim accuracy must be explicitly confirmed before application, including skills reached from clickable missing-skill tags.
+- User-entered factual text is reviewed by the server and gets new claim requirements. Empty/unresolved placeholders are blocked. Editing revokes confirmations; selecting or bulk-selecting never confirms claims.
+- Proposals are signed using a process-local HMAC key and bound to their exact source snapshot. Server restart, changed source/JD, altered signed fields, or confirmations for different text cause rejection. Signing does not authenticate a user's assertions or replace Clerk/RLS.
+- Preview and application use the same server transaction on the exact selected and confirmed changes. The returned score is measured from the resulting resume; zero and negative deltas are valid.
+- `public/js/atsReview.js` owns review state independently of filter rendering. Filters preserve selections and confirmations; old draft/preview/apply responses are discarded after input/workspace changes.
+
+### API contract and files
+
+| Route | Contract |
+| --- | --- |
+| `POST /api/score` | `{ resume, jobDescription }` returns authoritative `analysis` |
+| `POST /api/analyze-match` | Same inputs; authoritative analysis plus normalized signed `suggestions` |
+| `POST /api/auto-optimize` | Same inputs; signed `changes`; initial `scoreAfter` equals `scoreBefore` until selected confirmed changes are previewed |
+| `POST /api/skill-suggestion` | Same inputs plus `skill`; returns a JD-linked skill proposal for review |
+| `POST /api/review-changes` (`action: prepare`) | Same inputs plus `token` and edited `text`; returns a newly signed proposal and confirmation requirements |
+| `POST /api/review-changes` (`action: preview` or `apply`) | Same inputs plus `selections: [{ token, confirmedText, confirmedClaims }]`; returns the candidate `resume`, `analysis`, before/after scores, and applied count |
+
+Preview does not mutate application state. The browser updates the active resume only after a valid Apply response for the current snapshot. Proposal/confirmation data is kept in memory; no database migration is required. Normal manual editing remains available.
+
+### Verification and remaining limits
+
+`npm.cmd test` runs 78 baseline verification checks and 22 ATS regression tests. Coverage includes all provider paths using mocks, offline fallback, unsupported claims, signed-text/source tampering, confirmation revocation, filter persistence, old response rejection, server outages, actual HTTP routes, and exact preview/application score agreement. Automated UI checks use a DOM harness; visual browser verification was unavailable because the browser host/native UI connection was disconnected.
+
+This phase preserves the basic scoring model. It does not claim calibration against proprietary ATS systems or verify that user-confirmed claims are true. Required/preferred qualifications, semantic matching, experience duration, metric-quality evaluation, and document parsing-quality scoring remain future work.
+
+## Previous Change Set (2026-11-14)
 
 The working release documented on 2026-11-14 combines four related improvements:
 
@@ -155,7 +201,7 @@ Current test command:
 npm test
 ```
 
-The test suite currently passes 78 checks. The duplicate `sampleRawText` declaration and stale skills/custom-section assertions found during the initial audit have been fixed.
+The test suite currently passes 78 baseline checks and 22 ATS regression tests. The duplicate `sampleRawText` declaration and stale skills/custom-section assertions found during the initial audit have been fixed.
 
 ## Repository Map
 
@@ -167,12 +213,17 @@ The test suite currently passes 78 checks. The duplicate `sampleRawText` declara
 | `public/js/supabaseAuth.js` | Clerk authentication adapter and Clerk-token-authenticated Supabase CRUD |
 | `public/js/samples.js` | Sample resume content |
 | `public/css/styles.css` | Application, account, modal, and cloud-resume styling |
-| `services/aiEngine.js` | AI and heuristic ATS analysis and optimization |
+| `services/aiEngine.js` | Provider recommendations with authoritative scorer results |
+| `services/atsScorer.js` | Deterministic versioned scoring, visible-content projection, source evidence |
+| `services/skillTaxonomy.js` | Shared skill vocabulary and category classification |
+| `services/suggestionPolicy.js` | Source-bound proposals, factual confirmation, validated preview/application |
+| `public/js/atsReview.js` | Review UI state, score refresh, stale-result rejection |
 | `services/pdfParser.js` | PDF/text parsing and normalized resume creation |
 | `services/latexGenerator.js` | TeX generation and Tectonic PDF compilation |
 | `python_backend/` | Optional FastAPI LaTeX pipeline on port 8000 |
 | `.env.example` | Documented non-secret runtime configuration placeholders |
-| `test.js` | Current Node test script; presently blocked by a syntax error |
+| `test.js` | Baseline Node verification checks |
+| `tests/ats.test.js`, `tests/atsUi.test.js` | Scoring, recommendation policy, HTTP and DOM review regressions |
 
 ## Pre-Clerk Baseline Architecture (Historical)
 
@@ -229,6 +280,9 @@ All current server routes are unauthenticated.
 | `GET /api/health` | Service and active AI provider status | `server.js:67-78` |
 | `POST /api/analyze-match` | Resume and job-description ATS analysis | `server.js:80-93` |
 | `POST /api/auto-optimize` | AI-assisted resume optimization | `server.js:95-108` |
+| `POST /api/score` | Authoritative scorer without an AI request | `services/atsScorer.js` |
+| `POST /api/skill-suggestion` | Skill review and confirmation proposal | `services/suggestionPolicy.js` |
+| `POST /api/review-changes` | Prepare edited factual text, preview or apply confirmed proposals | `services/suggestionPolicy.js` |
 | `POST /api/parse-text` | Convert plain resume text to structured data | `server.js:110-123` |
 | `POST /api/upload-resume` | Upload and parse PDF data | `server.js:125-138` |
 | `POST /api/export-latex` | Generate TeX source | `server.js:140-154` |
