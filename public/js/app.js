@@ -8,6 +8,7 @@ import { SAMPLE_RESUMES, SAMPLE_JOB_DESCRIPTIONS } from './samples.js';
 import * as cloudAuth from './supabaseAuth.js';
 import { createAtsReview } from './atsReview.js';
 import { formatSkill } from './skillLabels.js';
+import { printPageStyle } from './printLayout.js';
 import { enhanceVault, captureVaultSelection, itemIdentity } from './vaultManager.js';
 const vaultSelection = new Map();
 
@@ -2075,13 +2076,7 @@ function setPaperSize(size, syncLatex = true, notify = false) {
     printStyle.id = 'dynamic-print-style';
     document.head.appendChild(printStyle);
   }
-  printStyle.textContent = `@media print {
-    @page { size: ${currentPaperSize === 'letter' ? 'letter' : 'a4'} portrait !important; margin: 0.3in 0.35in !important; }
-    .paper-info-bar, .paper-spec-pill, .paper-budget-readout, .overflow-alert-banner, .page-limit-line, .page-limit-badge, .spacing-drawer, .section-reorder-btns, .no-print, .rp-page-badge, .page-break-divider { display: none !important; }
-    .paper-scaler { transform: none !important; }
-    .resume-paper { page-break-after: always; break-after: page; box-shadow: none !important; }
-    .resume-paper:last-child { page-break-after: avoid; break-after: avoid; }
-  }`;
+  printStyle.textContent = printPageStyle(currentPaperSize);
 
   if (syncLatex) {
     if (activeTab === 'latex') {
@@ -4891,7 +4886,13 @@ async function uploadPdfFile(file) {
 /**
  * PDF & JSON Export
  */
-function exportPdf() {
+async function exportPdf() {
+  // Font loading can change wrapping and page count. Rebuild the preview using
+  // the loaded fonts before opening the browser's PDF destination.
+  if (document.fonts?.ready) await document.fonts.ready;
+  renderPreview();
+  setPaperSize(currentPaperSize, false, false);
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   // Before printing, check 1-page guardrail
   const contentHeight = getResumeActualContentHeight();
   const targetHeight = getTargetPageHeight();

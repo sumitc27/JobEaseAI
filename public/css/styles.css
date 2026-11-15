@@ -4341,8 +4341,8 @@ body.theme-light .cloud-resume-item.is-active {
    ========================================================================== */
 @media print {
   @page {
-    size: letter portrait;
-    margin: 0.35in 0.4in;
+    size: a4 portrait;
+    margin: 0;
   }
 
   body {
@@ -4350,6 +4350,8 @@ body.theme-light .cloud-resume-item.is-active {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .top-nav,
@@ -4373,13 +4375,23 @@ body.theme-light .cloud-resume-item.is-active {
     display: block !important;
     height: auto !important;
     overflow: visible !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  .preview-panel {
+  #right-panel.preview-panel {
+    box-shadow: none !important;
     background: transparent !important;
     border: none !important;
     height: auto !important;
     overflow: visible !important;
+    display: block !important;
+    width: var(--print-paper-width, 210mm) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .preview-scroll-container {
@@ -4395,16 +4407,38 @@ body.theme-light .cloud-resume-item.is-active {
     margin: 0 !important;
   }
 
-  .resume-paper {
-    box-shadow: none !important;
+  #paper-viewport-container, #paper-wrapper, #paper-viewport, #paper-scaler {
+    display: block !important;
+    width: var(--print-paper-width, 210mm) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
-    min-height: auto !important;
+    overflow: visible !important;
+    transform: none !important;
+    gap: 0 !important;
+  }
+
+  .rp-page-badge, .page-break-divider, #paper-info-bar { display: none !important; }
+
+  #paper-scaler .resume-paper {
+    box-shadow: none !important;
+    padding: var(--page-pad-v, 34px) var(--page-pad-h, 44px) !important;
+    width: var(--print-paper-width, 210mm) !important;
+    min-height: var(--print-paper-height, 297mm) !important;
+    height: auto !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    transition: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    border: none !important;
     outline: none !important;
   }
+
+  #paper-scaler #resume-paper-p2 { break-before: page; page-break-before: always; }
 
   .resume-paper.is-overflowing::after {
     display: none !important;
