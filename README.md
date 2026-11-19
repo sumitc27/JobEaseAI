@@ -17,11 +17,12 @@ JobEaseAI separates structured resume data from presentation so a resume can be 
 
 - **Clerk authentication and Supabase sync:** sign in with Clerk, manage multiple cloud resumes, synchronize the Master Profile Vault, and keep guest workspaces separate from user-scoped drafts.
 - **Conflict-aware persistence:** serialized saves, optimistic version checks, dirty-state tracking, per-tab active resume state, legacy guest import, and reload-or-copy recovery when a cloud record changes elsewhere.
-- **Evidence-based AI review:** evaluate a target job description, inspect source evidence, and explicitly confirm skills, metrics, and factual claims before applying proposed changes.
+- **Evidence-aware resume review:** evaluate a target job description and review inline cards with a category, suggested text, a color-coded evidence line, and Edit/Add controls. Unsupported skills or metrics require the user's factual text before they can be added.
 - **Reproducible match scoring:** the server calculates every score using the same versioned formula; AI responses and suggestion clicks cannot supply score increases.
 - **Provider waterfall:** Groq → Gemini → OpenAI → built-in offline heuristic, so core optimization remains usable without an AI key.
 - **Flexible resume editor:** reorder, rename, include, or exclude sections; add custom sections; reorder entries and bullets; and edit certifications, publications, achievements, and volunteer experience.
-- **Layout controls:** A4/Letter paper, font selection, compact/standard/relaxed spacing, detailed spacing sliders, themes, auto-fit, and a live page-overflow guardrail.
+- **Layout controls:** A4/Letter paper, Latin Modern Roman as the default font, other font choices, compact/standard/relaxed spacing, detailed spacing sliders, themes, auto-fit, bold section headings, adjustable section rules, and a live page-overflow guardrail.
+- **Preview-matched PDF export:** browser printing uses the selected paper size and the preview's content padding and layout, without adding a second page margin around the resume.
 - **Safer public API:** exact-origin CORS, JSON content-type enforcement, and validation that prevents secret Clerk or Supabase keys from being exposed through `/api/config`.
 
 ## Core features
@@ -34,23 +35,23 @@ JobEaseAI separates structured resume data from presentation so a resume can be 
 - Supports selective application of summary, skill, experience, and project changes.
 - Falls back to the deterministic heuristic engine when cloud AI providers are unavailable.
 
-### Scoring and factual confirmation
+### Scoring and evidence-aware recommendations
 
 The score is JobEaseAI's resume-to-job match estimate, not a score issued by an external ATS. Scoring version `ats-1.0.0` preserves the four weights: hard-skills coverage **45%**, experience depth **25%**, quantifiable impact **15%**, and domain-word coverage **15%**. The rounded score is bounded to **15–98**. Skill matching uses text boundaries, and excluded sections, URLs, and editor metadata do not contribute matches.
 
-All providers use the same server-calculated score and skill classifications. Editing the resume or JD schedules a fresh score without calling an AI provider. A server outage marks the previous score as outdated; the browser does not substitute a different scoring algorithm.
+All providers use the same server-calculated score and skill classifications. Editing the resume form, including adding or removing skills or changing dates, schedules a fresh score without calling an AI provider. Found and missing skill lists update with the current included resume content. A server outage marks the previous score as outdated; the browser does not substitute a different scoring algorithm. Skill labels use familiar capitalization such as Python, AWS, and GCP.
 
 To apply an improvement:
 
-1. Use **Review AI Improvements**, Evaluate Match, or a missing-skill tag to show inline recommendation cards.
-2. Inspect the JD requirement and source text. Missing evidence is identified explicitly.
-3. Enter actual work/results when requested. Generated skills or numbers unsupported by the source become requests for factual input rather than completed claims.
-4. Use **Edit** and **Save edit** directly on a card to adjust its text. Expand **Confirm facts before adding** to confirm its skills, metrics, and factual accuracy. Editing clears previous confirmations.
-5. Click **Add to resume** on the card. The server applies the confirmed text and recalculates the score, which can increase, remain unchanged, or decrease. No approval modal is opened.
+1. Use **Review AI Improvements**, **Evaluate Match**, or a missing-skill tag to show inline recommendation cards.
+2. Each card shows its category (such as Skills, Project, Education, or Work experience), recommended line, and either **Evidence found in the resume.** in green or **No evidence found in the resume.** in red. Available source text appears in the evidence tooltip.
+3. Enter your actual work or results when the recommendation requests details. Unsupported generated skills or numbers are not offered as completed claims.
+4. Use **Edit** and **Save edit** on the card to change its text. The server reviews the edited text before it can be added.
+5. Click **Add to resume** on the card. The server validates the source-bound proposal and recalculates the score, which can increase, remain unchanged, or decrease. The current inline flow has no separate approval window or visible fact-confirmation checklist; review the text for accuracy before adding it.
 
-Offline recommendations ask for real details; they do not invent results or create placeholder employers/projects. Changes to the resume, JD, or source text invalidate an open review. Restarting the server also invalidates existing proposal signatures; generate a new review afterward.
+Offline recommendations ask for real details; they do not invent results or create placeholder employers/projects. Changes to the resume, JD, or source text invalidate an open review. Restarting the server also invalidates existing proposal signatures; generate a new review afterward. The source evidence shows where text came from; it does not independently verify a candidate's claims.
 
-The current scorer uses a fixed technical vocabulary and simple metric/word checks. Required/preferred weighting, experience duration, semantic relevance, and actual PDF parsing-quality scoring remain future work. Source evidence and user confirmations record what the candidate asserts; they do not independently verify employment or achievements.
+The current scorer uses a fixed technical vocabulary and simple metric/word checks. Required/preferred weighting, experience duration, semantic relevance, and actual PDF parsing-quality scoring remain future work. Source evidence and user-entered text record what the candidate asserts; they do not independently verify employment or achievements.
 
 ### Resume studio and Master Profile Vault
 
@@ -61,6 +62,8 @@ The current scorer uses a fixed technical vocabulary and simple metric/word chec
 - Preserves a local guest workspace when the user is signed out.
 - The Vault opens as a compact section library with expandable bullets, guided Add/Edit forms, and badges comparing saved content with the active resume. A separate comparison lists resume content not yet saved to the Vault.
 - Import selections survive search and section changes. Merge preserves existing bullets; filtered lists retain the original saved-item indexes.
+- **Export JSON** downloads a backup of the entire Vault. **Import JSON** replaces the current Vault contents; export both copies before transferring a Vault between environments if either contains information to keep.
+- Local and deployed sites must use the same Supabase project and the same Clerk user identity for automatic cross-site Vault sync. Signing in with the same account alone does not move data between different Supabase projects.
 
 ### LaTeX and PDF output
 
@@ -68,6 +71,9 @@ The current scorer uses a fixed technical vocabulary and simple metric/word chec
 - Escapes LaTeX-sensitive characters and supports both A4 and Letter paper.
 - Compiles locally with Tectonic when the binary is available.
 - Exports source for use in Overleaf or another LaTeX environment.
+- Browser PDF export waits for fonts to load, then prints using the selected page layout and preview content padding. In the browser print dialog, use **Save as PDF**, 100% scale, and disable browser headers and footers for the closest match to the preview.
+- Latin Modern Roman is the default preview font. Section headings use a bold face; **Section line thickness** adjusts divider rules from 0 to 2 pt, including fully hidden lines at 0 pt. The selected thickness also carries through to LaTeX output.
+- Achievements and certifications can include a separate URL and editable link label. When a URL is present, the preview and LaTeX output show an underlined label after a `|` separator.
 
 ## Architecture
 
@@ -169,7 +175,7 @@ node --check public/js/app.js
 node --check public/js/supabaseAuth.js
 ```
 
-The suite includes **78 existing verification checks and 22 ATS regression tests**, covering provider consistency, factual confirmations, edited/stale proposals, preview/application agreement, HTTP endpoints, and review-control behavior. No live AI provider credentials are needed to run the tests.
+The suite includes **78 baseline verification checks and 31 regression tests**, covering provider consistency, factual proposal validation, inline editing, live score refresh, stale proposals, preview/application agreement, HTTP endpoints, Vault comparison and selection, print layout, section rules, and achievement links. No live AI provider credentials are needed to run the tests. The print tests check generated styles and settings; inspect an actual browser PDF separately for visual layout and page count.
 
 ## Cloud-sync behavior
 
